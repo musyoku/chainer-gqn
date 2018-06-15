@@ -1,0 +1,20 @@
+# ignore all
+*
+
+# allow any
+!*/
+!*.py
+!*.h
+!*.c
+!*.hpp
+!*.cpp
+!*.md
+!*.inl
+!.gitignore
+!makefile
+!faces
+!vertices
+
+# ignore
+.vscode
+build
