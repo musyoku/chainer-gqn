@@ -27,27 +27,7 @@ namespace renderer {
             for (int object_index = 0; object_index < objects.size(); object_index++) {
                 std::shared_ptr<scene::Object> object = objects[object_index];
                 glm::mat4& model_mat = object->_model_matrix;
-                std::cout << "model_mat:" << std::endl;
-                std::cout << model_mat[0][0] << ", " << model_mat[0][1] << ", " << model_mat[0][2] << ", " << model_mat[0][3] << ", " << std::endl;
-                std::cout << model_mat[1][0] << ", " << model_mat[1][1] << ", " << model_mat[1][2] << ", " << model_mat[1][3] << ", " << std::endl;
-                std::cout << model_mat[2][0] << ", " << model_mat[2][1] << ", " << model_mat[2][2] << ", " << model_mat[2][3] << ", " << std::endl;
-                std::cout << model_mat[3][0] << ", " << model_mat[3][1] << ", " << model_mat[3][2] << ", " << model_mat[3][3] << ", " << std::endl;
-                std::cout << "view_mat:" << std::endl;
-                std::cout << view_mat[0][0] << ", " << view_mat[0][1] << ", " << view_mat[0][2] << ", " << view_mat[0][3] << ", " << std::endl;
-                std::cout << view_mat[1][0] << ", " << view_mat[1][1] << ", " << view_mat[1][2] << ", " << view_mat[1][3] << ", " << std::endl;
-                std::cout << view_mat[2][0] << ", " << view_mat[2][1] << ", " << view_mat[2][2] << ", " << view_mat[2][3] << ", " << std::endl;
-                std::cout << view_mat[3][0] << ", " << view_mat[3][1] << ", " << view_mat[3][2] << ", " << view_mat[3][3] << ", " << std::endl;
-                std::cout << "projection_mat:" << std::endl;
-                std::cout << projection_mat[0][0] << ", " << projection_mat[0][1] << ", " << projection_mat[0][2] << ", " << projection_mat[0][3] << ", " << std::endl;
-                std::cout << projection_mat[1][0] << ", " << projection_mat[1][1] << ", " << projection_mat[1][2] << ", " << projection_mat[1][3] << ", " << std::endl;
-                std::cout << projection_mat[2][0] << ", " << projection_mat[2][1] << ", " << projection_mat[2][2] << ", " << projection_mat[2][3] << ", " << std::endl;
-                std::cout << projection_mat[3][0] << ", " << projection_mat[3][1] << ", " << projection_mat[3][2] << ", " << projection_mat[3][3] << ", " << std::endl;
                 glm::mat4 pvm_mat = projection_mat * view_mat * model_mat;
-                std::cout << "pvm_mat:" << std::endl;
-                std::cout << pvm_mat[0][0] << ", " << pvm_mat[0][1] << ", " << pvm_mat[0][2] << ", " << pvm_mat[0][3] << ", " << std::endl;
-                std::cout << pvm_mat[1][0] << ", " << pvm_mat[1][1] << ", " << pvm_mat[1][2] << ", " << pvm_mat[1][3] << ", " << std::endl;
-                std::cout << pvm_mat[2][0] << ", " << pvm_mat[2][1] << ", " << pvm_mat[2][2] << ", " << pvm_mat[2][3] << ", " << std::endl;
-                std::cout << pvm_mat[3][0] << ", " << pvm_mat[3][1] << ", " << pvm_mat[3][2] << ", " << pvm_mat[3][3] << ", " << std::endl;
                 update_depth_map(object_index, object.get(), pvm_mat, np_face_index_map, np_depth_map);
             }
         }
@@ -86,16 +66,16 @@ namespace renderer {
                 vfb /= vfb.w;
                 vfc /= vfc.w;
 
-                // // 映らないものはスキップ
-                // if (vfa.z < 0.0) {
-                //     continue;
-                // }
-                // if (vfb.z < 0.0) {
-                //     continue;
-                // }
-                // if (vfc.z < 0.0) {
-                //     continue;
-                // }
+                // 映らないものはスキップ
+                if (vfa.z < 0.0) {
+                    continue;
+                }
+                if (vfb.z < 0.0) {
+                    continue;
+                }
+                if (vfc.z < 0.0) {
+                    continue;
+                }
 
                 // カリングによる裏面のスキップ
                 // 面の頂点の並び（1 -> 2 -> 3）が時計回りの場合描画しない

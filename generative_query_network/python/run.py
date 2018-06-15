@@ -35,14 +35,14 @@ def main():
     window = gqn.viewer.Window(figure)
     window.show()
 
-    i = 0
+    rad = 0
     while True:
-        i += 1
+        rad += math.pi / 2500
         depth_map = np.full(screen_size, 1.0, dtype="float32")
         face_index_map = np.zeros(screen_size, dtype="int32")
         object_index_map = np.zeros(screen_size, dtype="int32")
         camera.look_at(
-            eye=(1.0 + float(i) / 1000, 1.0 + float(i) / 1000, 1.0 + float(i) / 1000),
+            eye=(1.0 * math.sin(rad), 1.0, 1.0 * math.cos(rad)),
             center=(0.0, 0.0, 0.0),
             up=(0.0, 1.0, 0.0),
         )
