@@ -52,7 +52,7 @@ void Window::_run()
         static_cast<Window*>(glfwGetWindowUserPointer(window))->_callback_mouse_button(window, button, action, mods);
     });
 
-    glEnable(GL_BLEND);
+    // glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

@@ -87,8 +87,8 @@ void main(){
         glGenSamplers(1, &_sampler_id);
         glSamplerParameteri(_sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glSamplerParameteri(_sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glSamplerParameteri(_sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glSamplerParameteri(_sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glSamplerParameteri(_sampler_id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glSamplerParameteri(_sampler_id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
