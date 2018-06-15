@@ -24,10 +24,10 @@ namespace data {
     {
         auto size = vertices.size();
         if (size != _num_vertices * 3) {
-            std::runtime_error("`vertices.size` muse be equal to `_num_faces * 3`.");
+            throw std::runtime_error("`vertices.size` muse be equal to `_num_faces * 3`.");
         }
         if (vertices.ndim() != 2) {
-            std::runtime_error("(vertices.ndim() != 2) -> false");
+            throw std::runtime_error("(vertices.ndim() != 2) -> false");
         }
         auto ptr = vertices.mutable_unchecked<2>();
         for (int n = 0; n < vertices.shape(0); n++) {
@@ -49,10 +49,10 @@ namespace data {
     {
         auto size = faces.size();
         if (size != _num_faces * 3) {
-            std::runtime_error("`faces.size` muse be equal to `_num_faces * 3`.");
+            throw std::runtime_error("`faces.size` muse be equal to `_num_faces * 3`.");
         }
         if (faces.ndim() != 2) {
-            std::runtime_error("(faces.ndim() != 2) -> false");
+            throw std::runtime_error("(faces.ndim() != 2) -> false");
         }
         auto ptr = faces.mutable_unchecked<2>();
         for (int n = 0; n < faces.shape(0); n++) {

@@ -5,13 +5,13 @@ namespace data {
     ImageData::ImageData(int height, int width, int num_channels)
     {
         if (num_channels != 1 && num_channels != 3) {
-            std::runtime_error("num_channels != 1 && num_channels != 3");
+            throw std::runtime_error("num_channels != 1 && num_channels != 3");
         }
         if (height <= 0) {
-            std::runtime_error("height <= 0");
+            throw std::runtime_error("height <= 0");
         }
         if (width <= 0) {
-            std::runtime_error("width <= 0");
+            throw std::runtime_error("width <= 0");
         }
         _height = height;
         _width = width;
@@ -26,16 +26,16 @@ namespace data {
     {
         auto size = data.size();
         if (size != _height * _width * _num_channels) {
-            std::runtime_error("`data.size` muse be equal to `_height * _width * _num_channels`.");
+            throw std::runtime_error("`data.size` muse be equal to `_height * _width * _num_channels`.");
         }
         if (data.ndim() < 2 || data.ndim() > 3) {
-            std::runtime_error("(data.ndim() < 2 || data.ndim() > 3) -> false");
+            throw std::runtime_error("(data.ndim() < 2 || data.ndim() > 3) -> false");
         }
         if (data.ndim() == 2 && _num_channels != 1) {
-            std::runtime_error("(data.ndim() == 2 && _num_channels != 1) -> false");
+            throw std::runtime_error("(data.ndim() == 2 && _num_channels != 1) -> false");
         }
         if (data.ndim() == 3 && _num_channels != 3) {
-            std::runtime_error("(data.ndim() == 3 && _num_channels != 3) -> false");
+            throw std::runtime_error("(data.ndim() == 3 && _num_channels != 3) -> false");
         }
         if (data.ndim() == 2) {
             auto ptr = data.mutable_unchecked<2>();

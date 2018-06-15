@@ -12,8 +12,7 @@ Window::Window(Figure* figure)
         fprintf(stderr, "Error %d: %s\n", error, description);
     });
     if (!!glfwInit() == false) {
-        std::runtime_error("Failed to initialize GLFW.");
-        return;
+        throw std::runtime_error("Failed to initialize GLFW.");
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
@@ -113,7 +112,7 @@ void Window::show()
     try {
         _thread = std::thread(&Window::_run, this);
     } catch (const std::system_error& e) {
-        std::runtime_error(e.what());
+        throw std::runtime_error(e.what());
     }
 }
 bool Window::closed()
