@@ -2,9 +2,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
-namespace environment {
+namespace three {
 namespace scene {
-    Object::Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple location, py::tuple rotation_rad, py::tuple color)
+    Object::Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple color)
     {
         if (np_faces.ndim() != 2) {
             throw std::runtime_error("(np_faces.ndim() != 2) -> false");
@@ -33,20 +33,32 @@ namespace scene {
             _vertices[vertex_index] = glm::vec4f(vertices(vertex_index, 0), vertices(vertex_index, 1), vertices(vertex_index, 2), vertices(vertex_index, 3));
         }
 
-        _location[0] = location[0].cast<float>();
-        _location[1] = location[1].cast<float>();
-        _location[2] = location[2].cast<float>();
-
-        _rotation_rad[0] = rotation_rad[0].cast<float>();
-        _rotation_rad[1] = rotation_rad[1].cast<float>();
-        _rotation_rad[2] = rotation_rad[2].cast<float>();
+        _position = glm::vec3(0.0);
+        _rotation_rad = glm::vec3(0.0);
+        _update_model_matrix();
 
         _color[0] = color[0].cast<float>();
         _color[1] = color[1].cast<float>();
         _color[2] = color[2].cast<float>();
         _color[3] = color[3].cast<float>();
-
-        glm::mat4 translation_mat = glm::translate(glm::mat4(), _location);
+    }
+    void Object::set_position(py::tuple position)
+    {
+        _position[0] = position[0].cast<float>();
+        _position[1] = position[1].cast<float>();
+        _position[2] = position[2].cast<float>();
+        _update_model_matrix();
+    }
+    void Object::set_rotation(py::tuple rotation_rad)
+    {
+        _rotation_rad[0] = rotation_rad[0].cast<float>();
+        _rotation_rad[1] = rotation_rad[1].cast<float>();
+        _rotation_rad[2] = rotation_rad[2].cast<float>();
+        _update_model_matrix();
+    }
+    void Object::_update_model_matrix()
+    {
+        glm::mat4 translation_mat = glm::translate(glm::mat4(), _position);
         glm::mat4 rotation_mat = glm::rotate(glm::mat4(), 1.0f, _rotation_rad);
         _model_matrix = translation_mat * rotation_mat;
     }

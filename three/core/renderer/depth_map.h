@@ -3,7 +3,7 @@
 #include "../scene/scene.h"
 #include <pybind11/numpy.h>
 
-namespace environment {
+namespace three {
 namespace renderer {
     namespace rasterizer {
         namespace py = pybind11;
@@ -15,6 +15,7 @@ namespace renderer {
         void update_depth_map(
             int object_index,
             scene::Object* object,
+            glm::mat4 pvm_mat,
             py::array_t<int, py::array::c_style>& np_face_index_map,
             py::array_t<float, py::array::c_style>& np_depth_map);
     }

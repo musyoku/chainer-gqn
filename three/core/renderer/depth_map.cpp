@@ -2,8 +2,9 @@
 #include "../scene/object.h"
 #include <glm/glm.hpp>
 #include <vector>
+#include <iostream>
 
-namespace environment {
+namespace three {
 namespace renderer {
     namespace rasterizer {
         void render_depth_map(scene::Scene* scene, camera::PerspectiveCamera* camera,
@@ -22,12 +23,26 @@ namespace renderer {
             }
             glm::mat4& view_mat = camera->_view_matrix;
             glm::mat4& projection_mat = camera->_projection_matrix;
+            glm::mat4 mirror_mat = glm::mat4(1.0);
+            mirror_mat[3][3] = -1;
             std::vector<scene::Object*>& objects = scene->_objects;
             for (int object_index = 0; object_index < objects.size(); object_index++) {
                 scene::Object* object = objects[object_index];
                 glm::mat4& model_mat = object->_model_matrix;
-                glm::mat4 pvm_mat = projection_mat * view_mat * model_mat;
-                update_depth_map(object_index, object, np_face_index_map, np_depth_map);
+                std::cout << "model_mat:" << std::endl;
+                std::cout << model_mat[0][0] << ", " << model_mat[0][1] << ", " << model_mat[0][2] << ", " << model_mat[0][3] << ", " << std::endl;
+                std::cout << model_mat[1][0] << ", " << model_mat[1][1] << ", " << model_mat[1][2] << ", " << model_mat[1][3] << ", " << std::endl;
+                std::cout << model_mat[2][0] << ", " << model_mat[2][1] << ", " << model_mat[2][2] << ", " << model_mat[2][3] << ", " << std::endl;
+                std::cout << "view_mat:" << std::endl;
+                std::cout << view_mat[0][0] << ", " << view_mat[0][1] << ", " << view_mat[0][2] << ", " << view_mat[0][3] << ", " << std::endl;
+                std::cout << view_mat[1][0] << ", " << view_mat[1][1] << ", " << view_mat[1][2] << ", " << view_mat[1][3] << ", " << std::endl;
+                std::cout << view_mat[2][0] << ", " << view_mat[2][1] << ", " << view_mat[2][2] << ", " << view_mat[2][3] << ", " << std::endl;
+                std::cout << "projection_mat:" << std::endl;
+                std::cout << projection_mat[0][0] << ", " << projection_mat[0][1] << ", " << projection_mat[0][2] << ", " << projection_mat[0][3] << ", " << std::endl;
+                std::cout << projection_mat[1][0] << ", " << projection_mat[1][1] << ", " << projection_mat[1][2] << ", " << projection_mat[1][3] << ", " << std::endl;
+                std::cout << projection_mat[2][0] << ", " << projection_mat[2][1] << ", " << projection_mat[2][2] << ", " << projection_mat[2][3] << ", " << std::endl;
+                glm::mat4 pvm_mat = projection_mat * mirror_mat * view_mat * model_mat;
+                update_depth_map(object_index, object, pvm_mat, np_face_index_map, np_depth_map);
             }
         }
 
@@ -35,6 +50,7 @@ namespace renderer {
         void update_depth_map(
             int object_index,
             scene::Object* object,
+            glm::mat4 pvm_mat,
             py::array_t<int, py::array::c_style>& np_face_index_map,
             py::array_t<float, py::array::c_style>& np_depth_map)
         {
@@ -53,12 +69,11 @@ namespace renderer {
                 return 2.0 * (p / (float)(size - 1) - 0.5);
             };
 
-            for (int face_index = 0; face_index < num_faces; face_index++)
-            {
+            for (int face_index = 0; face_index < num_faces; face_index++) {
                 glm::vec3i& face = faces[face_index];
-                glm::vec4f& vfa = vertices[face[0]];
-                glm::vec4f& vfb = vertices[face[1]];
-                glm::vec4f& vfc = vertices[face[2]];
+                glm::vec4f vfa = pvm_mat * vertices[face[0]];
+                glm::vec4f vfb = pvm_mat * vertices[face[1]];
+                glm::vec4f vfc = pvm_mat * vertices[face[2]];
 
                 // 映らないものはスキップ
                 if (vfa.z < 0.0) {

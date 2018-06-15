@@ -3,11 +3,12 @@
 #include <memory>
 #include <vector>
 
-namespace environment {
+namespace three {
 namespace scene {
     class Scene {
     public:
         std::vector<Object*> _objects;
+        Scene();
         void add(Object* object);
     };
 }
