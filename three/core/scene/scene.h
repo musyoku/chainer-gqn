@@ -7,9 +7,9 @@ namespace three {
 namespace scene {
     class Scene {
     public:
-        std::vector<Object*> _objects;
+        std::vector<std::shared_ptr<Object>> _objects;
         Scene();
-        void add(Object* object);
+        void add(std::shared_ptr<Object> object);
     };
 }
 }

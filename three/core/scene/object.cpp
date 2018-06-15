@@ -58,9 +58,11 @@ namespace scene {
     }
     void Object::_update_model_matrix()
     {
-        glm::mat4 translation_mat = glm::translate(glm::mat4(), _position);
-        glm::mat4 rotation_mat = glm::rotate(glm::mat4(), 1.0f, _rotation_rad);
-        _model_matrix = translation_mat * rotation_mat;
+        _model_matrix = glm::mat4(1.0);
+        _model_matrix = glm::translate(_model_matrix, _position);
+        _model_matrix = glm::rotate(_model_matrix, _rotation_rad[0], glm::vec3(1.0f, 0.0f, 0.0f));
+        _model_matrix = glm::rotate(_model_matrix, _rotation_rad[1], glm::vec3(0.0f, 1.0f, 0.0f));
+        _model_matrix = glm::rotate(_model_matrix, _rotation_rad[2], glm::vec3(0.0f, 0.0f, 1.0f));
     }
 }
 }

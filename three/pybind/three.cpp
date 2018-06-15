@@ -16,7 +16,7 @@ PYBIND11_MODULE(three, module)
         .def(py::init<>())
         .def("add", &scene::Scene::add);
 
-    py::class_<scene::Object>(module, "Object")
+    py::class_<scene::Object, std::shared_ptr<scene::Object>>(module, "Object")
         .def(py::init<py::array_t<int>, py::array_t<float>, py::tuple>(),
             py::arg("faces"), py::arg("vertices"), py::arg("color"))
         .def("set_position", &scene::Object::set_position)

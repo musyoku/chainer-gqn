@@ -5,9 +5,9 @@ namespace scene {
     Scene::Scene()
     {
     }
-    void Scene::add(Object* object)
+    void Scene::add(std::shared_ptr<Object> object)
     {
-        _objects.emplace_back(object);
+        _objects.push_back(object);
     }
 }
 }

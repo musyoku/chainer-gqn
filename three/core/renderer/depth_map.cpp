@@ -1,8 +1,8 @@
 #include "depth_map.h"
 #include "../scene/object.h"
 #include <glm/glm.hpp>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 namespace three {
 namespace renderer {
@@ -23,26 +23,32 @@ namespace renderer {
             }
             glm::mat4& view_mat = camera->_view_matrix;
             glm::mat4& projection_mat = camera->_projection_matrix;
-            glm::mat4 mirror_mat = glm::mat4(1.0);
-            mirror_mat[3][3] = -1;
-            std::vector<scene::Object*>& objects = scene->_objects;
+            std::vector<std::shared_ptr<scene::Object>>& objects = scene->_objects;
             for (int object_index = 0; object_index < objects.size(); object_index++) {
-                scene::Object* object = objects[object_index];
+                std::shared_ptr<scene::Object> object = objects[object_index];
                 glm::mat4& model_mat = object->_model_matrix;
                 std::cout << "model_mat:" << std::endl;
                 std::cout << model_mat[0][0] << ", " << model_mat[0][1] << ", " << model_mat[0][2] << ", " << model_mat[0][3] << ", " << std::endl;
                 std::cout << model_mat[1][0] << ", " << model_mat[1][1] << ", " << model_mat[1][2] << ", " << model_mat[1][3] << ", " << std::endl;
                 std::cout << model_mat[2][0] << ", " << model_mat[2][1] << ", " << model_mat[2][2] << ", " << model_mat[2][3] << ", " << std::endl;
+                std::cout << model_mat[3][0] << ", " << model_mat[3][1] << ", " << model_mat[3][2] << ", " << model_mat[3][3] << ", " << std::endl;
                 std::cout << "view_mat:" << std::endl;
                 std::cout << view_mat[0][0] << ", " << view_mat[0][1] << ", " << view_mat[0][2] << ", " << view_mat[0][3] << ", " << std::endl;
                 std::cout << view_mat[1][0] << ", " << view_mat[1][1] << ", " << view_mat[1][2] << ", " << view_mat[1][3] << ", " << std::endl;
                 std::cout << view_mat[2][0] << ", " << view_mat[2][1] << ", " << view_mat[2][2] << ", " << view_mat[2][3] << ", " << std::endl;
+                std::cout << view_mat[3][0] << ", " << view_mat[3][1] << ", " << view_mat[3][2] << ", " << view_mat[3][3] << ", " << std::endl;
                 std::cout << "projection_mat:" << std::endl;
                 std::cout << projection_mat[0][0] << ", " << projection_mat[0][1] << ", " << projection_mat[0][2] << ", " << projection_mat[0][3] << ", " << std::endl;
                 std::cout << projection_mat[1][0] << ", " << projection_mat[1][1] << ", " << projection_mat[1][2] << ", " << projection_mat[1][3] << ", " << std::endl;
                 std::cout << projection_mat[2][0] << ", " << projection_mat[2][1] << ", " << projection_mat[2][2] << ", " << projection_mat[2][3] << ", " << std::endl;
-                glm::mat4 pvm_mat = projection_mat * mirror_mat * view_mat * model_mat;
-                update_depth_map(object_index, object, pvm_mat, np_face_index_map, np_depth_map);
+                std::cout << projection_mat[3][0] << ", " << projection_mat[3][1] << ", " << projection_mat[3][2] << ", " << projection_mat[3][3] << ", " << std::endl;
+                glm::mat4 pvm_mat = projection_mat * view_mat * model_mat;
+                std::cout << "pvm_mat:" << std::endl;
+                std::cout << pvm_mat[0][0] << ", " << pvm_mat[0][1] << ", " << pvm_mat[0][2] << ", " << pvm_mat[0][3] << ", " << std::endl;
+                std::cout << pvm_mat[1][0] << ", " << pvm_mat[1][1] << ", " << pvm_mat[1][2] << ", " << pvm_mat[1][3] << ", " << std::endl;
+                std::cout << pvm_mat[2][0] << ", " << pvm_mat[2][1] << ", " << pvm_mat[2][2] << ", " << pvm_mat[2][3] << ", " << std::endl;
+                std::cout << pvm_mat[3][0] << ", " << pvm_mat[3][1] << ", " << pvm_mat[3][2] << ", " << pvm_mat[3][3] << ", " << std::endl;
+                update_depth_map(object_index, object.get(), pvm_mat, np_face_index_map, np_depth_map);
             }
         }
 
@@ -75,16 +81,21 @@ namespace renderer {
                 glm::vec4f vfb = pvm_mat * vertices[face[1]];
                 glm::vec4f vfc = pvm_mat * vertices[face[2]];
 
-                // 映らないものはスキップ
-                if (vfa.z < 0.0) {
-                    continue;
-                }
-                if (vfb.z < 0.0) {
-                    continue;
-                }
-                if (vfc.z < 0.0) {
-                    continue;
-                }
+                // 同次座標のwの値で割るとz座標の範囲が[0, 1]になる
+                vfa /= vfa.w;
+                vfb /= vfb.w;
+                vfc /= vfc.w;
+
+                // // 映らないものはスキップ
+                // if (vfa.z < 0.0) {
+                //     continue;
+                // }
+                // if (vfb.z < 0.0) {
+                //     continue;
+                // }
+                // if (vfc.z < 0.0) {
+                //     continue;
+                // }
 
                 // カリングによる裏面のスキップ
                 // 面の頂点の並び（1 -> 2 -> 3）が時計回りの場合描画しない

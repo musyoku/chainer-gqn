@@ -9,5 +9,5 @@ EXTENSION = `python3-config --extension-suffix`
 OUTPUT = ../generative_query_network/python/gqn
 
 make: 
-	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) pybind/three.cpp -o $(OUTPUT)/three$(EXTENSION)
 	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) pybind/renderer.cpp -o $(OUTPUT)/renderer$(EXTENSION)
+	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) pybind/three.cpp -o $(OUTPUT)/three$(EXTENSION)

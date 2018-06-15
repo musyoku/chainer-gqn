@@ -10,16 +10,18 @@ def create_object(name, color=(1, 1, 1, 1)):
 
 def create_scene():
     scene = gqn.three.Scene()
+    objects = []
     obj = create_object("teapot")
     scene.add(obj)
-    return scene
+    objects.append(obj)
+    return scene, objects
 
 
 def main():
     screen_size = (64, 64)
-    scene = create_scene()
+    scene, objects = create_scene()
     camera = gqn.three.PerspectiveCamera(
-        eye=(0.0, 1.0, 1.0),
+        eye=(2.0, 2.0, 2.0),
         center=(0.0, 0.0, 0.0),
         up=(0.0, 1.0, 0.0),
         fov_rad=math.pi * 2.0 / 3.0,
@@ -33,14 +35,21 @@ def main():
     window = gqn.viewer.Window(figure)
     window.show()
 
-    depth_map = np.full(screen_size, 1.0, dtype="float32")
-    face_index_map = np.zeros(screen_size, dtype="int32")
-    object_index_map = np.zeros(screen_size, dtype="int32")
-    gqn.renderer.render_depth_map(scene, camera, face_index_map, object_index_map, depth_map)
-    axis_depth_map.update(
-        np.uint8((1.0 - depth_map) / (1.0 - np.amin(depth_map)) * 255))
-
+    i = 0
     while True:
+        i += 1
+        depth_map = np.full(screen_size, 1.0, dtype="float32")
+        face_index_map = np.zeros(screen_size, dtype="int32")
+        object_index_map = np.zeros(screen_size, dtype="int32")
+        camera.look_at(
+            eye=(1.0 + float(i) / 1000, 1.0 + float(i) / 1000, 1.0 + float(i) / 1000),
+            center=(0.0, 0.0, 0.0),
+            up=(0.0, 1.0, 0.0),
+        )
+        gqn.renderer.render_depth_map(scene, camera, face_index_map,
+                                      object_index_map, depth_map)
+        axis_depth_map.update(
+            np.uint8((1.0 - depth_map) / (1.0 - np.amin(depth_map)) * 255))
         if window.closed():
             return
 
