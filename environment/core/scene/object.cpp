@@ -1,4 +1,5 @@
 #include "object.h"
+#include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
 namespace environment {
@@ -35,6 +36,19 @@ namespace scene {
         _location[0] = location[0].cast<float>();
         _location[1] = location[1].cast<float>();
         _location[2] = location[2].cast<float>();
+
+        _rotation_rad[0] = rotation_rad[0].cast<float>();
+        _rotation_rad[1] = rotation_rad[1].cast<float>();
+        _rotation_rad[2] = rotation_rad[2].cast<float>();
+
+        _color[0] = color[0].cast<float>();
+        _color[1] = color[1].cast<float>();
+        _color[2] = color[2].cast<float>();
+        _color[3] = color[3].cast<float>();
+
+        glm::mat4 translation_mat = glm::translate(glm::mat4(), _location);
+        glm::mat4 rotation_mat = glm::rotate(glm::mat4(), 1.0f, _rotation_rad);
+        _model_matrix = translation_mat * rotation_mat;
     }
 }
 }

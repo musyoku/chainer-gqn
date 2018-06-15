@@ -7,7 +7,8 @@ namespace environment {
 namespace scene {
     class Scene {
     public:
-        std::vector<std::unique_ptr<Object>> _objects;
+        std::vector<Object*> _objects;
+        void add(Object* object);
     };
 }
 }

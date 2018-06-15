@@ -1,22 +1,14 @@
 CXX = g++
 INCLUDE = -I./external `pkg-config --cflags glfw3` `python3 -m pybind11 --includes`
 FLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -shared -std=c++14 -fPIC -pthread
-SOURCES = 	./external/gl3w/*.c \
-			./core/base/*.cpp \
-			./core/view/*.cpp \
-			./core/data/*.cpp \
-			./core/renderer/*.cpp \
-			./core/*.cpp \
-			./pybind/*.cpp
+SOURCES = ./core/base/*.cpp \
+		  ./core/base/*.cpp \
+		  ./core/camera/*.cpp \
+		  ./core/renderer/*.cpp \
+		  ./core/scene/*.cpp
 EXTENSION = `python3-config --extension-suffix`
-
-UNAME := $(shell uname -s)
-ifeq ($(UNAME), Linux)
-	FLAGS += -lGL
-endif
-ifeq ($(UNAME), Darwin)
-	FLAGS += -framework OpenGL -undefined dynamic_lookup
-endif
+OUTPUT = ../generative_query_network/python/gqn
 
 make: 
-	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) -o ../generative_query_network/python/gqn/viewer$(EXTENSION)
+	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) pybind/environment.cpp -o $(OUTPUT)/environment$(EXTENSION)
+	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) pybind/renderer.cpp -o $(OUTPUT)/renderer$(EXTENSION)

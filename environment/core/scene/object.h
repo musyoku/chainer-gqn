@@ -20,8 +20,9 @@ namespace scene {
         glm::vec3 _location; // xyz
         glm::vec3 _rotation_rad; // xyz
         glm::vec4 _color; // RGBA
-        glm::mat3 _model_matrix;
+        glm::mat4 _model_matrix;
         Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple location, py::tuple rotation_rad, py::tuple color);
+
     };
 }
 }
