@@ -20,4 +20,4 @@ ifeq ($(UNAME), Darwin)
 endif
 
 make: 
-	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) $(LDFLAGS) -o ../gradient_based_editing/python/gradient_based_editing/viewer$(EXTENSION)
+	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) $(LDFLAGS) -o ../generative_query_network/python/gqn/viewer$(EXTENSION)

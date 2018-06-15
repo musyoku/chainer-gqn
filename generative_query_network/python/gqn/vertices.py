@@ -32,16 +32,12 @@ def rotate_z(vertices, angle_degree):
 
 # 各面の各頂点番号に対応する座標を取る
 def convert_to_face_representation(vertices, faces):
-    assert (vertices.ndim == 3)
-    assert (faces.ndim == 3)
-    assert (vertices.shape[0] == faces.shape[0])
-    assert (vertices.shape[2] == 4)
-    assert (faces.shape[2] == 3)
+    assert (vertices.ndim == 2)
+    assert (faces.ndim == 2)
+    assert (vertices.shape[1] == 4)
+    assert (faces.shape[1] == 3)
 
     xp = chainer.cuda.get_array_module(faces)
-    batch_size, num_vertices = vertices.shape[:2]
-    faces = faces + (
-        xp.arange(batch_size, dtype=xp.int32) * num_vertices)[:, None, None]
-    vertices = vertices.reshape((batch_size * num_vertices,
-                                 4)).astype(xp.float32)
+    num_vertices = vertices.shape[0]
+    vertices = vertices.reshape((num_vertices, 4)).astype(xp.float32)
     return vertices[faces]
