@@ -61,21 +61,14 @@ namespace renderer {
                 glm::vec4f vfb = pvm_mat * vertices[face[1]];
                 glm::vec4f vfc = pvm_mat * vertices[face[2]];
 
-                // 同次座標のwの値で割るとz座標の範囲が[0, 1]になる
-                vfa /= vfa.w;
-                vfb /= vfb.w;
-                vfc /= vfc.w;
+                // 同次座標のwの絶対値で割ると可視領域のz座標の範囲が[0, 1]になる
+                vfa /= glm::abs(vfa.w);
+                vfb /= glm::abs(vfb.w);
+                vfc /= glm::abs(vfc.w);
 
-                // 映らないものはスキップ
-                if (vfa.z < 0.0) {
-                    continue;
-                }
-                if (vfb.z < 0.0) {
-                    continue;
-                }
-                if (vfc.z < 0.0) {
-                    continue;
-                }
+                std::cout << "a: " << vfa.x << ", " << vfa.y << ", " << vfa.z << std::endl;
+                std::cout << "b: " << vfb.x << ", " << vfb.y << ", " << vfb.z << std::endl;
+                std::cout << "c: " << vfc.x << ", " << vfc.y << ", " << vfc.z << std::endl;
 
                 // カリングによる裏面のスキップ
                 // 面の頂点の並び（1 -> 2 -> 3）が時計回りの場合描画しない

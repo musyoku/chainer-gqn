@@ -4,7 +4,7 @@
 
 namespace three {
 namespace scene {
-    Object::Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple color)
+    Object::Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple color, py::tuple scale)
     {
         if (np_faces.ndim() != 2) {
             throw std::runtime_error("(np_faces.ndim() != 2) -> false");
@@ -35,12 +35,17 @@ namespace scene {
 
         _position = glm::vec3(0.0);
         _rotation_rad = glm::vec3(0.0);
-        _update_model_matrix();
 
         _color[0] = color[0].cast<float>();
         _color[1] = color[1].cast<float>();
         _color[2] = color[2].cast<float>();
         _color[3] = color[3].cast<float>();
+
+        _scale[0] = scale[0].cast<float>();
+        _scale[1] = scale[1].cast<float>();
+        _scale[2] = scale[2].cast<float>();
+
+        _update_model_matrix();
     }
     void Object::set_position(py::tuple position)
     {
@@ -63,6 +68,7 @@ namespace scene {
         _model_matrix = glm::rotate(_model_matrix, _rotation_rad[0], glm::vec3(1.0f, 0.0f, 0.0f));
         _model_matrix = glm::rotate(_model_matrix, _rotation_rad[1], glm::vec3(0.0f, 1.0f, 0.0f));
         _model_matrix = glm::rotate(_model_matrix, _rotation_rad[2], glm::vec3(0.0f, 0.0f, 1.0f));
+        _model_matrix = glm::scale(_model_matrix, _scale);
     }
 }
 }

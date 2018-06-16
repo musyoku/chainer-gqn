@@ -23,8 +23,9 @@ namespace scene {
         glm::vec3 _position; // xyz
         glm::vec3 _rotation_rad; // xyz
         glm::vec4 _color; // RGBA
+        glm::vec3 _scale; // xyz
         glm::mat4 _model_matrix;
-        Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple color);
+        Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple color, py::tuple scale);
         void set_position(py::tuple position);
         void set_rotation(py::tuple rotation_rad);
     };
