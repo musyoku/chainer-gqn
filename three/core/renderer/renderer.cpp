@@ -44,8 +44,9 @@ void main(void)
 {
     gl_Position = projection_mat * camera_mat * vec4(position, 1.0f);
     vec4 face_direction = camera_mat * vec4(normal_vector, 0.0f);
-    vec4 light_direction = vec4(0.0, -1.0, -1.0f, 0.0f);
-    power = clamp(dot(normalize(face_direction.xyz), -normalize(light_direction.xyz)), 0.0f, 1.0f);
+    vec4 light_position = camera_mat * vec4(0.0f, -1.0f, 0.0f, 0.0f);
+    vec3 light_direction = face_direction.xyz - light_position.xyz;
+    power = clamp(dot(normalize(face_direction.xyz), -normalize(light_position.xyz)), 0.0f, 1.0f);
     object_color = color;
 }
 )";
@@ -56,7 +57,7 @@ flat in float power;
 in vec4 object_color;
 out vec4 frag_color;
 void main(){
-    frag_color = vec4(power * vec3(1.0), 1.0);
+    frag_color = vec4(power * object_color.xyz, 1.0);
 }
 )";
 
@@ -134,7 +135,7 @@ void main(){
     }
     void Renderer::render_depth_map(
         camera::PerspectiveCamera* camera,
-        py::array_t<float, py::array::c_style> np_depth_map)
+        py::array_t<GLfloat, py::array::c_style> np_depth_map)
     {
         if (glfwWindowShouldClose(_window)) {
             glfwDestroyWindow(_window);

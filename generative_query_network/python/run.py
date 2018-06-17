@@ -36,7 +36,7 @@ def create_scene():
 
 
 def main():
-    screen_size = (320, 320)  # (width, height)
+    screen_size = (64, 64)  # (width, height)
     scene, room, objects = create_scene()
     camera = gqn.three.PerspectiveCamera(
         eye=(1.0 * math.cos(math.pi * 0.6954166666671697), 0.5,
