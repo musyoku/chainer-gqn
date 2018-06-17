@@ -6,6 +6,7 @@
 namespace glm {
 typedef vec<4, float> vec4f;
 typedef vec<3, int> vec3i;
+typedef vec<3, float> vec3f;
 }
 
 namespace three {
@@ -17,7 +18,9 @@ namespace scene {
 
     public:
         std::unique_ptr<glm::vec3i[]> _faces;
-        std::unique_ptr<glm::vec4f[]> _vertices;
+        std::unique_ptr<glm::vec3f[]> _vertices;
+        std::unique_ptr<glm::vec3f[]> _face_vertices;
+        std::unique_ptr<glm::vec3f[]> _face_normal_vectors;
         int _num_faces;
         int _num_vertices;
         glm::vec3 _position; // xyz

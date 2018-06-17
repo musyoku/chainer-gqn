@@ -6,9 +6,7 @@ def load_vertices(filepath):
     vertices = []
     with open(filepath) as file:
         for line in file:
-            vertex = [float(v) for v in line.split()]
-            vertex.append(1.0) # 同次座標系
-            vertices.append(vertex)
+            vertices.append([float(v) for v in line.split()])
     return np.vstack(vertices).astype(np.float32)
 
 

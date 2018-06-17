@@ -15,7 +15,9 @@ namespace renderer {
         void update_depth_map(
             int object_index,
             scene::Object* object,
-            glm::mat4 pvm_mat,
+            glm::mat4 model_mat,
+            glm::mat4 view_mat,
+            glm::mat4 projection_mat,
             py::array_t<int, py::array::c_style>& np_face_index_map,
             py::array_t<float, py::array::c_style>& np_depth_map);
     }

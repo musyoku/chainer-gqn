@@ -31,10 +31,10 @@ void main(){
         _program = opengl::create_program(vertex_shader, fragment_shader);
 
         const GLfloat uv[][2] = {
-            { 1, 1 },
             { 0, 1 },
-            { 1, 0 },
+            { 1, 1 },
             { 0, 0 },
+            { 1, 0 },
         };
 
         const GLfloat vertices[][2] = {

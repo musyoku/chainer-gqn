@@ -27,7 +27,7 @@ double View::height()
 }
 void View::render(double aspect_ratio)
 {
-    std::runtime_error("Function `render` must be overridden.");
+    throw std::runtime_error("Function `render` must be overridden.");
 }
 
 bool View::contains(double px, double py, int screen_width, int screen_height)

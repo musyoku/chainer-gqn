@@ -15,13 +15,15 @@ namespace scene {
         if (np_faces.shape(1) != 3) {
             throw std::runtime_error("(np_faces.shape(1) != 3) -> false");
         }
-        if (np_vertices.shape(1) != 4) {
-            throw std::runtime_error("(np_vertices.shape(1) != 4) -> false");
+        if (np_vertices.shape(1) != 3) {
+            throw std::runtime_error("(np_vertices.shape(1) != 3) -> false");
         }
         _num_faces = np_faces.shape(0);
         _num_vertices = np_vertices.shape(0);
         _faces = std::make_unique<glm::vec3i[]>(_num_faces);
-        _vertices = std::make_unique<glm::vec4f[]>(_num_vertices);
+        _vertices = std::make_unique<glm::vec3f[]>(_num_vertices);
+        _face_vertices = std::make_unique<glm::vec3f[]>(_num_faces * 3);
+        _face_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces);
 
         auto faces = np_faces.mutable_unchecked<2>();
         for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
@@ -30,7 +32,25 @@ namespace scene {
 
         auto vertices = np_vertices.mutable_unchecked<2>();
         for (ssize_t vertex_index = 0; vertex_index < np_vertices.shape(0); vertex_index++) {
-            _vertices[vertex_index] = glm::vec4f(vertices(vertex_index, 0), vertices(vertex_index, 1), vertices(vertex_index, 2), vertices(vertex_index, 3));
+            _vertices[vertex_index] = glm::vec3f(vertices(vertex_index, 0), vertices(vertex_index, 1), vertices(vertex_index, 2));
+        }
+
+        for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
+            glm::vec3i face = _faces[face_index];
+
+            glm::vec3f va = glm::vec3f(vertices(face[0], 0), vertices(face[0], 1), vertices(face[0], 2));
+            glm::vec3f vb = glm::vec3f(vertices(face[1], 0), vertices(face[1], 1), vertices(face[1], 2));
+            glm::vec3f vc = glm::vec3f(vertices(face[2], 0), vertices(face[2], 1), vertices(face[2], 2));
+
+            glm::vec3f vba = vb - va;
+            glm::vec3f vca = vc - va;
+            glm::vec3f normal = glm::normalize(glm::cross(vba, vca));
+
+            _face_vertices[face_index * 3 + 0] = va;
+            _face_vertices[face_index * 3 + 1] = vb;
+            _face_vertices[face_index * 3 + 2] = vc;
+
+            _face_normal_vectors[face_index] = normal;
         }
 
         _position = glm::vec3(0.0);
