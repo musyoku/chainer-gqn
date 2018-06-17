@@ -35,35 +35,24 @@ namespace scene {
             _vertices[vertex_index] = glm::vec3f(vertices(vertex_index, 0), vertices(vertex_index, 1), vertices(vertex_index, 2));
         }
 
-        // 頂点法線は頂点を共有しているすべての面の法線の平均
-        std::unique_ptr<glm::vec3f[]> vertex_normal_vectors_stack = std::make_unique<glm::vec3f[]>(_num_vertices);
-        for (ssize_t vertex_index = 0; vertex_index < _num_vertices; vertex_index++) {
-            vertex_normal_vectors_stack[vertex_index] = glm::vec3f(0.0);
-        }
         for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
             glm::vec3i face = _faces[face_index];
 
             glm::vec3f va = _vertices[face[0]];
             glm::vec3f vb = _vertices[face[1]];
             glm::vec3f vc = _vertices[face[2]];
-            
-            _face_vertices[face_index * 3 + 0] = va;
-            _face_vertices[face_index * 3 + 1] = vb;
-            _face_vertices[face_index * 3 + 2] = vc;
 
             glm::vec3f vba = vb - va;
             glm::vec3f vca = vc - va;
             glm::vec3f normal = glm::normalize(glm::cross(vba, vca));
 
-            vertex_normal_vectors_stack[face[0]] += normal;
-            vertex_normal_vectors_stack[face[1]] += normal;
-            vertex_normal_vectors_stack[face[2]] += normal;
-        }
-        for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
-            glm::vec3i face = _faces[face_index];
-            _face_normal_vectors[face_index * 3 + 0] = glm::normalize(vertex_normal_vectors_stack[face[0]]);
-            _face_normal_vectors[face_index * 3 + 1] = glm::normalize(vertex_normal_vectors_stack[face[1]]);
-            _face_normal_vectors[face_index * 3 + 2] = glm::normalize(vertex_normal_vectors_stack[face[2]]);
+            _face_vertices[face_index * 3 + 0] = va;
+            _face_vertices[face_index * 3 + 1] = vb;
+            _face_vertices[face_index * 3 + 2] = vc;
+
+            _face_normal_vectors[face_index * 3 + 0] = normal;
+            _face_normal_vectors[face_index * 3 + 1] = normal;
+            _face_normal_vectors[face_index * 3 + 2] = normal;
         }
 
         _position = glm::vec3(0.0);
