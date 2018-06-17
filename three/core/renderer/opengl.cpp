@@ -13,7 +13,6 @@ namespace opengl {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
         if (status == GL_FALSE) {
             std::cout << "Failed to compile " << shader_name << std::endl;
-            throw std::runtime_error("");
         }
 
         // シェーダのコンパイル時のログの長さを取得する
@@ -27,6 +26,7 @@ namespace opengl {
             glGetShaderInfoLog(shader, message_length, &length, message);
             std::cout << message << std::endl;
             delete[] message;
+            throw std::runtime_error("");
         }
 
         return (GLboolean)status;
@@ -38,7 +38,6 @@ namespace opengl {
         glGetProgramiv(program, GL_LINK_STATUS, &status);
         if (status == GL_FALSE){
             std::cout << "Failed to link program" << std::endl;
-            throw std::runtime_error("");
         }
 
         // シェーダのリンク時のログの長さを取得する
@@ -52,6 +51,7 @@ namespace opengl {
             glGetProgramInfoLog(program, message_length, &length, message);
             std::cout << message << std::endl;
             delete[] message;
+            throw std::runtime_error("");
         }
 
         return (GLboolean)status;

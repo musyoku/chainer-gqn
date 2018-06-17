@@ -18,11 +18,15 @@ namespace renderer {
         GLuint _attribute_normal_vector;
         GLuint _uniform_pvm_mat;
         GLuint _uniform_light_mat;
-        GLuint _vao;
+        GLuint _color_buffer;
+        GLuint _depth_buffer;
+        GLuint _frame_buffer;
+        std::unique_ptr<GLuint[]> _vao;
         std::unique_ptr<GLuint[]> _vbo_vertices;
         std::unique_ptr<GLuint[]> _vbo_normal_vectors;
         std::unique_ptr<GLuint[]> _vbo_faces;
         GLFWwindow* _window;
+        scene::Scene* _scene;
 
     public:
         Renderer(scene::Scene* scene, int width, int height);

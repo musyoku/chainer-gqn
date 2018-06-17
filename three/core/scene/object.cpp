@@ -38,9 +38,9 @@ namespace scene {
         for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
             glm::vec3i face = _faces[face_index];
 
-            glm::vec3f va = glm::vec3f(vertices(face[0], 0), vertices(face[0], 1), vertices(face[0], 2));
-            glm::vec3f vb = glm::vec3f(vertices(face[1], 0), vertices(face[1], 1), vertices(face[1], 2));
-            glm::vec3f vc = glm::vec3f(vertices(face[2], 0), vertices(face[2], 1), vertices(face[2], 2));
+            glm::vec3f va = _vertices[face[0]];
+            glm::vec3f vb = _vertices[face[1]];
+            glm::vec3f vc = _vertices[face[2]];
 
             glm::vec3f vba = vb - va;
             glm::vec3f vca = vc - va;
