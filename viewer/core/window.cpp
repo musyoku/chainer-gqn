@@ -2,11 +2,13 @@
 #include <iostream>
 
 namespace viewer {
-Window::Window(Figure* figure)
+Window::Window(Figure* figure, pybind11::tuple initial_size)
 {
     _figure = figure;
     _closed = false;
     _mouse = { 0, 0, false };
+    _initial_width = initial_size[0].cast<int>();
+    _initial_height = initial_size[1].cast<int>();
 
     glfwSetErrorCallback([](int error, const char* description) {
         fprintf(stderr, "Error %d: %s\n", error, description);
@@ -37,7 +39,7 @@ Window::~Window()
 void Window::_run()
 {
     glfwWindowHint(GLFW_VISIBLE, GL_TRUE);
-    _shared_window = glfwCreateWindow(1920, 800, "Gradient-based Mesh Editing", NULL, _window);
+    _shared_window = glfwCreateWindow(_initial_width, _initial_height, "Gradient-based Mesh Editing", NULL, _window);
     glfwMakeContextCurrent(_shared_window);
     glfwSetWindowUserPointer(_shared_window, this);
 

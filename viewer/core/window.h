@@ -5,6 +5,7 @@
 #include <gl3w/gl3w.h>
 #include <glfw/glfw3.h>
 #include <iostream>
+#include <pybind11/pybind11.h>
 #include <thread>
 #include <vector>
 
@@ -23,6 +24,8 @@ protected:
     std::vector<std::unique_ptr<view::ImageView>> _images;
     std::vector<std::unique_ptr<view::ObjectView>> _objects;
     bool _closed;
+    int _initial_width;
+    int _initial_height;
     Mouse _mouse;
     void _run();
     void _render_view(View* view);
@@ -31,7 +34,7 @@ protected:
     void _callback_mouse_button(GLFWwindow* window, int button, int action, int mods);
 
 public:
-    Window(Figure* figure);
+    Window(Figure* figure, pybind11::tuple initial_size);
     ~Window();
     void show();
     bool closed();

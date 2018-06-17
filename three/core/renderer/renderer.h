@@ -13,11 +13,12 @@ namespace renderer {
     private:
         int _width;
         int _height;
+        bool _show_window;
         GLuint _program;
         GLuint _attribute_position;
         GLuint _attribute_normal_vector;
-        GLuint _uniform_pvm_mat;
-        GLuint _uniform_light_mat;
+        GLuint _uniform_projection_mat;
+        GLuint _uniform_camera_mat;
         GLuint _color_buffer;
         GLuint _depth_buffer;
         GLuint _frame_buffer;
@@ -29,7 +30,7 @@ namespace renderer {
         scene::Scene* _scene;
 
     public:
-        Renderer(scene::Scene* scene, int width, int height);
+        Renderer(scene::Scene* scene, int width, int height, bool show_window);
         ~Renderer();
         void render_depth_map(camera::PerspectiveCamera* camera,
             py::array_t<float, py::array::c_style> np_depth_map);

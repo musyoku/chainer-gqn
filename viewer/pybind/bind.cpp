@@ -25,7 +25,7 @@ PYBIND11_MODULE(viewer, module)
         .def("add", (void (Figure::*)(data::ObjectData*, double, double, double, double)) &Figure::add);
 
     py::class_<Window>(module, "Window")
-        .def(py::init<Figure*>())
+        .def(py::init<Figure*, py::tuple>())
         .def("closed", &Window::closed)
         .def("show", &Window::show);
 }

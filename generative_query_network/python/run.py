@@ -1,4 +1,4 @@
-import argparse, math
+import argparse, math, time
 import gqn
 import numpy as np
 
@@ -49,16 +49,18 @@ def main():
     figure = gqn.viewer.Figure()
     axis_depth_map = gqn.viewer.ImageData(screen_size[0], screen_size[1], 1)
     figure.add(axis_depth_map, 0, 0, 1, 1)
-    window = gqn.viewer.Window(figure)
+    window = gqn.viewer.Window(figure, (800, 800))
     window.show()
 
-    renderer = gqn.three.Renderer(scene, screen_size[0], screen_size[1])
+    renderer = gqn.three.Renderer(scene, screen_size[0], screen_size[1], show_window=False)
 
     rad = 0
+    start = time.time()
+    num_generated = 0
     while True:
-        rad += math.pi / 300
+        rad += math.pi * 2 / 10000
 
-        depth_map = np.full(screen_size, 100.0, dtype="float32")
+        depth_map = np.zeros(screen_size, dtype="float32")
         face_index_map = np.zeros(screen_size, dtype="int32")
         object_index_map = np.zeros(screen_size, dtype="int32")
         camera.look_at(
@@ -78,6 +80,10 @@ def main():
         # return
         if window.closed():
             return
+
+        num_generated += 1
+        if num_generated % 1000 == 0:
+            print(num_generated / (time.time() - start))
 
 
 if __name__ == "__main__":

@@ -28,6 +28,6 @@ PYBIND11_MODULE(three, module)
         .def("set_rotation", &scene::Object::set_rotation);
 
     py::class_<renderer::Renderer>(module, "Renderer")
-        .def(py::init<scene::Scene*, int, int>(), py::arg("scene"), py::arg("width"), py::arg("height"))
+        .def(py::init<scene::Scene*, int, int, bool>(), py::arg("scene"), py::arg("width"), py::arg("height"), py::arg("show_window"))
         .def("render_depth_map", &renderer::Renderer::render_depth_map);
 }

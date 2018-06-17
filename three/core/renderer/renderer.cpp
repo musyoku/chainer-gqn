@@ -5,11 +5,12 @@
 
 namespace three {
 namespace renderer {
-    Renderer::Renderer(scene::Scene* scene, int width, int height)
+    Renderer::Renderer(scene::Scene* scene, int width, int height, bool show_window)
     {
         _width = width;
         _height = height;
         _scene = scene;
+        _show_window = show_window;
 
         glfwSetErrorCallback([](int error, const char* description) {
             fprintf(stderr, "Error %d: %s\n", error, description);
@@ -20,7 +21,7 @@ namespace renderer {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_VISIBLE, GL_TRUE);
+        glfwWindowHint(GLFW_VISIBLE, show_window ? GL_TRUE : GL_FALSE);
 #if __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -33,14 +34,15 @@ namespace renderer {
 #version 410
 in vec3 position;
 in vec3 normal_vector;
-uniform mat4 pvm_mat;
+uniform mat4 camera_mat;
+uniform mat4 projection_mat;
 flat out float power;
 void main(void)
 {
-    gl_Position = pvm_mat * vec4(position, 1.0f);
-    vec4 _normal_vector = pvm_mat * vec4(normal_vector, 1.0f);
-    vec4 light_direction = vec4(0.0f, -1.0f, -1.5f, 1.0f);
-    power = clamp(dot(_normal_vector.xyz, -normalize(light_direction.xyz)), 0.0f, 1.0f);
+    gl_Position = projection_mat * camera_mat * vec4(position, 1.0f);
+    vec4 face_direction = camera_mat * vec4(normal_vector, 0.0f);
+    vec4 light_direction = vec4(0.0, -1.0, -1.0f, 0.0f);
+    power = clamp(dot(normalize(face_direction.xyz), -normalize(light_direction.xyz)), 0.0f, 1.0f);
 }
 )";
 
@@ -57,7 +59,8 @@ void main(){
 
         _attribute_position = glGetAttribLocation(_program, "position");
         _attribute_normal_vector = glGetAttribLocation(_program, "normal_vector");
-        _uniform_pvm_mat = glGetUniformLocation(_program, "pvm_mat");
+        _uniform_projection_mat = glGetUniformLocation(_program, "projection_mat");
+        _uniform_camera_mat = glGetUniformLocation(_program, "camera_mat");
 
         int num_objects = scene->_objects.size();
 
@@ -90,7 +93,7 @@ void main(){
             glEnableVertexAttribArray(_attribute_position);
 
             glBindBuffer(GL_ARRAY_BUFFER, _vbo_normal_vectors[n]);
-            glBufferData(GL_ARRAY_BUFFER, num_faces * sizeof(glm::vec3f), object->_face_normal_vectors.get(), GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_normal_vectors.get(), GL_STATIC_DRAW);
             glVertexAttribPointer(_attribute_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
             glEnableVertexAttribArray(_attribute_normal_vector);
 
@@ -131,8 +134,9 @@ void main(){
             glBindVertexArray(_vao[object_index]);
             std::shared_ptr<scene::Object> object = objects[object_index];
             glm::mat4& model_mat = object->_model_matrix;
-            glm::mat4 pvm_mat = projection_mat * view_mat * model_mat;
-            glUniformMatrix4fv(_uniform_pvm_mat, 1, GL_FALSE, glm::value_ptr(pvm_mat));
+            glm::mat4 camera_mat = view_mat * model_mat;
+            glUniformMatrix4fv(_uniform_projection_mat, 1, GL_FALSE, glm::value_ptr(projection_mat));
+            glUniformMatrix4fv(_uniform_camera_mat, 1, GL_FALSE, glm::value_ptr(camera_mat));
             glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
         }
 
@@ -150,7 +154,6 @@ void main(){
 
         glUseProgram(0);
         glBindVertexArray(0);
-        glfwSwapBuffers(_window);
     }
 }
 }

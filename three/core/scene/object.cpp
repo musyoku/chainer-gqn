@@ -23,7 +23,7 @@ namespace scene {
         _faces = std::make_unique<glm::vec3i[]>(_num_faces);
         _vertices = std::make_unique<glm::vec3f[]>(_num_vertices);
         _face_vertices = std::make_unique<glm::vec3f[]>(_num_faces * 3);
-        _face_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces);
+        _face_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces * 3);
 
         auto faces = np_faces.mutable_unchecked<2>();
         for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
@@ -35,7 +35,7 @@ namespace scene {
             _vertices[vertex_index] = glm::vec3f(vertices(vertex_index, 0), vertices(vertex_index, 1), vertices(vertex_index, 2));
         }
 
-        for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
+        for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
             glm::vec3i face = _faces[face_index];
 
             glm::vec3f va = _vertices[face[0]];
@@ -50,7 +50,9 @@ namespace scene {
             _face_vertices[face_index * 3 + 1] = vb;
             _face_vertices[face_index * 3 + 2] = vc;
 
-            _face_normal_vectors[face_index] = normal;
+            _face_normal_vectors[face_index * 3 + 0] = normal;
+            _face_normal_vectors[face_index * 3 + 1] = normal;
+            _face_normal_vectors[face_index * 3 + 2] = normal;
         }
 
         _position = glm::vec3(0.0);
