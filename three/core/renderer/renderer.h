@@ -17,10 +17,11 @@ namespace renderer {
         GLuint _attribute_position;
         GLuint _attribute_normal_vector;
         GLuint _uniform_projection_mat;
-        GLuint _uniform_camera_mat;
+        GLuint _uniform_model_mat;
+        GLuint _uniform_view_mat;
         GLuint _uniform_color;
-        GLuint _attachment_color;
-        GLuint _attachment_depth;
+        GLuint _uniform_quadratic_attenuation;
+        GLuint _render_buffer;
         std::unique_ptr<GLuint[]> _vao;
         std::unique_ptr<GLuint[]> _vbo_vertices;
         std::unique_ptr<GLuint[]> _vbo_normal_vectors;

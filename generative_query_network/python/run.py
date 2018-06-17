@@ -24,19 +24,27 @@ def create_scene():
         "teapot", scale=(0.5, 0.5, 0.5), color=(1.0, 0.0, 1.0, 1.0))
     scene.add(obj, position=(1.0, 0.0, 1.0))
     objects.append(obj)
+
+    obj = create_object(
+        "cube", scale=(0.6, 0.6, 0.6), color=(0.0, 1.0, 0.5, 1.0))
+    scene.add(obj, position=(-1.0, 0.0, 1.0))
+    objects.append(obj)
+    
     obj = create_object(
         "bunny", scale=(0.5, 0.5, 0.5), color=(1.0, 1.0, 0.0, 1.0))
-    scene.add(obj, position=(1.0, 0.0, -1.0))
+    scene.add(obj, position=(1.0, 0.1, -1.0))
     objects.append(obj)
+
     obj = create_object(
-        "polyhedron", scale=(0.5, 0.5, 0.5), color=(0.0, 1.0, 1.0, 1.0))
+        "sphere", scale=(0.6, 0.6, 0.6), color=(0.0, 1.0, 1.0, 1.0))
     scene.add(obj, position=(-1.0, 0.0, -1.0))
     objects.append(obj)
+
     return scene, room, objects
 
 
 def main():
-    screen_size = (64, 64)  # (width, height)
+    screen_size = (128, 128)  # (width, height)
     scene, room, objects = create_scene()
     camera = gqn.three.PerspectiveCamera(
         eye=(1.0 * math.cos(math.pi * 0.6954166666671697), 0.5,
