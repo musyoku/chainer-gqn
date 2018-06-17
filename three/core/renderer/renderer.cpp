@@ -11,6 +11,7 @@ namespace renderer {
         _height = height;
         _scene = scene;
         _show_window = show_window;
+        _buffer = std::make_unique<GLfloat[]>(width * height);
 
         glfwSetErrorCallback([](int error, const char* description) {
             fprintf(stderr, "Error %d: %s\n", error, description);
@@ -140,17 +141,14 @@ void main(){
             glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
         }
 
-        GLfloat* depths;
-        depths = new GLfloat[_width * _height];
-        glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, depths);
+        glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, _buffer.get());
 
         auto depth_map = np_depth_map.mutable_unchecked<2>();
         for (int h = 0; h < _height; h++) {
             for (int w = 0; w < _width; w++) {
-                depth_map(h, w) = depths[(_height - h - 1) * _width + w];
+                depth_map(h, w) = _buffer[(_height - h - 1) * _width + w];
             }
         }
-        delete[] depths;
 
         glUseProgram(0);
         glBindVertexArray(0);

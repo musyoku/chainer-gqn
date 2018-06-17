@@ -26,6 +26,7 @@ namespace renderer {
         std::unique_ptr<GLuint[]> _vbo_vertices;
         std::unique_ptr<GLuint[]> _vbo_normal_vectors;
         std::unique_ptr<GLuint[]> _vbo_faces;
+        std::unique_ptr<GLfloat[]> _buffer;
         GLFWwindow* _window;
         scene::Scene* _scene;
 

@@ -45,14 +45,14 @@ def main():
         z_near=0.1,
         z_far=10)
 
-
     figure = gqn.viewer.Figure()
     axis_depth_map = gqn.viewer.ImageData(screen_size[0], screen_size[1], 1)
     figure.add(axis_depth_map, 0, 0, 1, 1)
     window = gqn.viewer.Window(figure, (800, 800))
     window.show()
 
-    renderer = gqn.three.Renderer(scene, screen_size[0], screen_size[1], show_window=False)
+    renderer = gqn.three.Renderer(
+        scene, screen_size[0], screen_size[1], show_window=False)
 
     rad = 0
     start = time.time()
@@ -75,8 +75,8 @@ def main():
         #     np.uint8(np.clip(depth_map, 0.0, 1.0) * 255))
         axis_depth_map.update(
             np.uint8(
-                np.clip((1.0 - depth_map) / 0.055428266525268555, 0.0,
-                        1.0) * 255))
+                np.clip(
+                    (1.0 - depth_map) / 0.055428266525268555, 0.0, 1.0) * 255))
         # return
         if window.closed():
             return
