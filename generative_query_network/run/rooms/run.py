@@ -1,16 +1,22 @@
-import argparse, math, time
-import gqn
+import argparse
+import math
+import time
+import sys
+import os
 import numpy as np
+
+sys.path.append(os.path.join("..", ".."))
+import gqn
 
 
 def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
-    vertices, faces = gqn.geometry.load("geometries/{}.obj".format(name))
+    vertices, faces = gqn.geometry.load("../../geometries/{}.obj".format(name))
     return gqn.three.Object(faces, vertices, color, scale)
 
 
 def create_cornell_box(size=(7, 3, 7), color=(1, 1, 1, 1)):
     vertices, faces = gqn.geometry.load(
-        "geometries/{}.obj".format("cornell_box"))
+        "../../geometries/{}.obj".format("cornell_box"))
     return gqn.three.Object(faces, vertices, color, size)
 
 
