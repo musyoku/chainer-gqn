@@ -45,6 +45,6 @@ make
 
 ## Shepard-Metzler objects
 
-![environment.gif](https://qiita-image-store.s3.amazonaws.com/0/109322/53220826-ca17-f91a-b8c5-c31d55d14405.gif)
+![environment.gif](https://qiita-image-store.s3.amazonaws.com/0/109322/72922961-d4d5-26dc-5438-4107816ee03c.gif)
 
 # Training
