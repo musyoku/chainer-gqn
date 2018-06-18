@@ -1,10 +1,6 @@
 import random
 from .. import color, geometry, three
-
-
-def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
-    vertices, faces = geometry.load("../../geometries/{}.obj".format(name))
-    return three.Object(faces, vertices, color, scale)
+from .objects import create_object
 
 
 def generate_blocks(num_blocks=7):
@@ -25,7 +21,7 @@ def generate_blocks(num_blocks=7):
     ret = []
     center_of_gravity = [0, 0, 0]
     for position in block_positions:
-        obj = create_object("cube", color=color.random_color(alpha=1))
+        obj, _ = create_object("cube", color=color.random_color(alpha=1))
         shift = 1
         location = (shift * position[0], shift * position[1],
                     shift * position[2])

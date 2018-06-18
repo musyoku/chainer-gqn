@@ -2,17 +2,7 @@ import random
 import math
 import numpy as np
 from .. import geometry, three, color
-
-
-def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
-    vertices, faces = geometry.load("../../geometries/{}.obj".format(name))
-    return three.Object(faces, vertices, color, scale), vertices, faces
-
-
-def create_cornell_box(size=(7, 3, 7), color=(1, 1, 1, 1)):
-    vertices, faces = geometry.load(
-        "../../geometries/{}.obj".format("cornell_box"))
-    return three.Object(faces, vertices, color, size)
+from .objects import create_cornell_box, create_object
 
 
 def build_scene(
@@ -26,10 +16,11 @@ def build_scene(
     room_offset = room_size[1] / 2.0
     scene.add(room, position=(0, room_offset, 0))
     objects = []
+
     for _ in range(num_objects):
         objct_name = random.choice(object_names)
         scale = random.uniform(scale_range[0], scale_range[1])
-        obj, vertices, _ = create_object(
+        obj, vertices = create_object(
             objct_name,
             scale=(scale, scale, scale),
             color=color.random_color())

@@ -11,7 +11,7 @@ import gqn
 
 
 def main():
-    screen_size = (128, 128)  # (width, height)
+    screen_size = (64, 64)  # (width, height)
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
         center=(0, 0, 0),
@@ -43,6 +43,8 @@ def main():
     renderer_room = gqn.three.Renderer(scene_room, screen_size[0],
                                         screen_size[1])
 
+    tick = 0
+    start = time.time()
     while True:
         scene_room, _, _ = gqn.environment.room.build_scene(
             object_names=["cube", "sphere", "bunny", "teapot"],
@@ -53,11 +55,9 @@ def main():
         renderer_room.set_scene(scene_room)
         renderer_shepard_matzler.set_scene(scene_shepard_metzler)
 
-        total_frames = 5000
-        tick = 0
-        start = time.time()
+        total_frames = 5
         for _ in range(total_frames):
-            rad = math.pi * 2 * tick / total_frames
+            rad = random.uniform(0, math.pi * 2)
 
             camera.look_at(
                 eye=(3.0 * math.cos(rad), 1, 3.0 * math.sin(rad)),

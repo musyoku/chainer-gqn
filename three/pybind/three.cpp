@@ -25,6 +25,9 @@ PYBIND11_MODULE(three, module)
     py::class_<scene::Object, std::shared_ptr<scene::Object>>(module, "Object")
         .def(py::init<py::array_t<int>, py::array_t<float>, py::tuple, py::tuple>(),
             py::arg("faces"), py::arg("vertices"), py::arg("color"), py::arg("scale"))
+        .def("clone", &scene::Object::clone)
+        .def("set_color", &scene::Object::set_color)
+        .def("set_scale", &scene::Object::set_scale)
         .def("set_position", &scene::Object::set_position)
         .def("set_rotation", &scene::Object::set_rotation);
 

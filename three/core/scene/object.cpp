@@ -28,7 +28,7 @@ namespace scene {
         _face_vertex_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces * 3);
 
         auto faces = np_faces.mutable_unchecked<2>();
-        for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
+        for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
             _faces[face_index] = glm::vec3i(faces(face_index, 0), faces(face_index, 1), faces(face_index, 2));
         }
 
@@ -77,15 +77,51 @@ namespace scene {
         _position = glm::vec3(0.0);
         _rotation_rad = glm::vec3(0.0);
 
+        set_color(color);
+        set_scale(scale);
+        _update_model_matrix();
+    }
+    Object::Object(const Object* source)
+    {
+        _num_faces = source->_num_faces;
+        _num_vertices = source->_num_vertices;
+        _faces = std::make_unique<glm::vec3i[]>(_num_faces);
+        _vertices = std::make_unique<glm::vec3f[]>(_num_vertices);
+        _face_vertices = std::make_unique<glm::vec3f[]>(_num_faces * 3);
+        _face_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces * 3);
+        _face_vertex_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces * 3);
+
+        for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
+            _faces[face_index] = source->_faces[face_index];
+            for (int offset = 0; offset < 3; offset++) {
+                _face_vertices[face_index * 3 + offset] = source->_face_vertices[face_index * 3 + offset];
+                _face_normal_vectors[face_index * 3 + offset] = source->_face_normal_vectors[face_index * 3 + offset];
+                _face_vertex_normal_vectors[face_index * 3 + offset] = source->_face_vertex_normal_vectors[face_index * 3 + offset];
+            }
+        }
+
+        for (ssize_t vertex_index = 0; vertex_index < _num_vertices; vertex_index++) {
+            _vertices[vertex_index] = source->_vertices[vertex_index];
+        }
+
+        _position = source->_position;
+        _rotation_rad = source->_rotation_rad;
+        _color = source->_color;
+        _scale = source->_scale;
+        _model_matrix = source->_model_matrix;
+    }
+    void Object::set_color(py::tuple color)
+    {
         _color[0] = color[0].cast<float>();
         _color[1] = color[1].cast<float>();
         _color[2] = color[2].cast<float>();
         _color[3] = color[3].cast<float>();
-
+    }
+    void Object::set_scale(py::tuple scale)
+    {
         _scale[0] = scale[0].cast<float>();
         _scale[1] = scale[1].cast<float>();
         _scale[2] = scale[2].cast<float>();
-
         _update_model_matrix();
     }
     void Object::set_position(py::tuple position)
@@ -110,6 +146,10 @@ namespace scene {
         _model_matrix = glm::rotate(_model_matrix, _rotation_rad[1], glm::vec3(0.0f, 1.0f, 0.0f));
         _model_matrix = glm::rotate(_model_matrix, _rotation_rad[2], glm::vec3(0.0f, 0.0f, 1.0f));
         _model_matrix = glm::scale(_model_matrix, _scale);
+    }
+    std::shared_ptr<Object> Object::clone()
+    {
+        return std::make_shared<Object>(this);
     }
 }
 }
