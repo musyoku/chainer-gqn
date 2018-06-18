@@ -13,6 +13,9 @@
 # Requirements
 
 - pybind11
+- Python 3
+- OpenGL
+- Ubuntu
 
 # Install
 
@@ -42,6 +45,6 @@ make
 
 ## Shepard-Metzler objects
 
-![environment.gif](https://qiita-image-store.s3.amazonaws.com/0/109322/d11b87eb-ea66-8c90-cd70-9cb69d03faa0.gif)
+![environment.gif](https://qiita-image-store.s3.amazonaws.com/0/109322/53220826-ca17-f91a-b8c5-c31d55d14405.gif)
 
 # Training
