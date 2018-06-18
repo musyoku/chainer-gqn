@@ -1,5 +1,6 @@
 #pragma once
 #include "../camera/perspective.h"
+#include "../base/object.h"
 #include "../scene/scene.h"
 #include <gl3w/gl3w.h>
 #include <glfw/glfw3.h>
@@ -15,18 +16,19 @@ namespace renderer {
         int _height;
         GLuint _program;
         GLuint _attribute_position;
-        GLuint _attribute_normal_vector;
+        GLuint _attribute_face_normal_vector;
         GLuint _attribute_vertex_normal_vector;
+        GLuint _attribute_vertex_color;
         GLuint _uniform_projection_mat;
         GLuint _uniform_model_mat;
         GLuint _uniform_view_mat;
-        GLuint _uniform_color;
         GLuint _uniform_quadratic_attenuation;
         GLuint _render_buffer;
         std::unique_ptr<GLuint[]> _vao;
         std::unique_ptr<GLuint[]> _vbo_vertices;
         std::unique_ptr<GLuint[]> _vbo_normal_vectors;
         std::unique_ptr<GLuint[]> _vbo_vertex_normal_vectors;
+        std::unique_ptr<GLuint[]> _vbo_vertex_colors;
         std::unique_ptr<GLuint[]> _vbo_faces;
         std::unique_ptr<GLubyte[]> _color_buffer;
         std::unique_ptr<GLfloat[]> _depth_buffer;

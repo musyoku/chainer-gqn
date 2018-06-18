@@ -1,7 +1,6 @@
 #include "renderer.h"
 #include "opengl.h"
 #include <glm/gtc/type_ptr.hpp>
-#include <iostream>
 
 namespace three {
 namespace renderer {
@@ -33,13 +32,13 @@ namespace renderer {
         const GLchar vertex_shader[] = R"(
 #version 410
 in vec3 position;
-in vec3 normal_vector;
+in vec3 face_normal_vector;
 in vec3 vertex_normal_vector;
+in vec4 vertex_color;
 uniform float quadratic_attenuation;
 uniform mat4 model_mat;
 uniform mat4 view_mat;
 uniform mat4 projection_mat;
-uniform vec4 color;
 out float power;
 out vec4 object_color;
 out vec3 light_direction;
@@ -58,7 +57,7 @@ void main(void)
     _camera_mat = camera_mat;
     _normal_vector = vertex_normal_vector;
     // power = clamp(attenuation, 0.0f, 1.0f);
-    object_color = color;
+    object_color = vertex_color;
     qa = quadratic_attenuation;
 }
 )";
@@ -86,12 +85,12 @@ void main(){
         _program = opengl::create_program(vertex_shader, fragment_shader);
 
         _attribute_position = glGetAttribLocation(_program, "position");
-        _attribute_normal_vector = glGetAttribLocation(_program, "normal_vector");
+        _attribute_face_normal_vector = glGetAttribLocation(_program, "face_normal_vector");
         _attribute_vertex_normal_vector = glGetAttribLocation(_program, "vertex_normal_vector");
+        _attribute_vertex_color = glGetAttribLocation(_program, "vertex_color");
         _uniform_projection_mat = glGetUniformLocation(_program, "projection_mat");
         _uniform_view_mat = glGetUniformLocation(_program, "view_mat");
         _uniform_model_mat = glGetUniformLocation(_program, "model_mat");
-        _uniform_color = glGetUniformLocation(_program, "color");
         _uniform_quadratic_attenuation = glGetUniformLocation(_program, "quadratic_attenuation");
 
         glGenRenderbuffers(1, &_render_buffer);
@@ -121,6 +120,7 @@ void main(){
         glDeleteBuffers(_prev_num_objects, _vbo_vertices.get());
         glDeleteBuffers(_prev_num_objects, _vbo_normal_vectors.get());
         glDeleteBuffers(_prev_num_objects, _vbo_vertex_normal_vectors.get());
+        glDeleteBuffers(_prev_num_objects, _vbo_vertex_colors.get());
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
     void Renderer::set_scene(scene::Scene* scene)
@@ -148,6 +148,9 @@ void main(){
         _vbo_vertex_normal_vectors = std::make_unique<GLuint[]>(num_objects);
         glGenBuffers(num_objects, _vbo_vertex_normal_vectors.get());
 
+        _vbo_vertex_colors = std::make_unique<GLuint[]>(num_objects);
+        glGenBuffers(num_objects, _vbo_vertex_colors.get());
+
         for (int n = 0; n < num_objects; n++) {
             glBindVertexArray(_vao[n]);
 
@@ -162,13 +165,18 @@ void main(){
 
             glBindBuffer(GL_ARRAY_BUFFER, _vbo_normal_vectors[n]);
             glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_normal_vectors.get(), GL_STATIC_DRAW);
-            glVertexAttribPointer(_attribute_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(_attribute_normal_vector);
+            glVertexAttribPointer(_attribute_face_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(_attribute_face_normal_vector);
 
             glBindBuffer(GL_ARRAY_BUFFER, _vbo_vertex_normal_vectors[n]);
             glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_vertex_normal_vectors.get(), GL_STATIC_DRAW);
             glVertexAttribPointer(_attribute_vertex_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
             glEnableVertexAttribArray(_attribute_vertex_normal_vector);
+
+            glBindBuffer(GL_ARRAY_BUFFER, _vbo_vertex_colors[n]);
+            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec4f), object->_face_vertex_colors.get(), GL_STATIC_DRAW);
+            glVertexAttribPointer(_attribute_vertex_color, 4, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(_attribute_vertex_color);
 
             glBindVertexArray(0);
         }
@@ -187,16 +195,15 @@ void main(){
 
         glm::mat4& view_mat = camera->_view_matrix;
         glm::mat4& projection_mat = camera->_projection_matrix;
-        std::vector<std::shared_ptr<scene::Object>>& objects = _scene->_objects;
+        std::vector<std::shared_ptr<base::Object>>& objects = _scene->_objects;
         for (int object_index = 0; object_index < objects.size(); object_index++) {
-            std::shared_ptr<scene::Object> object = objects[object_index];
+            std::shared_ptr<base::Object> object = objects[object_index];
             glBindVertexArray(_vao[object_index]);
             glm::mat4& model_mat = object->_model_matrix;
             glUniformMatrix4fv(_uniform_projection_mat, 1, GL_FALSE, glm::value_ptr(projection_mat));
             glUniformMatrix4fv(_uniform_view_mat, 1, GL_FALSE, glm::value_ptr(view_mat));
             glUniformMatrix4fv(_uniform_model_mat, 1, GL_FALSE, glm::value_ptr(model_mat));
             glUniform1f(_uniform_quadratic_attenuation, quadratic_attenuation);
-            glUniform4fv(_uniform_color, 1, glm::value_ptr(object->_color));
             glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
         }
     }

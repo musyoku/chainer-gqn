@@ -56,7 +56,6 @@ def main():
             tick += 1
             if tick % 1000 == 0:
                 print(tick / (time.time() - start))
-
             if window.closed():
                 return
 

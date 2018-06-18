@@ -1,5 +1,6 @@
 #include "../core/camera/perspective.h"
 #include "../core/renderer/renderer.h"
+#include "../core/scene/cornell_box.h"
 #include "../core/scene/object.h"
 #include "../core/scene/scene.h"
 #include <gl3w/gl3w.h>
@@ -20,6 +21,11 @@ PYBIND11_MODULE(three, module)
         .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object>, py::tuple)) & scene::Scene::add,
             py::arg("object"), py::arg("position"))
         .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object>, py::tuple, py::tuple)) & scene::Scene::add,
+            py::arg("object"), py::arg("position"), py::arg("rotation"))
+        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::CornellBox>)) & scene::Scene::add)
+        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::CornellBox>, py::tuple)) & scene::Scene::add,
+            py::arg("object"), py::arg("position"))
+        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::CornellBox>, py::tuple, py::tuple)) & scene::Scene::add,
             py::arg("object"), py::arg("position"), py::arg("rotation"));
 
     py::class_<scene::Object, std::shared_ptr<scene::Object>>(module, "Object")
@@ -30,6 +36,18 @@ PYBIND11_MODULE(three, module)
         .def("set_scale", &scene::Object::set_scale)
         .def("set_position", &scene::Object::set_position)
         .def("set_rotation", &scene::Object::set_rotation);
+
+    py::class_<scene::CornellBox, std::shared_ptr<scene::CornellBox>>(module, "CornellBox")
+        .def(py::init<py::tuple, py::tuple, py::tuple, py::tuple, py::tuple>(),
+            py::arg("north_wall_color"), py::arg("east_wall_color"), py::arg("south_wall_color"), py::arg("west_wall_color"), py::arg("scale"))
+        .def("clone", &scene::CornellBox::clone)
+        .def("set_north_wall_color", &scene::CornellBox::set_north_wall_color)
+        .def("set_east_wall_color", &scene::CornellBox::set_east_wall_color)
+        .def("set_south_wall_color", &scene::CornellBox::set_south_wall_color)
+        .def("set_west_wall_color", &scene::CornellBox::set_west_wall_color)
+        .def("set_scale", &scene::CornellBox::set_scale)
+        .def("set_position", &scene::CornellBox::set_position)
+        .def("set_rotation", &scene::CornellBox::set_rotation);
 
     py::class_<renderer::Renderer>(module, "Renderer")
         .def(py::init<int, int>(), py::arg("width"), py::arg("height"))

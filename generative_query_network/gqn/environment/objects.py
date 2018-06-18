@@ -1,5 +1,5 @@
 import os
-from .. import geometry, three
+from .. import geometry, three, color
 
 
 def load_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
@@ -16,10 +16,37 @@ def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
     return obj, vertices
 
 
-def create_cornell_box(size=(7, 3, 7), color=(1, 1, 1, 1)):
-    vertices, faces = geometry.load(
-        "../../geometries/{}.obj".format("cornell_box"))
-    return three.Object(faces, vertices, color, size)
+def generate_wall_colors(num_walls_to_paint=2):
+    white = (1, 1, 1, 1)
+    if num_walls_to_paint == 0:
+        return (white, white, white, white)
+    if num_walls_to_paint == 1:
+        north_wall_color = color.random_color()
+        return (north_wall_color, white, white, white)
+    if num_walls_to_paint == 2:
+        north_wall_color = color.random_color()
+        south_wall_color = color.random_color()
+        return (north_wall_color, white, south_wall_color, white)
+    if num_walls_to_paint == 3:
+        north_wall_color = color.random_color()
+        east_wall_color = color.random_color()
+        south_wall_color = color.random_color()
+        return (north_wall_color, east_wall_color, south_wall_color, white)
+    if num_walls_to_paint == 4:
+        north_wall_color = color.random_color()
+        east_wall_color = color.random_color()
+        south_wall_color = color.random_color()
+        west_wall_color = color.random_color()
+        return (north_wall_color, east_wall_color, south_wall_color,
+                west_wall_color)
+    assert False
+
+
+def create_cornell_box(size=(7, 3, 7), num_walls_to_paint=2):
+    north_wall_color, east_wall_color, south_wall_color, west_wall_color = generate_wall_colors(
+        num_walls_to_paint)
+    return three.CornellBox(north_wall_color, east_wall_color,
+                            south_wall_color, west_wall_color, size)
 
 
 # オブジェクト初期化時に法線ベクトルの計算が走る

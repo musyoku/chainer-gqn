@@ -10,9 +10,10 @@ def build_scene(
         num_objects=3,
         object_names=["cube"],
         scale_range=(0.5, 1.0),
-        placement_radius=2):
+        placement_radius=2,
+        num_walls_to_paint=2):
     scene = three.Scene()
-    room = create_cornell_box(size=room_size)
+    room = create_cornell_box(size=room_size, num_walls_to_paint=num_walls_to_paint)
     room_offset = room_size[1] / 2.0
     scene.add(room, position=(0, room_offset, 0))
     objects = []
