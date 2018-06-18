@@ -54,7 +54,7 @@ void main(void)
     vec4 model_position = camera_mat * vec4(position, 1.0f);
     gl_Position = projection_mat * model_position;
     face_direction = camera_mat * vec4(vertex_normal_vector, 1.0f);
-    vec4 light_position = view_mat * vec4(0.0f, -2.0f, 0.0f, 1.0f);
+    vec4 light_position = view_mat * vec4(0.0f, 3.0f, 1.0f, 1.0f);
     light_direction = model_position.xyz - light_position.xyz;
     _camera_mat = camera_mat;
     _normal_vector = vertex_normal_vector;

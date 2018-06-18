@@ -12,9 +12,13 @@ def generate_blocks(num_blocks=7):
     current_position = (0, 0, 0)
     block_positions = [current_position]
     for _ in range(num_blocks - 1):
-        new_position = (random.choice([-1, 0, 1]) + current_position[0],
-                        random.choice([-1, 0, 1]) + current_position[1],
-                        random.choice([-1, 0, 1]) + current_position[2])
+        axis = random.choice([0, 1, 2])
+        direction = random.choice([-1, 1])
+        offset = [0, 0, 0]
+        offset[axis] = direction
+        new_position = (offset[0] + current_position[0],
+                        offset[1] + current_position[1],
+                        offset[2] + current_position[2])
         block_positions.append(new_position)
         current_position = new_position
 

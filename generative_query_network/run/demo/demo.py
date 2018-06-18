@@ -53,7 +53,7 @@ def main():
         renderer_room.set_scene(scene_room)
         renderer_shepard_matzler.set_scene(scene_shepard_metzler)
 
-        total_frames = 10000
+        total_frames = 5000
         tick = 0
         start = time.time()
         for _ in range(total_frames):
