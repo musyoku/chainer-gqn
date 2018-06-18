@@ -14,12 +14,12 @@ def main():
     screen_size = (64, 64)  # (width, height)
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
-        center=(0, 0, 0),
+        center=(0, 0.5, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 2.0,
+        fov_rad=math.pi / 1.5,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
-        z_far=10)
+        z_far=100)
 
     figure = gqn.viewer.Figure()
     axis_room = gqn.viewer.ImageData(screen_size[0], screen_size[1], 3)
@@ -47,7 +47,7 @@ def main():
         renderer_room.set_scene(scene_room)
         renderer_shepard_matzler.set_scene(scene_shepard_metzler)
 
-        total_frames = 2500
+        total_frames = 5000
         tick = 0
         start = time.time()
         for _ in range(total_frames):
@@ -55,7 +55,7 @@ def main():
 
             camera.look_at(
                 eye=(3.0 * math.cos(rad), 1, 3.0 * math.sin(rad)),
-                center=(0.0, 0.0, 0.0),
+                center=(0.0, 0.5, 0.0),
                 up=(0.0, 1.0, 0.0),
             )
             renderer_room.render(camera, frame_room)
