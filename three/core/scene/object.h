@@ -21,6 +21,7 @@ namespace scene {
         std::unique_ptr<glm::vec3f[]> _vertices;
         std::unique_ptr<glm::vec3f[]> _face_vertices;
         std::unique_ptr<glm::vec3f[]> _face_normal_vectors;
+        std::unique_ptr<glm::vec3f[]> _face_vertex_normal_vectors;
         int _num_faces;
         int _num_vertices;
         glm::vec3 _position; // xyz

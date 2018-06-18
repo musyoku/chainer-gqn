@@ -9,49 +9,10 @@ sys.path.append(os.path.join("..", ".."))
 import gqn
 
 
-def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
-    vertices, faces = gqn.geometry.load("../../geometries/{}.obj".format(name))
-    return gqn.three.Object(faces, vertices, color, scale)
-
-
-def create_cornell_box(size=(7, 3, 7), color=(1, 1, 1, 1)):
-    vertices, faces = gqn.geometry.load(
-        "../../geometries/{}.obj".format("cornell_box"))
-    return gqn.three.Object(faces, vertices, color, size)
-
-
-def create_scene():
-    scene = gqn.three.Scene()
-    objects = []
-    room = create_cornell_box(size=(7, 4, 7))
-    scene.add(room, position=(0, 1.5, 0))
-
-    obj = create_object(
-        "teapot", scale=(0.5, 0.5, 0.5), color=(1.0, 0.0, 1.0, 1.0))
-    scene.add(obj, position=(1.0, 0.0, 1.0))
-    objects.append(obj)
-
-    obj = create_object(
-        "cube", scale=(0.6, 0.6, 0.6), color=(0.0, 1.0, 0.5, 1.0))
-    scene.add(obj, position=(-1.0, 0.0, 1.0))
-    objects.append(obj)
-    
-    obj = create_object(
-        "bunny", scale=(0.5, 0.5, 0.5), color=(1.0, 1.0, 0.0, 1.0))
-    scene.add(obj, position=(1.0, 0.1, -1.0))
-    objects.append(obj)
-
-    obj = create_object(
-        "sphere", scale=(0.6, 0.6, 0.6), color=(0.0, 1.0, 1.0, 1.0))
-    scene.add(obj, position=(-1.0, 0.0, -1.0))
-    objects.append(obj)
-
-    return scene, room, objects
-
-
 def main():
     screen_size = (128, 128)  # (width, height)
-    scene, room, objects = create_scene()
+    scene, room, objects = gqn.environment.room.build_scene(
+        object_names=["cube", "sphere", "bunny", "teapot"])
     camera = gqn.three.PerspectiveCamera(
         eye=(1.0 * math.cos(math.pi * 0.6954166666671697), 0.5,
              1.0 * math.sin(math.pi * 0.6954166666671697)),
@@ -81,7 +42,7 @@ def main():
         rad += math.pi * 2 / 10000
 
         camera.look_at(
-            eye=(2.0 * math.cos(rad), 0.5, 2.0 * math.sin(rad)),
+            eye=(3.0 * math.cos(rad), 1, 3.0 * math.sin(rad)),
             center=(0.0, 0.0, 0.0),
             up=(0.0, 1.0, 0.0),
         )

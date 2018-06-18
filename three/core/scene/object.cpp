@@ -18,12 +18,14 @@ namespace scene {
         if (np_vertices.shape(1) != 3) {
             throw std::runtime_error("(np_vertices.shape(1) != 3) -> false");
         }
+
         _num_faces = np_faces.shape(0);
         _num_vertices = np_vertices.shape(0);
         _faces = std::make_unique<glm::vec3i[]>(_num_faces);
         _vertices = std::make_unique<glm::vec3f[]>(_num_vertices);
         _face_vertices = std::make_unique<glm::vec3f[]>(_num_faces * 3);
         _face_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces * 3);
+        _face_vertex_normal_vectors = std::make_unique<glm::vec3f[]>(_num_faces * 3);
 
         auto faces = np_faces.mutable_unchecked<2>();
         for (ssize_t face_index = 0; face_index < np_faces.shape(0); face_index++) {
@@ -31,8 +33,10 @@ namespace scene {
         }
 
         auto vertices = np_vertices.mutable_unchecked<2>();
-        for (ssize_t vertex_index = 0; vertex_index < np_vertices.shape(0); vertex_index++) {
+        std::unique_ptr<glm::vec3f[]> vertex_normal_vectors = std::make_unique<glm::vec3f[]>(_num_vertices);
+        for (ssize_t vertex_index = 0; vertex_index < _num_vertices; vertex_index++) {
             _vertices[vertex_index] = glm::vec3f(vertices(vertex_index, 0), vertices(vertex_index, 1), vertices(vertex_index, 2));
+            vertex_normal_vectors[vertex_index] = glm::vec3f(0.0);
         }
 
         for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
@@ -53,6 +57,21 @@ namespace scene {
             _face_normal_vectors[face_index * 3 + 0] = normal;
             _face_normal_vectors[face_index * 3 + 1] = normal;
             _face_normal_vectors[face_index * 3 + 2] = normal;
+
+            vertex_normal_vectors[face[0]] += normal;
+            vertex_normal_vectors[face[1]] += normal;
+            vertex_normal_vectors[face[2]] += normal;
+        }
+
+        for (ssize_t vertex_index = 0; vertex_index < _num_vertices; vertex_index++) {
+            vertex_normal_vectors[vertex_index] = glm::normalize(vertex_normal_vectors[vertex_index]);
+        }
+
+        for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {
+            glm::vec3i face = _faces[face_index];
+            _face_vertex_normal_vectors[face_index * 3 + 0] = vertex_normal_vectors[face[0]];
+            _face_vertex_normal_vectors[face_index * 3 + 1] = vertex_normal_vectors[face[1]];
+            _face_vertex_normal_vectors[face_index * 3 + 2] = vertex_normal_vectors[face[2]];
         }
 
         _position = glm::vec3(0.0);

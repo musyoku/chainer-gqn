@@ -8,7 +8,7 @@ SOURCES = ./external/gl3w/*.c \
 		  ./core/renderer/*.cpp \
 		  ./core/scene/*.cpp
 EXTENSION = `python3-config --extension-suffix`
-OUTPUT = ../generative_query_network/python/gqn
+OUTPUT = ../generative_query_network/gqn
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Linux)

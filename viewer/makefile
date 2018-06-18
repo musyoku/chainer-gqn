@@ -10,6 +10,7 @@ SOURCES = 	./external/gl3w/*.c \
 			./core/*.cpp \
 			./pybind/*.cpp
 EXTENSION = `python3-config --extension-suffix`
+OUTPUT = ../generative_query_network/gqn
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Linux)
@@ -20,4 +21,4 @@ ifeq ($(UNAME), Darwin)
 endif
 
 make: 
-	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) $(LDFLAGS) -o ../generative_query_network/python/gqn/viewer$(EXTENSION)
+	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) $(LDFLAGS) -o $(OUTPUT)/viewer$(EXTENSION)

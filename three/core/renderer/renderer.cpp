@@ -12,6 +12,7 @@ namespace renderer {
         _scene = scene;
         _depth_buffer = std::make_unique<GLfloat[]>(width * height);
         _color_buffer = std::make_unique<GLubyte[]>(width * height * 3);
+        _prev_num_objects = -1;
 
         glfwSetErrorCallback([](int error, const char* description) {
             fprintf(stderr, "Error %d: %s\n", error, description);
@@ -28,13 +29,13 @@ namespace renderer {
 #endif
         _window = glfwCreateWindow(width, height, "Renderer", NULL, NULL);
         glfwMakeContextCurrent(_window);
-        glfwSwapInterval(1);
         gl3wInit();
 
         const GLchar vertex_shader[] = R"(
 #version 410
 in vec3 position;
 in vec3 normal_vector;
+in vec3 vertex_normal_vector;
 uniform float quadratic_attenuation;
 uniform mat4 model_mat;
 uniform mat4 view_mat;
@@ -42,29 +43,44 @@ uniform mat4 projection_mat;
 uniform vec4 color;
 out float power;
 out vec4 object_color;
+out vec3 light_direction;
+out float qa;
+out mat4 _camera_mat;
+out vec4 face_direction;
+out vec3 _normal_vector;
 void main(void)
 {
     mat4 camera_mat = view_mat * model_mat;
     vec4 model_position = camera_mat * vec4(position, 1.0f);
     gl_Position = projection_mat * model_position;
-    vec4 face_direction = camera_mat * vec4(normal_vector, 1.0f);
-    vec4 light_position = view_mat * vec4(1.0f, 3.0f, 1.0f, 1.0f);
-    vec3 light_direction = model_position.xyz - light_position.xyz;
-    float light_distance = length(light_direction);
-    float attenuation = 1.0 / (quadratic_attenuation * light_distance * light_distance);
-    power = clamp(dot(normalize(face_direction.xyz), -normalize(light_direction)), 0.0f, 1.0f);
-    // power *= clamp(attenuation, 0.0f, 1.0f);
+    face_direction = camera_mat * vec4(vertex_normal_vector, 1.0f);
+    vec4 light_position = view_mat * vec4(0.0f, -2.0f, 0.0f, 1.0f);
+    light_direction = model_position.xyz - light_position.xyz;
+    _camera_mat = camera_mat;
+    _normal_vector = vertex_normal_vector;
+    // power = clamp(attenuation, 0.0f, 1.0f);
     object_color = color;
+    qa = quadratic_attenuation;
 }
 )";
 
         const GLchar fragment_shader[] = R"(
 #version 410
 in float power;
+in vec4 face_direction;
 in vec4 object_color;
+in vec3 _normal_vector;
+in vec3 light_direction;
+in float qa;
+in mat4 _camera_mat;
 out vec4 frag_color;
 void main(){
-    frag_color = vec4(power * object_color.xyz, 1.0);
+    float light_distance = length(light_direction);
+    float attenuation = clamp(1.0 / (qa * light_distance * light_distance), 0.0f, 1.0f);
+    vec3 half = normalize(face_direction.xyz) - normalize(light_direction.xyz);
+    float diffuse = clamp(dot(normalize(face_direction.xyz), -normalize(light_direction)), 0.0f, 1.0f);
+    float power = pow(diffuse, 10.0);
+    frag_color = vec4((attenuation) * object_color.xyz, 1.0);
 }
 )";
 
@@ -72,11 +88,36 @@ void main(){
 
         _attribute_position = glGetAttribLocation(_program, "position");
         _attribute_normal_vector = glGetAttribLocation(_program, "normal_vector");
+        _attribute_vertex_normal_vector = glGetAttribLocation(_program, "vertex_normal_vector");
         _uniform_projection_mat = glGetUniformLocation(_program, "projection_mat");
         _uniform_view_mat = glGetUniformLocation(_program, "view_mat");
         _uniform_model_mat = glGetUniformLocation(_program, "model_mat");
         _uniform_color = glGetUniformLocation(_program, "color");
         _uniform_quadratic_attenuation = glGetUniformLocation(_program, "quadratic_attenuation");
+
+        glGenRenderbuffers(1, &_render_buffer);
+        
+        set_scene(scene);
+    }
+    Renderer::~Renderer()
+    {
+        glfwDestroyWindow(_window);
+        glfwTerminate();
+    }
+    void Renderer::_delete_buffers()
+    {
+        if (_prev_num_objects == -1) {
+            return;
+        }
+        glDeleteVertexArrays(_prev_num_objects, _vao.get());
+        glDeleteBuffers(_prev_num_objects, _vbo_faces.get());
+        glDeleteBuffers(_prev_num_objects, _vbo_vertices.get());
+        glDeleteBuffers(_prev_num_objects, _vbo_normal_vectors.get());
+        glDeleteBuffers(_prev_num_objects, _vbo_vertex_normal_vectors.get());
+    }
+    void Renderer::set_scene(scene::Scene* scene)
+    {
+        _delete_buffers();
 
         int num_objects = scene->_objects.size();
 
@@ -92,7 +133,8 @@ void main(){
         _vbo_normal_vectors = std::make_unique<GLuint[]>(num_objects);
         glGenBuffers(num_objects, _vbo_normal_vectors.get());
 
-        glGenRenderbuffers(1, &_render_buffer);
+        _vbo_vertex_normal_vectors = std::make_unique<GLuint[]>(num_objects);
+        glGenBuffers(num_objects, _vbo_vertex_normal_vectors.get());
 
         for (int n = 0; n < num_objects; n++) {
             glBindVertexArray(_vao[n]);
@@ -111,15 +153,15 @@ void main(){
             glVertexAttribPointer(_attribute_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
             glEnableVertexAttribArray(_attribute_normal_vector);
 
+            glBindBuffer(GL_ARRAY_BUFFER, _vbo_vertex_normal_vectors[n]);
+            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_vertex_normal_vectors.get(), GL_STATIC_DRAW);
+            glVertexAttribPointer(_attribute_vertex_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(_attribute_vertex_normal_vector);
+
             glBindVertexArray(0);
         }
 
         glBindVertexArray(0);
-    }
-    Renderer::~Renderer()
-    {
-        glfwDestroyWindow(_window);
-        glfwTerminate();
     }
     void Renderer::_render_objects(camera::PerspectiveCamera* camera)
     {
@@ -127,7 +169,7 @@ void main(){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        static float quadratic_attenuation = 0.1;
+        static float quadratic_attenuation = 0.2;
 
         glm::mat4& view_mat = camera->_view_matrix;
         glm::mat4& projection_mat = camera->_projection_matrix;
