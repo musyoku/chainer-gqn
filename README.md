@@ -7,7 +7,7 @@
 **Todo**
 
 - [x] レンダラーの実装 / Simulator
-- [ ] ニューラルネットの実装 / Neural netowrk
+- [ ] ニューラルネットの実装 / Neural network
 - [ ] 学習 / Training
 
 # Requirements
