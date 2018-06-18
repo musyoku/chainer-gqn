@@ -96,11 +96,12 @@ void main(){
         _uniform_quadratic_attenuation = glGetUniformLocation(_program, "quadratic_attenuation");
 
         glGenRenderbuffers(1, &_render_buffer);
-        
+
         set_scene(scene);
     }
     Renderer::~Renderer()
     {
+        _delete_buffers();
         glfwDestroyWindow(_window);
         glfwTerminate();
     }
@@ -114,12 +115,17 @@ void main(){
         glDeleteBuffers(_prev_num_objects, _vbo_vertices.get());
         glDeleteBuffers(_prev_num_objects, _vbo_normal_vectors.get());
         glDeleteBuffers(_prev_num_objects, _vbo_vertex_normal_vectors.get());
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
     void Renderer::set_scene(scene::Scene* scene)
     {
+        glfwMakeContextCurrent(_window);
+        glUseProgram(_program);
         _delete_buffers();
+        _scene = scene;
 
         int num_objects = scene->_objects.size();
+        _prev_num_objects = num_objects;
 
         _vao = std::make_unique<GLuint[]>(num_objects);
         glGenVertexArrays(num_objects, _vao.get());
@@ -165,6 +171,8 @@ void main(){
     }
     void Renderer::_render_objects(camera::PerspectiveCamera* camera)
     {
+        // OpenGL commands are executed in global context (per thread).
+        glfwMakeContextCurrent(_window);
         glViewport(0, 0, _width, _height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -255,6 +263,18 @@ void main(){
         glUseProgram(0);
         glBindVertexArray(0);
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    }
+    void Renderer::render_depth_map(scene::Scene* scene, camera::PerspectiveCamera* camera,
+        py::array_t<GLfloat, py::array::c_style> np_depth_map)
+    {
+        set_scene(scene);
+        render_depth_map(camera, np_depth_map);
+    }
+    void Renderer::render(scene::Scene* scene, camera::PerspectiveCamera* camera,
+        py::array_t<GLuint, py::array::c_style> np_rgb_map)
+    {
+        set_scene(scene);
+        render(camera, np_rgb_map);
     }
 }
 }

@@ -33,16 +33,25 @@ def main():
     frame_room = np.zeros(screen_size + (3, ), dtype="uint32")
     frame_shepard_matzler = np.zeros(screen_size + (3, ), dtype="uint32")
 
+    scene_room, _, _ = gqn.environment.room.build_scene(
+        object_names=["cube", "sphere", "bunny", "teapot"],
+        num_objects=random.choice([x for x in range(1, 6)]))
+    scene_shepard_metzler, _ = gqn.environment.shepard_metzler.build_scene(
+        num_blocks=random.choice([x for x in range(3, 20)]))
+    renderer_shepard_matzler = gqn.three.Renderer(
+        scene_shepard_metzler, screen_size[0], screen_size[1])
+    renderer_room = gqn.three.Renderer(scene_room, screen_size[0],
+                                        screen_size[1])
+
     while True:
         scene_room, _, _ = gqn.environment.room.build_scene(
             object_names=["cube", "sphere", "bunny", "teapot"],
             num_objects=random.choice([x for x in range(1, 6)]))
         scene_shepard_metzler, _ = gqn.environment.shepard_metzler.build_scene(
             num_blocks=random.choice([x for x in range(3, 20)]))
-        renderer_shepard_matzler = gqn.three.Renderer(
-            scene_shepard_metzler, screen_size[0], screen_size[1])
-        renderer_room = gqn.three.Renderer(scene_room, screen_size[0],
-                                           screen_size[1])
+
+        renderer_room.set_scene(scene_room)
+        renderer_shepard_matzler.set_scene(scene_shepard_metzler)
 
         total_frames = 10000
         tick = 0

@@ -2,6 +2,7 @@
 #include "../core/renderer/renderer.h"
 #include "../core/scene/object.h"
 #include "../core/scene/scene.h"
+#include <gl3w/gl3w.h>
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 using namespace three;
@@ -15,10 +16,10 @@ PYBIND11_MODULE(three, module)
 
     py::class_<scene::Scene>(module, "Scene")
         .def(py::init<>())
-        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object> object)) & scene::Scene::add)
-        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object> object, py::tuple)) & scene::Scene::add,
+        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object>)) & scene::Scene::add)
+        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object>, py::tuple)) & scene::Scene::add,
             py::arg("object"), py::arg("position"))
-        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object> object, py::tuple, py::tuple)) & scene::Scene::add,
+        .def("add", (void (scene::Scene::*)(std::shared_ptr<scene::Object>, py::tuple, py::tuple)) & scene::Scene::add,
             py::arg("object"), py::arg("position"), py::arg("rotation"));
 
     py::class_<scene::Object, std::shared_ptr<scene::Object>>(module, "Object")
@@ -29,6 +30,9 @@ PYBIND11_MODULE(three, module)
 
     py::class_<renderer::Renderer>(module, "Renderer")
         .def(py::init<scene::Scene*, int, int>(), py::arg("scene"), py::arg("width"), py::arg("height"))
-        .def("render_depth_map", &renderer::Renderer::render_depth_map)
-        .def("render", &renderer::Renderer::render);
+        .def("render_depth_map", (void (renderer::Renderer::*)(camera::PerspectiveCamera*, py::array_t<GLfloat, py::array::c_style>)) & renderer::Renderer::render_depth_map)
+        .def("render_depth_map", (void (renderer::Renderer::*)(scene::Scene*, camera::PerspectiveCamera*, py::array_t<GLfloat, py::array::c_style>)) & renderer::Renderer::render_depth_map)
+        .def("render", (void (renderer::Renderer::*)(camera::PerspectiveCamera*, py::array_t<GLuint, py::array::c_style>)) & renderer::Renderer::render)
+        .def("render", (void (renderer::Renderer::*)(scene::Scene*, camera::PerspectiveCamera*, py::array_t<GLuint, py::array::c_style>)) & renderer::Renderer::render)
+        .def("set_scene", &renderer::Renderer::set_scene);
 }

@@ -42,7 +42,11 @@ namespace renderer {
         void set_scene(scene::Scene* scene);
         void render_depth_map(camera::PerspectiveCamera* camera,
             py::array_t<GLfloat, py::array::c_style> np_depth_map);
+        void render_depth_map(scene::Scene* scene, camera::PerspectiveCamera* camera,
+            py::array_t<GLfloat, py::array::c_style> np_depth_map);
         void render(camera::PerspectiveCamera* camera,
+            py::array_t<GLuint, py::array::c_style> np_rgb_map);
+        void render(scene::Scene* scene, camera::PerspectiveCamera* camera,
             py::array_t<GLuint, py::array::c_style> np_rgb_map);
     };
 }
