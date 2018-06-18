@@ -5,11 +5,10 @@
 
 namespace three {
 namespace renderer {
-    Renderer::Renderer(scene::Scene* scene, int width, int height)
+    void Renderer::initialize(int width, int height)
     {
         _width = width;
         _height = height;
-        _scene = scene;
         _depth_buffer = std::make_unique<GLfloat[]>(width * height);
         _color_buffer = std::make_unique<GLubyte[]>(width * height * 3);
         _prev_num_objects = -1;
@@ -96,16 +95,23 @@ void main(){
         _uniform_quadratic_attenuation = glGetUniformLocation(_program, "quadratic_attenuation");
 
         glGenRenderbuffers(1, &_render_buffer);
-
+    }
+    Renderer::Renderer(int width, int height)
+    {
+        initialize(width, height);
+    }
+    Renderer::Renderer(scene::Scene* scene, int width, int height)
+    {
+        initialize(width, height);
         set_scene(scene);
     }
     Renderer::~Renderer()
     {
-        _delete_buffers();
+        delete_buffers();
         glfwDestroyWindow(_window);
         glfwTerminate();
     }
-    void Renderer::_delete_buffers()
+    void Renderer::delete_buffers()
     {
         if (_prev_num_objects == -1) {
             return;
@@ -121,7 +127,7 @@ void main(){
     {
         glfwMakeContextCurrent(_window);
         glUseProgram(_program);
-        _delete_buffers();
+        delete_buffers();
         _scene = scene;
 
         int num_objects = scene->_objects.size();
@@ -169,7 +175,7 @@ void main(){
 
         glBindVertexArray(0);
     }
-    void Renderer::_render_objects(camera::PerspectiveCamera* camera)
+    void Renderer::render_objects(camera::PerspectiveCamera* camera)
     {
         // OpenGL commands are executed in global context (per thread).
         glfwMakeContextCurrent(_window);
@@ -213,7 +219,7 @@ void main(){
         glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _render_buffer);
 
-        _render_objects(camera);
+        render_objects(camera);
 
         glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, _depth_buffer.get());
         auto depth_map = np_depth_map.mutable_unchecked<2>();
@@ -248,7 +254,7 @@ void main(){
         glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _render_buffer);
 
-        _render_objects(camera);
+        render_objects(camera);
 
         glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_buffer.get());
         auto rgb_map = np_rgb_map.mutable_unchecked<3>();

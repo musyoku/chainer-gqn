@@ -28,15 +28,13 @@ def main():
     window.show()
 
     frame = np.zeros(screen_size + (3, ), dtype="uint32")
-
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
 
     tick = 0
     start = time.time()
     while True:
-        scene, _, _ = gqn.environment.room.build_scene(
-            object_names=["cube", "sphere", "bunny", "teapot"],
-            num_objects=random.choice([x for x in range(1, 6)]))
+        scene, _ = gqn.environment.shepard_metzler.build_scene(
+            num_blocks=random.choice([x for x in range(3, 14)]))
 
         renderer.set_scene(scene)
 

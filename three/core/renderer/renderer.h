@@ -33,10 +33,12 @@ namespace renderer {
         GLFWwindow* _window;
         scene::Scene* _scene;
         int _prev_num_objects;
-        void _render_objects(camera::PerspectiveCamera* camera);
-        void _delete_buffers();
+        void render_objects(camera::PerspectiveCamera* camera);
+        void delete_buffers();
+        void initialize(int width, int height);
 
     public:
+        Renderer(int width, int height);
         Renderer(scene::Scene* scene, int width, int height);
         ~Renderer();
         void set_scene(scene::Scene* scene);
