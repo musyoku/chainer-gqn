@@ -29,20 +29,20 @@ def main():
         z_near=0.1,
         z_far=10)
 
-    figure = gqn.viewer.Figure()
+    figure = gqn.imgplot.Figure()
     axes_room = []
     axes_shepard_matzler = []
     for x in range(5):
         for y in range(5):
-            axis = gqn.viewer.ImageData(screen_size[0], screen_size[1], 3)
+            axis = gqn.imgplot.ImageData(screen_size[0], screen_size[1], 3)
             axes_room.append(axis)
             figure.add(axis, 0.1 * x, 0.2 * y, 0.1, 0.2)
     for x in range(5):
         for y in range(5):
-            axis = gqn.viewer.ImageData(screen_size[0], screen_size[1], 3)
+            axis = gqn.imgplot.ImageData(screen_size[0], screen_size[1], 3)
             axes_shepard_matzler.append(axis)
             figure.add(axis, 0.1 * x + 0.5, 0.2 * y, 0.1, 0.2)
-    window = gqn.viewer.Window(figure, (1600, 800))
+    window = gqn.imgplot.Window(figure, (1600, 800))
     window.show()
 
     image_room = np.zeros(screen_size + (3, ), dtype="uint32")

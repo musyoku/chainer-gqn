@@ -21,10 +21,10 @@ def main():
         z_near=0.01,
         z_far=100)
 
-    figure = gqn.viewer.Figure()
-    axis = gqn.viewer.ImageData(screen_size[0], screen_size[1], 3)
+    figure = gqn.imgplot.Figure()
+    axis = gqn.imgplot.ImageData(screen_size[0], screen_size[1], 3)
     figure.add(axis, 0, 0, 1, 1)
-    window = gqn.viewer.Window(figure, (640, 640))
+    window = gqn.imgplot.Window(figure, (640, 640))
     window.show()
 
     image = np.zeros(screen_size + (3, ), dtype="uint32")

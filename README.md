@@ -33,10 +33,10 @@ cd three
 make
 ```
 
-**Viewer**
+**imgplot**
 
 ```
-cd viewer
+cd imgplot
 make
 ```
 
