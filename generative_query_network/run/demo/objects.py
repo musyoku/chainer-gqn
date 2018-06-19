@@ -46,23 +46,16 @@ def main():
     while True:
         total_frames = 1000
         tick = 0
-        start = time.time()
         for _ in range(total_frames):
             rad = math.pi * 2 * tick / total_frames
-
             camera.look_at(
                 eye=(2.0 * math.cos(rad), 0.25, 2.0 * math.sin(rad)),
                 center=(0.0, 0, 0.0),
                 up=(0.0, 1.0, 0.0),
             )
-
             renderer.render(camera, image)
-
             axis.update(np.uint8(image))
-
             tick += 1
-            if tick % 1000 == 0:
-                print(tick / (time.time() - start))
 
             if window.closed():
                 return

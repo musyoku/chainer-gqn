@@ -16,6 +16,7 @@
 - Python 3
 - OpenGL
 - Ubuntu
+- C++14
 
 # Installation
 
