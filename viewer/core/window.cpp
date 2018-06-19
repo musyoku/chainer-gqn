@@ -33,13 +33,14 @@ Window::~Window()
     glfwSetWindowShouldClose(_shared_window, GL_TRUE);
     glfwSetWindowShouldClose(_window, GL_TRUE);
     _thread.join();
+    glfwDestroyWindow(_shared_window);
     glfwDestroyWindow(_window);
     glfwTerminate();
 }
 void Window::_run()
 {
     glfwWindowHint(GLFW_VISIBLE, GL_TRUE);
-    _shared_window = glfwCreateWindow(_initial_width, _initial_height, "Gradient-based Mesh Editing", NULL, _window);
+    _shared_window = glfwCreateWindow(_initial_width, _initial_height, "Generative Query Network", NULL, _window);
     glfwMakeContextCurrent(_shared_window);
     glfwSetWindowUserPointer(_shared_window, this);
 
@@ -94,7 +95,6 @@ void Window::_run()
 
         glfwSwapBuffers(_shared_window);
     }
-    glfwDestroyWindow(_shared_window);
     _closed = true;
 }
 void Window::_render_view(View* view)

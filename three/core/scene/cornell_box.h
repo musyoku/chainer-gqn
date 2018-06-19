@@ -9,10 +9,10 @@ namespace scene {
     namespace py = pybind11;
     class CornellBox : public base::Object {
     public:
-        glm::vec4 _north_wall_color; // RGBA
-        glm::vec4 _east_wall_color; // RGBA
-        glm::vec4 _south_wall_color; // RGBA
-        glm::vec4 _west_wall_color; // RGBA
+        glm::vec4f _north_wall_color; // RGBA
+        glm::vec4f _east_wall_color; // RGBA
+        glm::vec4f _south_wall_color; // RGBA
+        glm::vec4f _west_wall_color; // RGBA
         CornellBox(const CornellBox* source);
         CornellBox(
             py::tuple north_wall_color,

@@ -3,7 +3,9 @@ from .. import color, geometry, three
 from .objects import create_object
 
 
-def generate_blocks(num_blocks=7):
+def generate_blocks(num_blocks=7,
+                    color_hue_range=(0, 1),
+                    color_saturation_range=(0.75, 1)):
     assert num_blocks > 0
     current_position = (0, 0, 0)
     block_positions = [current_position]
@@ -21,7 +23,12 @@ def generate_blocks(num_blocks=7):
     ret = []
     center_of_gravity = [0, 0, 0]
     for position in block_positions:
-        obj, _ = create_object("cube", color=color.random_color(alpha=1))
+        obj, _ = create_object(
+            "cube",
+            color=color.random_color(
+                alpha=1,
+                hue_range=color_hue_range,
+                saturation_range=color_saturation_range))
         shift = 1
         location = (shift * position[0], shift * position[1],
                     shift * position[2])
@@ -35,9 +42,14 @@ def generate_blocks(num_blocks=7):
     return ret, center_of_gravity
 
 
-def build_scene(num_blocks=7):
+def build_scene(num_blocks=7,
+                object_color_hue_range=(0, 1),
+                object_color_saturation_range=(0.75, 1)):
     scene = three.Scene()
-    blocks, center_of_gravity = generate_blocks(num_blocks)
+    blocks, center_of_gravity = generate_blocks(
+        num_blocks,
+        color_hue_range=object_color_hue_range,
+        color_saturation_range=object_color_saturation_range)
     objects = []
     for block in blocks:
         obj, location = block

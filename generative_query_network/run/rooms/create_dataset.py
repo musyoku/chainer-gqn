@@ -11,56 +11,83 @@ import gqn
 
 
 def main():
-    screen_size = (64, 64)  # (width, height)
+    screen_size = (args.image_size, args.image_size)  # (width, height)
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
         center=(0, 0, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 2.0,
+        fov_rad=math.pi / 4.0,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
         z_far=10)
 
-    figure = gqn.viewer.Figure()
-    axis = gqn.viewer.ImageData(screen_size[0], screen_size[1], 3)
-    figure.add(axis, 0, 0, 1, 1)
-    window = gqn.viewer.Window(figure, (800, 800))
-    window.show()
+    if args.with_visualization:
+        figure = gqn.viewer.Figure()
+        axis = gqn.viewer.ImageData(screen_size[0], screen_size[1], 3)
+        figure.add(axis, 0, 0, 1, 1)
+        window = gqn.viewer.Window(figure, (800, 800))
+        window.show()
 
-    frame = np.zeros(screen_size + (3, ), dtype="uint32")
-
+    image = np.zeros(screen_size + (3, ), dtype="uint32")
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
-
+    dataset = gqn.dataset.Dataset(
+        path=args.path,
+        total_observations=args.total_observations,
+        num_observations_per_file=args.num_observations_per_file,
+        image_size=(args.image_size, args.image_size))
     tick = 0
     start = time.time()
     while True:
         scene, _, _ = gqn.environment.room.build_scene(
-            object_names=["cube", "sphere", "bunny", "teapot"],
+            object_names=["cube", "sphere", "bunny", "teapot", "icosahedron"],
             num_objects=random.choice([x for x in range(1, 6)]))
-
         renderer.set_scene(scene)
 
-        total_frames = 5
-        for _ in range(total_frames):
-            rad = random.uniform(0, math.pi * 2)
-
+        for _ in range(args.num_images_per_scene):
+            eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
+            center = (random.uniform(-3, 3), random.uniform(0, 1),
+                      random.uniform(-3, 3))
+            yaw = gqn.math.yaw(eye, center)
+            pitch = gqn.math.pitch(eye, center)
             camera.look_at(
-                eye=(3.0 * math.cos(rad), 1, 3.0 * math.sin(rad)),
-                center=(0.0, 0.0, 0.0),
+                eye=eye,
+                center=center,
                 up=(0.0, 1.0, 0.0),
             )
-            renderer.render(camera, frame)
+            renderer.render(camera, image)
 
-            axis.update(np.uint8(frame))
+            dataset.add(image, eye, yaw, pitch)
+
+            if args.with_visualization:
+                axis.update(np.uint8(image))
 
             tick += 1
-            if tick % 1000 == 0:
-                print(tick / (time.time() - start))
-            if window.closed():
+            if tick % 3000 == 0:
+                print("generating", int(tick / (time.time() - start)),
+                      "images per second.")
+
+            if args.with_visualization and window.closed():
                 return
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--with-visualization",
+        "-visualize",
+        action="store_true",
+        default=False)
+    parser.add_argument(
+        "--with-object-rotations",
+        "-rotate-object",
+        action="store_true",
+        default=False)
+    parser.add_argument(
+        "--total-observations", "-total", type=int, default=2000000)
+    parser.add_argument(
+        "--num-observations-per-file", "-per-file", type=int, default=2000)
+    parser.add_argument("--num-images-per-scene", "-k", type=int, default=5)
+    parser.add_argument("--image-size", type=int, default=64)
+    parser.add_argument("--path", type=str, default="rooms_dataset")
     args = parser.parse_args()
     main()

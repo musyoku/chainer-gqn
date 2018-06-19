@@ -10,10 +10,13 @@ def build_scene(
         num_objects=3,
         object_names=["cube"],
         scale_range=(0.5, 1.0),
-        placement_radius=3,
-        num_walls_to_paint=2):
+        num_walls_to_paint=2,
+        object_placement_radius=3,
+        object_color_hue_range=(0, 1),
+        object_color_saturation_range=(0.75, 1)):
     scene = three.Scene()
-    room = create_cornell_box(size=room_size, num_walls_to_paint=num_walls_to_paint)
+    room = create_cornell_box(
+        size=room_size, num_walls_to_paint=num_walls_to_paint)
     room_offset = room_size[1] / 2.0
     scene.add(room, position=(0, room_offset, 0))
     objects = []
@@ -24,10 +27,12 @@ def build_scene(
         obj, vertices = create_object(
             objct_name,
             scale=(scale, scale, scale),
-            color=color.random_color())
+            color=color.random_color(
+                hue_range=object_color_hue_range,
+                saturation_range=object_color_saturation_range))
         offset_y = np.amin(vertices, axis=0)[1] * scale
         theta = random.uniform(0, 2) * math.pi
-        radius = random.uniform(0.5, 1) * placement_radius
+        radius = random.uniform(0.5, 1) * object_placement_radius
         scene.add(
             obj,
             position=(radius * math.cos(theta), -offset_y,

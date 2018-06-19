@@ -17,7 +17,7 @@
 - OpenGL
 - Ubuntu
 
-# Install
+# Installation
 
 **pybind11**
 
