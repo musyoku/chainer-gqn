@@ -40,7 +40,7 @@ def main():
     start = time.time()
     while True:
         scene, _, _ = gqn.environment.room.build_scene(
-            object_names=["cube", "sphere", "bunny", "teapot", "icosahedron"],
+            object_names=["cube", "sphere", "cone", "cylinder", "icosahedron"],
             num_objects=random.choice([x for x in range(1, 6)]))
         renderer.set_scene(scene)
 

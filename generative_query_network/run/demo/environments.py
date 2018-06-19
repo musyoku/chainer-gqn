@@ -11,7 +11,7 @@ import gqn
 
 
 def main():
-    screen_size = (64, 64)  # (width, height)
+    screen_size = (640, 640)  # (width, height)
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
         center=(0, 0.5, 0),
@@ -48,7 +48,7 @@ def main():
         renderer_room.set_scene(scene_room)
         renderer_shepard_matzler.set_scene(scene_shepard_metzler)
 
-        total_frames = 10000
+        total_frames = 500
         tick = 0
         start = time.time()
         for _ in range(total_frames):
