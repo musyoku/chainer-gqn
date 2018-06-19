@@ -51,9 +51,9 @@ class Dataset:
             self.current_file_number += 1
 
     def save(self):
-        filename = "images-{:04d}-of-{}.npy".format(
+        filename = "images-{:03d}-of-{}.npy".format(
             self.current_file_number, self.num_observations_per_file)
         np.save(os.path.join(self.path, filename), self.images)
-        filename = "viewpoints-{:04d}-of-{}.npy".format(
+        filename = "viewpoints-{:03d}-of-{}.npy".format(
             self.current_file_number, self.num_observations_per_file)
         np.save(os.path.join(self.path, filename), self.viewpoints)

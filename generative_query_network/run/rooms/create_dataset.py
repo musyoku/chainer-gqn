@@ -35,6 +35,7 @@ def main():
         total_observations=args.total_observations,
         num_observations_per_file=args.num_observations_per_file,
         image_size=(args.image_size, args.image_size))
+
     tick = 0
     start = time.time()
     while True:
@@ -62,9 +63,8 @@ def main():
                 axis.update(np.uint8(image))
 
             tick += 1
-            if tick % 3000 == 0:
-                print("generating", int(tick / (time.time() - start)),
-                      "images per second.")
+            if tick % 5000 == 0:
+                print("{} / {} fps:{}".format(tick, args.total_observations, int(tick / (time.time() - start))))
 
             if args.with_visualization and window.closed():
                 return

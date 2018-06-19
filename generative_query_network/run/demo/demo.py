@@ -39,15 +39,17 @@ def main():
 
     while True:
         scene_room, _, _ = gqn.environment.room.build_scene(
-            object_names=["cube", "sphere", "bunny", "teapot"],
-            num_objects=random.choice([x for x in range(1, 6)]))
+            object_names=["cylinder"],
+            # object_names=gqn.environment.objects.available_names(),
+            num_objects=random.choice([x for x in range(1, 6)]),
+            scale_range=(1, 1))
         scene_shepard_metzler, _ = gqn.environment.shepard_metzler.build_scene(
             num_blocks=random.choice([x for x in range(3, 20)]))
 
         renderer_room.set_scene(scene_room)
         renderer_shepard_matzler.set_scene(scene_shepard_metzler)
 
-        total_frames = 5000
+        total_frames = 10000
         tick = 0
         start = time.time()
         for _ in range(total_frames):
