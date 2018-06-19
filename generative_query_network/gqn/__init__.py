@@ -6,4 +6,5 @@ from . import viewer
 from . import three
 from . import environment
 from . import dataset
+from . import color
 from . import mathematics as math

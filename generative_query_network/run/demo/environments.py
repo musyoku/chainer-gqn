@@ -18,7 +18,7 @@ def main():
         up=(0, 1, 0),
         fov_rad=math.pi / 1.5,
         aspect_ratio=screen_size[0] / screen_size[1],
-        z_near=0.1,
+        z_near=0.01,
         z_far=100)
 
     figure = gqn.viewer.Figure()
@@ -30,8 +30,8 @@ def main():
     window = gqn.viewer.Window(figure, (1600, 800))
     window.show()
 
-    frame_room = np.zeros(screen_size + (3, ), dtype="uint32")
-    frame_shepard_matzler = np.zeros(screen_size + (3, ), dtype="uint32")
+    image_room = np.zeros(screen_size + (3, ), dtype="uint32")
+    image_shepard_matzler = np.zeros(screen_size + (3, ), dtype="uint32")
 
     renderer_shepard_matzler = gqn.three.Renderer(screen_size[0],
                                                   screen_size[1])
@@ -39,8 +39,7 @@ def main():
 
     while True:
         scene_room, _, _ = gqn.environment.room.build_scene(
-            object_names=["cylinder"],
-            # object_names=gqn.environment.objects.available_names(),
+            object_names=gqn.environment.objects.available_names(),
             num_objects=random.choice([x for x in range(1, 6)]),
             scale_range=(1, 1))
         scene_shepard_metzler, _ = gqn.environment.shepard_metzler.build_scene(
@@ -60,11 +59,11 @@ def main():
                 center=(0.0, 0.5, 0.0),
                 up=(0.0, 1.0, 0.0),
             )
-            renderer_room.render(camera, frame_room)
-            renderer_shepard_matzler.render(camera, frame_shepard_matzler)
+            renderer_room.render(camera, image_room)
+            renderer_shepard_matzler.render(camera, image_shepard_matzler)
 
-            axis_room.update(np.uint8(frame_room))
-            axis_shepard_matzler.update(np.uint8(frame_shepard_matzler))
+            axis_room.update(np.uint8(image_room))
+            axis_shepard_matzler.update(np.uint8(image_shepard_matzler))
 
             tick += 1
             if tick % 1000 == 0:
