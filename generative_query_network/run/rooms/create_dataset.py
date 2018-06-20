@@ -30,7 +30,7 @@ def main():
 
     image = np.zeros(screen_size + (3, ), dtype="uint32")
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
-    dataset = gqn.dataset.Dataset(
+    dataset = gqn.data.Archiver(
         path=args.path,
         total_observations=args.total_observations,
         num_observations_per_file=args.num_observations_per_file,
@@ -57,14 +57,19 @@ def main():
             )
             renderer.render(camera, image)
 
-            dataset.add(image, eye, yaw, pitch)
+            # [0, 1] -> [-1, 1]
+            normalized_image = (image - 0.5) * 2.0
+
+            dataset.add(normalized_image, eye, yaw, pitch)
 
             if args.with_visualization:
                 axis.update(np.uint8(image))
 
             tick += 1
             if tick % 5000 == 0:
-                print("{} / {} fps:{}".format(tick, args.total_observations, int(tick / (time.time() - start))))
+                print("{} / {} fps:{}".format(
+                    tick, args.total_observations,
+                    int(tick / (time.time() - start))))
 
             if args.with_visualization and window.closed():
                 return

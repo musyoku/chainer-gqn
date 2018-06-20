@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 
-class Dataset:
+class Archiver:
     def __init__(self,
                  path,
                  total_observations=2000000,
@@ -24,6 +24,14 @@ class Dataset:
 
         try:
             os.mkdir(path)
+        except:
+            pass
+        try:
+            os.mkdir(os.path.join(path, "images"))
+        except:
+            pass
+        try:
+            os.mkdir(os.path.join(path, "viewpoints"))
         except:
             pass
 
@@ -51,9 +59,10 @@ class Dataset:
             self.current_file_number += 1
 
     def save(self):
-        filename = "images-{:03d}-of-{}.npy".format(
-            self.current_file_number, self.num_observations_per_file)
-        np.save(os.path.join(self.path, filename), self.images)
-        filename = "viewpoints-{:03d}-of-{}.npy".format(
-            self.current_file_number, self.num_observations_per_file)
-        np.save(os.path.join(self.path, filename), self.viewpoints)
+        filename = "{:03d}-of-{}.npy".format(self.current_file_number,
+                                             self.num_observations_per_file)
+        np.save(os.path.join(self.path, "images", filename), self.images)
+        filename = "{:03d}-of-{}.npy".format(self.current_file_number,
+                                             self.num_observations_per_file)
+        np.save(
+            os.path.join(self.path, "viewpoints", filename), self.viewpoints)

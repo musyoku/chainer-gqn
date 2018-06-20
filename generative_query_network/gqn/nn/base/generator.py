@@ -1,3 +1,3 @@
 class Network:
-    def compute_r(self):
+    def generate_x(self, v, r):
         raise NotImplementedError
