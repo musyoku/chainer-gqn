@@ -21,6 +21,7 @@ class Network(base.generator.Network):
             prev_h.shape[0],
             v.shape[1],
         ) + prev_h.shape[2:]
+        v = cf.reshape(v, v.shape + (1, 1))
         v = cf.broadcast_to(v, shape=broadcast_shape)
         lstm_in = cf.concat((prev_h, v, r, prev_z), axis=1)
         forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))
@@ -28,6 +29,9 @@ class Network(base.generator.Network):
         next_c = forget_gate * prev_c + input_gate * cf.tanh(
             self.params.lstm_tanh(lstm_in))
         next_h = cf.sigmoid(self.params.lstm_o(lstm_in)) * cf.tanh(next_c)
+        print(next_h.shape)
+        print(self.params.deconv_h(next_h).shape)
+        print(prev_u.shape)
         next_u = self.params.deconv_h(next_h) + prev_u
         return next_h, next_c, next_u
 

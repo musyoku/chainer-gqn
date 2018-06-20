@@ -36,3 +36,7 @@ class Model():
                 params=params)
             return network, params
         raise NotImplementedError
+
+    def to_gpu(self):
+        self.generation_network_params.to_gpu()
+        self.representation_network_params.to_gpu()
