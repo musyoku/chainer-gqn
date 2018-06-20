@@ -15,7 +15,7 @@
 
 - pybind11
 - Python 3
-- OpenGL
+- OpenGL 4
 - Ubuntu
 - C++14 (gcc-6)
 - Chainer / PyTorch
