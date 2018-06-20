@@ -60,7 +60,8 @@ def main():
             # [0, 1] -> [-1, 1]
             normalized_image = (image - 0.5) * 2.0
 
-            dataset.add(normalized_image, eye, yaw, pitch)
+            dataset.add(normalized_image, eye, math.cos(yaw), math.cos(yaw),
+                        math.sin(pitch), math.sin(pitch))
 
             if args.with_visualization:
                 axis.update(np.uint8(image))

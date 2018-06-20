@@ -19,7 +19,10 @@ def main():
 
     for indices in iterator:
         images, viewpoints = dataset[indices]
-        print(viewpoints)
+        # [batch, height, width, channels] -> [batch, channels, height, width]
+        images = images.transpose(0, 3, 1, 2)
+        model.representation_network.compute_r(images, viewpoints)
+        return
 
 
 if __name__ == "__main__":
