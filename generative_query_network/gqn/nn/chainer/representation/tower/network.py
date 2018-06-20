@@ -1,7 +1,7 @@
 import chainer
 import chainer.functions as F
 
-from ... import base
+from .... import base
 from .parameters import Parameters
 
 

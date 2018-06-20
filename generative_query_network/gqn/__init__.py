@@ -7,4 +7,5 @@ from . import three
 from . import environment
 from . import data
 from . import color
+from . import nn
 from . import mathematics as math

@@ -5,12 +5,17 @@ import numpy as np
 
 sys.path.append(os.path.join("..", ".."))
 import gqn
+from hyper_parameters import HyperParameters
+from model import Model
 
 
 def main():
     dataset = gqn.data.Dataset(args.dataset_path)
     sampler = gqn.data.Sampler(dataset)
     iterator = gqn.data.Iterator(sampler, batch_size=32)
+
+    hyperparams = HyperParameters()
+    model = Model(hyperparams)
 
     for indices in iterator:
         images, viewpoints = dataset[indices]
