@@ -50,9 +50,25 @@ def main():
                 hyperparams.generator_u_channels,
             ) + image_size,
             dtype="float32")
+        he_0 = xp.zeros(
+            (
+                args.batch_size,
+                hyperparams.chrz_channels,
+            ) + hyperparams.chrz_size,
+            dtype="float32")
+        ce_0 = xp.zeros(
+            (
+                args.batch_size,
+                hyperparams.chrz_channels,
+            ) + hyperparams.chrz_size,
+            dtype="float32")
 
         zg_l = model.generation_network.sample_z(hg_0)
-        hg_l, cg_l, u_l = model.generation_network.forward_onestep(hg_0, cg_0, u_0, zg_l, viewpoints, r)
+        hg_l, cg_l, u_l = model.generation_network.forward_onestep(
+            hg_0, cg_0, u_0, zg_l, viewpoints, r)
+        x = model.generation_network.sample_x(u_l)
+
+        he_l, ce_l = model.inference_network.forward_onestep(hg_0, he_0, ce_0, images, viewpoints, r)
         return
 
 

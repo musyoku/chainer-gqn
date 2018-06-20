@@ -29,9 +29,6 @@ class Network(base.generator.Network):
         next_c = forget_gate * prev_c + input_gate * cf.tanh(
             self.params.lstm_tanh(lstm_in))
         next_h = cf.sigmoid(self.params.lstm_o(lstm_in)) * cf.tanh(next_c)
-        print(next_h.shape)
-        print(self.params.deconv_h(next_h).shape)
-        print(prev_u.shape)
         next_u = self.params.deconv_h(next_h) + prev_u
         return next_h, next_c, next_u
 
@@ -41,7 +38,7 @@ class Network(base.generator.Network):
         return cf.gaussian(mean, xp.zeros_like(mean))
 
     def sample_x(self, u):
-        xp = cupy.get_array_module(u)
+        xp = cupy.get_array_module(u.data)
         mean = self.params.mean_x(u)
-        return cf.gaussian(mean, xp.full_like(u,
+        return cf.gaussian(mean, xp.full_like(mean,
                                               math.log(self.params.sigma_t)))

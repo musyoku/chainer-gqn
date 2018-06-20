@@ -16,6 +16,9 @@ class Model():
             channels_u=hyperparams.generator_u_channels,
             sigma_t=hyperparams.generator_sigma_t)
 
+        self.inference_network, self.inference_network_params = self.build_inference_network(
+            channels_chrz=hyperparams.chrz_channels)
+
         self.representation_network, self.representation_network_params = self.build_representation_network(
             architecture=hyperparams.representation_architecture)
 
@@ -29,6 +32,13 @@ class Model():
             params=params, total_timestep=total_timestep)
         return network, params
 
+    def build_inference_network(self, channels_chrz):
+        params = gqn.nn.chainer.inference.Parameters(
+            channels_chrz=channels_chrz)
+        network = gqn.nn.chainer.inference.Network(
+            params=params)
+        return network, params
+
     def build_representation_network(self, architecture):
         if architecture == "tower":
             params = gqn.nn.chainer.representation.tower.Parameters()
@@ -39,4 +49,5 @@ class Model():
 
     def to_gpu(self):
         self.generation_network_params.to_gpu()
+        self.inference_network_params.to_gpu()
         self.representation_network_params.to_gpu()
