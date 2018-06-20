@@ -68,7 +68,12 @@ def main():
             hg_0, cg_0, u_0, zg_l, viewpoints, r)
         x = model.generation_network.sample_x(u_l)
 
-        he_l, ce_l = model.inference_network.forward_onestep(hg_0, he_0, ce_0, images, viewpoints, r)
+        he_l, ce_l = model.inference_network.forward_onestep(
+            hg_0, he_0, ce_0, images, viewpoints, r)
+        ze_l = model.inference_network.sample_z(he_l)
+        hg_l, cg_l, u_l = model.generation_network.forward_onestep(
+            hg_0, cg_0, u_0, ze_l, viewpoints, r)
+
         return
 
 

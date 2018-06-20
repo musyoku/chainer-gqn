@@ -7,8 +7,9 @@
 **Todo**
 
 - [x] レンダラーの実装 / Simulator
-- [ ] ニューラルネットの実装 / Neural network
+- [x] ニューラルネットの実装 / Neural network
 - [ ] 学習 / Training
+- [ ] PyTorch
 
 # Requirements
 
@@ -16,7 +17,8 @@
 - Python 3
 - OpenGL
 - Ubuntu
-- C++14
+- C++14 (gcc-6)
+- Chainer / PyTorch
 
 # Installation
 

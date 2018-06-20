@@ -30,6 +30,6 @@ class Network(base.inference.Network):
         return next_h, next_c
 
     def sample_z(self, h):
-        xp = cupy.get_array_module(h)
+        xp = cupy.get_array_module(h.data)
         mean = self.params.mean_z(h)
         return cf.gaussian(mean, xp.zeros_like(mean))
