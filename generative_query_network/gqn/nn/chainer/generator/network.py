@@ -1,5 +1,7 @@
 import chainer
-import chainer.functions as F
+import chainer.functions as cf
+import cupy
+import math
 
 from ... import base
 from .parameters import Parameters
@@ -15,11 +17,27 @@ class Network(base.generator.Network):
         pass
 
     def forward_onestep(self, prev_h, prev_c, prev_u, prev_z, v, r):
-        conditioned_h = 9
-        forget_gate = F.sigmoid(self.params.Wf(conditioned_h))
-        input_gate = F.sigmoid(self.params.Wi(conditioned_h))
-        next_c = forget_gate * prev_c + input_gate * F.tanh(
-            self.params.Wz(conditioned_h))
-        next_h = F.sigmoid(self.params.Wo(conditioned_h)) * F.tanh(next_c)
-        next_u = self.params.upsampler(next_h)
+        broadcast_shape = (
+            prev_h.shape[0],
+            v.shape[1],
+        ) + prev_h.shape[2:]
+        v = cf.broadcast_to(v, shape=broadcast_shape)
+        lstm_in = cf.concat((prev_h, v, r, prev_z), axis=1)
+        forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))
+        input_gate = cf.sigmoid(self.params.lstm_i(lstm_in))
+        next_c = forget_gate * prev_c + input_gate * cf.tanh(
+            self.params.lstm_tanh(lstm_in))
+        next_h = cf.sigmoid(self.params.lstm_o(lstm_in)) * cf.tanh(next_c)
+        next_u = self.params.deconv_h(next_h) + prev_u
         return next_h, next_c, next_u
+
+    def sample_z(self, h):
+        xp = cupy.get_array_module(h)
+        mean = self.params.mean_z(h)
+        return cf.gaussian(mean, xp.zeros_like(mean))
+
+    def sample_x(self, u):
+        xp = cupy.get_array_module(u)
+        mean = self.params.mean_x(u)
+        return cf.gaussian(mean, xp.full_like(u,
+                                              math.log(self.params.sigma_t)))

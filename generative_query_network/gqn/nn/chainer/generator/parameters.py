@@ -3,11 +3,19 @@ import chainer.links as L
 
 
 class Parameters(chainer.Chain):
-    def __init__(self, image_size=(64, 64), ndim_u=32):
+    def __init__(self, channels_chrz, channels_u, sigma_t):
         super().__init__(
-            Wz=L.Convolution2D(None, 128, ksize=5, stride=1, pad=1),
-            Wi=L.Convolution2D(None, 128, ksize=5, stride=1, pad=1),
-            Wf=L.Convolution2D(None, 128, ksize=5, stride=1, pad=1),
-            Wo=L.Convolution2D(None, 128, ksize=5, stride=1, pad=1),
-            upsampler=L.Deconvolution2D(
-                None, ndim_u, ksize=4, stride=4, pad=0))
+            lstm_tanh=L.Convolution2D(
+                None, channels_chrz, ksize=5, stride=1, pad=1),
+            lstm_i=L.Convolution2D(
+                None, channels_chrz, ksize=5, stride=1, pad=1),
+            lstm_f=L.Convolution2D(
+                None, channels_chrz, ksize=5, stride=1, pad=1),
+            lstm_o=L.Convolution2D(
+                None, channels_chrz, ksize=5, stride=1, pad=1),
+            mean_z=L.Convolution2D(
+                None, channels_chrz, ksize=5, stride=1, pad=1),
+            mean_x=L.Convolution2D(None, 3, ksize=1, stride=1, pad=0),
+            deconv_h=L.Deconvolution2D(
+                None, channels_u, ksize=4, stride=4, pad=0))
+        self.sigma_t = sigma_t
