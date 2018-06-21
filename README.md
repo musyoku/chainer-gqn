@@ -6,13 +6,15 @@
 
 **Todo**
 
-- [x] レンダラーの実装 / OpenGL Renderer
+- [x] OpenGL Renderer
 - Chainer
-    - [x] ニューラルネットの実装 / Neural network
-    - [ ] 学習 / Training
+    - [x] Implement GQN
+    - [x] Implement training loop
+    - [ ] Debug
 - PyTorch
-    - [ ] ニューラルネットの実装 / Neural network
-    - [ ] 学習 / Training
+    - [ ] Implement GQN
+    - [ ] Implement training loop
+    - [ ] Debug
 
 # Requirements
 
