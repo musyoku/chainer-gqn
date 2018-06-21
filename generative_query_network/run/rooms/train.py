@@ -108,18 +108,23 @@ def main():
             dtype="float32")
 
         loss_kld = 0
+        he_l = he_0
+        ce_l = ce_0
+        hg_l = hg_0
+        cg_l = cg_0
+        u_l = u_0
         for l in range(hyperparams.generator_total_timestep):
-            zg_l = model.generation_network.sample_z(hg_0)
-            hg_l, cg_l, u_l = model.generation_network.forward_onestep(
-                hg_0, cg_0, u_0, zg_l, query_viewpoints, r)
-            x = model.generation_network.sample_x(u_l)
+            # zg_l = model.generation_network.sample_z(hg_l)
+            # hg_l, cg_l, u_l = model.generation_network.forward_onestep(
+            #     hg_0, cg_0, u_0, zg_l, query_viewpoints, r)
+            # x = model.generation_network.sample_x(u_l)
 
-            he_l, ce_l = model.inference_network.forward_onestep(
-                hg_0, he_0, ce_0, query_images, query_viewpoints, r)
+            he_next, ce_next = model.inference_network.forward_onestep(
+                hg_l, he_l, ce_l, query_images, query_viewpoints, r)
             mu_z_q = model.inference_network.compute_mu_z(he_l)
             ze_l = cf.gaussian(mu_z_q, xp.zeros_like(mu_z_q))
-            hg_l, cg_l, u_l = model.generation_network.forward_onestep(
-                hg_0, cg_0, u_0, ze_l, query_viewpoints, r)
+            hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                hg_l, cg_0, u_l, ze_l, query_viewpoints, r)
             mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
             kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
@@ -127,10 +132,19 @@ def main():
 
             loss_kld += cf.mean(kld)
 
+            hg_l = hg_next
+            cg_l = cg_next
+            u_l = u_next
+            he_l = he_next
+            ce_l = ce_next
+
+
         mu_x = model.generation_network.compute_mu_x(u_l)
         negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
             query_images, mu_x)
         loss_nll = cf.mean(negative_log_likelihood)
+
+        print(loss_nll, loss_kld)
 
 
 if __name__ == "__main__":
