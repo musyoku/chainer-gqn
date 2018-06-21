@@ -47,8 +47,8 @@ class Network(base.generator.Network):
         mean = self.params.mean_x(u)
         return mean
 
-    def sample_x(self, u):
+    def sample_x(self, u, sigma_t):
         xp = cupy.get_array_module(u.data)
         mean = self.compute_mu_x(u)
         return cf.gaussian(mean,
-                           xp.full_like(mean, math.log(self.params.sigma_t)))
+                           xp.full_like(mean, math.log(sigma_t)))

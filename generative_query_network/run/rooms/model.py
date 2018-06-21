@@ -13,8 +13,7 @@ class Model():
         self.generation_network, self.generation_network_params = self.build_generation_network(
             total_timestep=hyperparams.generator_total_timestep,
             channels_chrz=hyperparams.channels_chz,
-            channels_u=hyperparams.generator_u_channels,
-            sigma_t=hyperparams.generator_sigma_t)
+            channels_u=hyperparams.generator_u_channels)
 
         self.inference_network, self.inference_network_params = self.build_inference_network(
             channels_chrz=hyperparams.channels_chz)
@@ -24,11 +23,9 @@ class Model():
             channels_r=hyperparams.channels_r)
 
     def build_generation_network(self, total_timestep, channels_chrz,
-                                 channels_u, sigma_t):
+                                 channels_u):
         params = gqn.nn.chainer.generator.Parameters(
-            channels_chrz=channels_chrz,
-            channels_u=channels_u,
-            sigma_t=sigma_t)
+            channels_chrz=channels_chrz, channels_u=channels_u)
         network = gqn.nn.chainer.generator.Network(
             params=params, total_timestep=total_timestep)
         return network, params

@@ -2,6 +2,7 @@ import argparse
 import sys
 import os
 import random
+import math
 import numpy as np
 import cupy as xp
 import chainer
@@ -107,6 +108,8 @@ def main():
             ) + hyperparams.chrz_size,
             dtype="float32")
 
+        sigma_t = 1.0
+
         loss_kld = 0
         he_l = he_0
         ce_l = ce_0
@@ -138,10 +141,9 @@ def main():
             he_l = he_next
             ce_l = ce_next
 
-
         mu_x = model.generation_network.compute_mu_x(u_l)
         negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-            query_images, mu_x)
+            query_images, mu_x, xp.full_like(mu_x, math.log(sigma_t)))
         loss_nll = cf.mean(negative_log_likelihood)
 
         print(loss_nll, loss_kld)
