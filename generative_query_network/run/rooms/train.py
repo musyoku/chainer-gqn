@@ -12,6 +12,7 @@ sys.path.append(os.path.join("..", ".."))
 import gqn
 from hyper_parameters import HyperParameters
 from model import Model
+from optimizer import Optimizer
 
 
 def main():
@@ -22,6 +23,8 @@ def main():
     hyperparams = HyperParameters()
     model = Model(hyperparams)
     model.to_gpu()
+
+    optimizer = Optimizer(model.parameters)
 
     for indices in iterator:
         # shape: (batch, views, height, width, channels)
@@ -145,13 +148,17 @@ def main():
         negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
             query_images, mu_x, xp.full_like(mu_x, math.log(sigma_t)))
         loss_nll = cf.mean(negative_log_likelihood)
-
-        print(loss_nll, loss_kld)
+        loss = loss_nll + loss_kld
+        model.cleargrads()
+        loss.backward()
+        optimizer.step()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-path", type=str, default="rooms_dataset")
-    parser.add_argument("--batch-size", "-b", type=int, default=32)
+    parser.add_argument("--batch-size", "-b", type=int, default=36)
+    parser.add_argument(
+        "--training-steps", "-smax", type=int, default=2 * 10**6)
     args = parser.parse_args()
     main()

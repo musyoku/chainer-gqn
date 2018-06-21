@@ -1,5 +1,6 @@
 import os
 import sys
+import chainer
 
 sys.path.append(os.path.join("..", ".."))
 import gqn
@@ -21,6 +22,12 @@ class Model():
         self.representation_network, self.representation_network_params = self.build_representation_network(
             architecture=hyperparams.representation_architecture,
             channels_r=hyperparams.channels_r)
+
+        self.parameters = chainer.Chain(
+            g=self.generation_network_params,
+            i=self.inference_network_params,
+            r=self.representation_network_params,
+        )
 
     def build_generation_network(self, total_timestep, channels_chrz,
                                  channels_u):
@@ -46,6 +53,7 @@ class Model():
         raise NotImplementedError
 
     def to_gpu(self):
-        self.generation_network_params.to_gpu()
-        self.inference_network_params.to_gpu()
-        self.representation_network_params.to_gpu()
+        self.parameters.to_gpu()
+
+    def cleargrads(self):
+        self.parameters.cleargrads()
