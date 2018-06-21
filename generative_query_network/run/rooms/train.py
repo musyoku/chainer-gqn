@@ -124,7 +124,7 @@ def main():
             mu_z_q = model.inference_network.compute_mu_z(he_l)
             ze_l = cf.gaussian(mu_z_q, xp.zeros_like(mu_z_q))
             hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                hg_l, cg_0, u_l, ze_l, query_viewpoints, r)
+                hg_l, cg_l, u_l, ze_l, query_viewpoints, r)
             mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
             kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
