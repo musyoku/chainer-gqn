@@ -176,8 +176,9 @@ def main():
                     1, 2, 0)) + 1) * 0.5 * 255))
             axis2.update(
                 np.uint8(
-                    (chainer.cuda.to_cpu(x.data[0].transpose(1, 2, 0)) + 1) *
-                    0.5 * 255))
+                    np.clip(
+                        (chainer.cuda.to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
+                        * 0.5 * 255, 0, 255)))
 
             loss = loss_nll + loss_kld
             model.cleargrads()
