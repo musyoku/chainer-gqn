@@ -1,13 +1,15 @@
 CXX = g++
-INCLUDE = -I./external `pkg-config --cflags glfw3` `python3 -m pybind11 --includes`
-LDFLAGS = `pkg-config --static --libs glfw3`
-FLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -shared -std=c++14 -fPIC -pthread
-SOURCES = ./external/gl3w/*.c \
-		  ./core/base/*.cpp \
-		  ./core/camera/*.cpp \
-		  ./core/renderer/*.cpp \
-		  ./core/scene/*.cpp
-EXTENSION = `python3-config --extension-suffix`
+INCLUDE = -I./external $(shell pkg-config --cflags glfw3) $(shell python3 -m pybind11 --includes)
+LDFLAGS = $(shell pkg-config --static --libs glfw3) -shared -pthread
+CXXFLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -std=c++14 -fPIC
+SOURCES = $(wildcard ./external/gl3w/*.c) \
+		  $(wildcard ./core/base/*.cpp) \
+		  $(wildcard ./core/camera/*.cpp) \
+		  $(wildcard ./core/renderer/*.cpp) \
+		  $(wildcard ./core/scene/*.cpp) \
+		  pybind/three.cpp
+OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
+EXTENSION = $(shell python3-config --extension-suffix)
 OUTPUT = ../generative_query_network/gqn
 
 UNAME := $(shell uname -s)
@@ -18,5 +20,11 @@ ifeq ($(UNAME), Darwin)
 	LDFLAGS += -framework OpenGL -undefined dynamic_lookup
 endif
 
-make: 
-	$(CXX) $(FLAGS) $(INCLUDE) $(SOURCES) $(LDFLAGS) pybind/three.cpp -o $(OUTPUT)/three$(EXTENSION)
+$(OUTPUT)/three$(EXTENSION): $(OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS)
+
+.c.o:
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
