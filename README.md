@@ -6,10 +6,13 @@
 
 **Todo**
 
-- [x] レンダラーの実装 / Simulator
-- [x] ニューラルネットの実装 / Neural network
-- [ ] 学習 / Training
-- [ ] PyTorch
+- [x] レンダラーの実装 / OpenGL Renderer
+- Chainer
+    - [x] ニューラルネットの実装 / Neural network
+    - [ ] 学習 / Training
+- PyTorch
+    - [ ] ニューラルネットの実装 / Neural network
+    - [ ] 学習 / Training
 
 # Requirements
 
