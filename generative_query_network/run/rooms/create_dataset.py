@@ -44,7 +44,8 @@ def main():
             num_objects=random.choice([x for x in range(1, 6)]))
         renderer.set_scene(scene)
 
-        scene_data = gqn.data.archiver.SceneData(screen_size, args.num_views_per_scene)
+        scene_data = gqn.data.archiver.SceneData(screen_size,
+                                                 args.num_views_per_scene)
 
         for _ in range(args.num_views_per_scene):
             eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
@@ -63,21 +64,23 @@ def main():
             normalized_image = (image / 255 - 0.5) * 2.0
 
             scene_data.add(normalized_image, eye, math.cos(yaw), math.cos(yaw),
-                        math.sin(pitch), math.sin(pitch))
+                           math.sin(pitch), math.sin(pitch))
 
             if args.with_visualization:
                 axis.update(np.uint8(image))
 
-            tick += 1
-            if tick % 5000 == 0:
-                print("{} / {} fps:{}".format(
-                    tick, args.total_observations,
-                    int(tick / (time.time() - start))))
-
             if args.with_visualization and window.closed():
                 return
 
+        tick += 1
+        if tick % 5000 == 0:
+            print("{} / {} fps:{}".format(tick, args.total_observations,
+                                          int(tick / (time.time() - start))))
+
         dataset.add(scene_data)
+
+        if tick >= args.total_observations:
+            return
 
 
 if __name__ == "__main__":
