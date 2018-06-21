@@ -65,7 +65,6 @@ class Network(base.generator.Network):
     def compute_mu_x(self, u):
         return self.params.mean_x(u)
 
-    def sample_x(self, u, sigma_t):
-        xp = get_array_module(u)
+    def sample_x(self, u, ln_var):
         mean = self.compute_mu_x(u)
-        return cf.gaussian(mean, xp.full_like(mean, math.log(sigma_t**2)))
+        return cf.gaussian(mean, ln_var)

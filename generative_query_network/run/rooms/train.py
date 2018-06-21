@@ -42,10 +42,14 @@ def main():
     window.show()
 
     sigma_t = hyperparams.pixel_sigma_i
-    pixel_var = xp.full((args.batch_size, 3) + hyperparams.image_size, sigma_t
-                        **2)
-    pixel_ln_var = xp.full((args.batch_size, 3) + hyperparams.image_size,
-                           math.log(sigma_t**2))
+    pixel_var = xp.full(
+        (args.batch_size, 3) + hyperparams.image_size,
+        sigma_t**2,
+        dtype="float32")
+    pixel_ln_var = xp.full(
+        (args.batch_size, 3) + hyperparams.image_size,
+        math.log(sigma_t**2),
+        dtype="float32")
 
     for iteration in range(args.training_steps):
         for batch_index, data_indices in enumerate(iterator):
@@ -170,15 +174,15 @@ def main():
 
             loss_nll = cf.mean(negative_log_likelihood)
 
-            x = model.generation_network.sample_x(u_l, sigma_t)
-            axis1.update(
-                np.uint8((chainer.cuda.to_cpu(query_images[0].transpose(
-                    1, 2, 0)) + 1) * 0.5 * 255))
-            axis2.update(
-                np.uint8(
-                    np.clip(
-                        (chainer.cuda.to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
-                        * 0.5 * 255, 0, 255)))
+            if window.closed() is False:
+                x = model.generation_network.sample_x(u_l, pixel_ln_var)
+                axis1.update(
+                    np.uint8((chainer.cuda.to_cpu(query_images[0].transpose(
+                        1, 2, 0)) + 1) * 0.5 * 255))
+                axis2.update(
+                    np.uint8(
+                        np.clip((chainer.cuda.to_cpu(x.data[0].transpose(
+                            1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
             loss = loss_nll + loss_kld
             model.cleargrads()

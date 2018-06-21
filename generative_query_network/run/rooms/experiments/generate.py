@@ -38,6 +38,16 @@ def main():
     window = gqn.imgplot.Window(figure, (800, 800))
     window.show()
 
+    sigma_t = hyperparams.pixel_sigma_f
+    pixel_var = xp.full(
+        (args.batch_size, 3) + hyperparams.image_size,
+        sigma_t**2,
+        dtype="float32")
+    pixel_ln_var = xp.full(
+        (args.batch_size, 3) + hyperparams.image_size,
+        math.log(sigma_t**2),
+        dtype="float32")
+
     with chainer.using_config("train", False), chainer.using_config(
             "enable_backprop", False):
         for data_indices in iterator:
@@ -127,14 +137,18 @@ def main():
                 u_l = u_next
 
             generate_images = model.generation_network.sample_x(
-                u_l, hyperparams.pixel_sigma_f)
+                u_l, pixel_ln_var)
             generate_images = chainer.cuda.to_cpu(generate_images.data)
             generate_images = generate_images.transpose(0, 2, 3, 1)
+
+            if window.closed():
+                exit()
 
             for batch_index in range(args.batch_size):
                 axis = axes[batch_index]
                 image = generate_images[batch_index]
-                axis.update(np.uint8((image + 1.0) * 0.5 * 255))
+                axis.update(
+                    np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
 
 
 if __name__ == "__main__":
