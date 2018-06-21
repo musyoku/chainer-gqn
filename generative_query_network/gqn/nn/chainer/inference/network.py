@@ -19,8 +19,10 @@ class Network(base.inference.Network):
         ) + prev_h_e.shape[2:]
         v = cf.reshape(v, v.shape + (1, 1))
         v = cf.broadcast_to(v, shape=broadcast_shape)
+
         x = cf.relu(self.params.conv_x_1(x))
         x = cf.relu(self.params.conv_x_2(x))
+
         lstm_in = cf.concat((prev_h_e, prev_h_g, x, v, r), axis=1)
         forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))
         input_gate = cf.sigmoid(self.params.lstm_i(lstm_in))
