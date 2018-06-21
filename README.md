@@ -47,6 +47,12 @@ cd imgplot
 make
 ```
 
+**Chainer**
+
+```
+pip3 install chainer cupy h5py
+```
+
 # Dataset
 
 ## Rooms with multiple objects
