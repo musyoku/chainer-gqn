@@ -39,10 +39,6 @@ def main():
     window.show()
 
     sigma_t = hyperparams.pixel_sigma_f
-    pixel_var = xp.full(
-        (args.batch_size, 3) + hyperparams.image_size,
-        sigma_t**2,
-        dtype="float32")
     pixel_ln_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
