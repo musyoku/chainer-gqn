@@ -75,7 +75,7 @@ out vec4 frag_color;
 void main(){
     float light_distance = length(light_direction);
     float attenuation = clamp(1.0 / (qa * light_distance * light_distance), 0.0f, 1.0f);
-    vec3 half = normalize(face_direction.xyz) - normalize(light_direction.xyz);
+    // vec3 half = normalize(face_direction.xyz) - normalize(light_direction.xyz);
     float diffuse = clamp(dot(normalize(face_direction.xyz), -normalize(light_direction)), 0.0f, 1.0f);
     float power = pow(diffuse, 10.0);
     frag_color = vec4((attenuation) * object_color.xyz, 1.0);

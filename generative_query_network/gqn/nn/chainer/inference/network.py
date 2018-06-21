@@ -14,15 +14,17 @@ class Network(base.inference.Network):
         self.params = params
 
     def forward_onestep(self, prev_h_g, prev_h_e, prev_c_e, x, v, r):
+        xp = get_array_module(v)
         broadcast_shape = (
             prev_h_e.shape[0],
             v.shape[1],
         ) + prev_h_e.shape[2:]
-        v = cf.reshape(v, v.shape + (1, 1))
-        v = cf.broadcast_to(v, shape=broadcast_shape)
+        v = xp.reshape(v, v.shape + (1, 1))
+        v = xp.broadcast_to(v, shape=broadcast_shape)
 
         x = cf.relu(self.params.conv_x_1(x))
         x = cf.relu(self.params.conv_x_2(x))
+
 
         lstm_in = cf.concat((prev_h_e, prev_h_g, x, v, r), axis=1)
         forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))
@@ -33,9 +35,7 @@ class Network(base.inference.Network):
         return next_h, next_c
 
     def compute_mu_z(self, h):
-        xp = get_array_module(h)
-        mean = self.params.mean_z(h)
-        return mean
+        return self.params.mean_z(h)
 
     def sample_z(self, h):
         xp = get_array_module(h)

@@ -7,14 +7,14 @@ class Optimizer:
             self,
             model_parameters,
             # Learning rate at training step s with annealing
-            mu_i=5.0 * 0.1**4,
-            mu_f=5.0 * 0.1**5,
+            mu_i=5.0 * 1e-4,
+            mu_f=5.0 * 1e-5,
             n=1.6 * 10 * 6,
             # Learning rate as used by the Adam algorithm
             beta_1=0.9,
             beta_2=0.99,
             # Adam regularisation parameter
-            eps=0.1**8):
+            eps=1e-8):
         self.mu_i = mu_i
         self.mu_f = mu_f
         self.n = n
@@ -36,5 +36,6 @@ class Optimizer:
     def anneal_learning_rate(self, training_step):
         self.optimizer.hyperparam.alpha = self.mu_s(training_step)
 
-    def step(self):
+    def step(self, training_step):
         self.optimizer.update()
+        self.optimizer.alpha = self.mu_s(training_step)

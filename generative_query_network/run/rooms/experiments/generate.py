@@ -131,7 +131,6 @@ def main():
             generate_images = chainer.cuda.to_cpu(generate_images.data)
             generate_images = generate_images.transpose(0, 2, 3, 1)
 
-
             for batch_index in range(args.batch_size):
                 axis = axes[batch_index]
                 image = generate_images[batch_index]
