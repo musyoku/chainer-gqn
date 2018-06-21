@@ -136,17 +136,17 @@ def main():
                 cg_l = cg_next
                 u_l = u_next
 
-            generate_images = model.generation_network.sample_x(
+            generated_images = model.generation_network.sample_x(
                 u_l, pixel_ln_var)
-            generate_images = chainer.cuda.to_cpu(generate_images.data)
-            generate_images = generate_images.transpose(0, 2, 3, 1)
+            generated_images = chainer.cuda.to_cpu(generated_images.data)
+            generated_images = generated_images.transpose(0, 2, 3, 1)
 
             if window.closed():
                 exit()
 
             for batch_index in range(args.batch_size):
                 axis = axes[batch_index]
-                image = generate_images[batch_index]
+                image = generated_images[batch_index]
                 axis.update(
                     np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
 
