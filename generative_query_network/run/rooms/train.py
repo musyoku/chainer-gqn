@@ -41,8 +41,8 @@ def main():
             # (batch, views, height, width, channels) -> (batch * views, height, width, channels)
             observed_images = observed_images.reshape(
                 (args.batch_size * num_views, ) + observed_images.shape[2:])
-            observed_viewpoints = observed_viewpoints.reshape(
-                (args.batch_size * num_views, ) + observed_viewpoints.shape[2:])
+            observed_viewpoints = observed_viewpoints.reshape((
+                args.batch_size * num_views, ) + observed_viewpoints.shape[2:])
 
             # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
             observed_images = observed_images.transpose((0, 3, 1, 2))
@@ -56,11 +56,15 @@ def main():
 
             # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
             r = r.reshape((args.batch_size, num_views) + r.shape[1:])
-            
+
             # sum element-wise across views
             r = cf.sum(r, axis=1)
         else:
-            r = None
+            r = np.zeros(
+                (args.batch_size, hyperparams.channels_r) +
+                hyperparams.chrz_size,
+                dtype="float32")
+            r = chainer.cuda.to_gpu(r)
 
         query_images = images[:, query_index]
         query_viewpoints = viewpoints[:, query_index]
@@ -103,18 +107,30 @@ def main():
             ) + hyperparams.chrz_size,
             dtype="float32")
 
-        zg_l = model.generation_network.sample_z(hg_0)
-        hg_l, cg_l, u_l = model.generation_network.forward_onestep(
-            hg_0, cg_0, u_0, zg_l, query_viewpoints, r)
-        x = model.generation_network.sample_x(u_l)
+        loss_kld = 0
+        for l in range(hyperparams.generator_total_timestep):
+            zg_l = model.generation_network.sample_z(hg_0)
+            hg_l, cg_l, u_l = model.generation_network.forward_onestep(
+                hg_0, cg_0, u_0, zg_l, query_viewpoints, r)
+            x = model.generation_network.sample_x(u_l)
 
-        he_l, ce_l = model.inference_network.forward_onestep(
-            hg_0, he_0, ce_0, query_images, query_viewpoints, r)
-        ze_l = model.inference_network.sample_z(he_l)
-        hg_l, cg_l, u_l = model.generation_network.forward_onestep(
-            hg_0, cg_0, u_0, ze_l, query_viewpoints, r)
+            he_l, ce_l = model.inference_network.forward_onestep(
+                hg_0, he_0, ce_0, query_images, query_viewpoints, r)
+            mu_z_q = model.inference_network.compute_mu_z(he_l)
+            ze_l = cf.gaussian(mu_z_q, xp.zeros_like(mu_z_q))
+            hg_l, cg_l, u_l = model.generation_network.forward_onestep(
+                hg_0, cg_0, u_0, ze_l, query_viewpoints, r)
+            mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
-        return
+            kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                mu_z_q, mu_z_p)
+
+            loss_kld += cf.mean(kld)
+
+        mu_x = model.generation_network.compute_mu_x(u_l)
+        negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+            query_images, mu_x)
+        loss_nll = cf.mean(negative_log_likelihood)
 
 
 if __name__ == "__main__":

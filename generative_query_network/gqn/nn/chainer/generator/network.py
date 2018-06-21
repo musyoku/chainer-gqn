@@ -32,13 +32,23 @@ class Network(base.generator.Network):
         next_u = self.params.deconv_h(next_h) + prev_u
         return next_h, next_c, next_u
 
+    def compute_mu_z(self, h):
+        xp = cupy.get_array_module(h.data)
+        mean = self.params.mean_z(h)
+        return mean
+
     def sample_z(self, h):
         xp = cupy.get_array_module(h)
-        mean = self.params.mean_z(h)
+        mean = self.compute_mu_z(h)
         return cf.gaussian(mean, xp.zeros_like(mean))
+
+    def compute_mu_x(self, u):
+        xp = cupy.get_array_module(u.data)
+        mean = self.params.mean_x(u)
+        return mean
 
     def sample_x(self, u):
         xp = cupy.get_array_module(u.data)
-        mean = self.params.mean_x(u)
-        return cf.gaussian(mean, xp.full_like(mean,
-                                              math.log(self.params.sigma_t)))
+        mean = self.compute_mu_x(u)
+        return cf.gaussian(mean,
+                           xp.full_like(mean, math.log(self.params.sigma_t)))

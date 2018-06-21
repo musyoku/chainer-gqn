@@ -4,3 +4,6 @@ class Network:
 
     def sample_z(self, h):
         raise NotImplementedError
+
+    def compute_mu_z(self, h):
+        raise NotImplementedError
