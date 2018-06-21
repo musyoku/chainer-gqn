@@ -1,5 +1,13 @@
 import math
+import cupy
+import chainer
 import chainer.functions as cf
+
+
+def get_array_module(array):
+    if isinstance(array, chainer.Variable):
+        return cupy.get_array_module(array.data)
+    return cupy.get_array_module(array)
 
 
 def gaussian_kl_divergence(mu_q, mu_p):

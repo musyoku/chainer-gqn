@@ -5,6 +5,7 @@ import math
 
 from ... import base
 from .parameters import Parameters
+from ..functions import get_array_module
 
 
 class Network(base.generator.Network):
@@ -33,22 +34,22 @@ class Network(base.generator.Network):
         return next_h, next_c, next_u
 
     def compute_mu_z(self, h):
-        xp = cupy.get_array_module(h.data)
+        xp = get_array_module(h)
         mean = self.params.mean_z(h)
         return mean
 
     def sample_z(self, h):
-        xp = cupy.get_array_module(h)
+        xp = get_array_module(h)
         mean = self.compute_mu_z(h)
         return cf.gaussian(mean, xp.zeros_like(mean))
 
     def compute_mu_x(self, u):
-        xp = cupy.get_array_module(u.data)
+        xp = get_array_module(u)
         mean = self.params.mean_x(u)
         return mean
 
     def sample_x(self, u, sigma_t):
-        xp = cupy.get_array_module(u.data)
+        xp = get_array_module(u)
         mean = self.compute_mu_x(u)
         return cf.gaussian(mean,
                            xp.full_like(mean, math.log(sigma_t)))

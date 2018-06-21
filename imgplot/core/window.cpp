@@ -83,7 +83,7 @@ void Window::_run()
         int screen_width, screen_height;
         glfwGetFramebufferSize(_shared_window, &screen_width, &screen_height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.9, 0.9, 0.9, 1.0);
+        glClearColor(0, 0, 0, 1.0);
 
         for (const auto& view : _images) {
             _render_view(view.get());

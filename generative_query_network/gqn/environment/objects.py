@@ -1,13 +1,14 @@
 import os
 from .. import geometry, three, color
 
-
 def generate_donut():
     pass
 
+def get_realpath():
+    return os.path.realpath(__file__).replace("/gqn/environment/objects.py", "")
 
 def load_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
-    vertices, faces = geometry.load("../../geometries/{}".format(name))
+    vertices, faces = geometry.load("{}/geometries/{}".format(get_realpath(), name))
     return three.Object(faces, vertices, color, scale), vertices, faces
 
 
@@ -69,7 +70,7 @@ def available_names():
 # Object allocation is heavy
 # See three/core/scene/object.cpp
 object_cache = {}
-geometories = os.listdir("../../geometries")
+geometories = os.listdir("{}/geometries".format(get_realpath()))
 for object_name in geometories:
     obj, vertices, _ = load_object(object_name)
     object_cache[object_name] = (obj, vertices)

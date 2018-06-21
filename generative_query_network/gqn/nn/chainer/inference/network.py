@@ -5,6 +5,7 @@ import math
 
 from ... import base
 from .parameters import Parameters
+from ..functions import get_array_module
 
 
 class Network(base.inference.Network):
@@ -32,11 +33,11 @@ class Network(base.inference.Network):
         return next_h, next_c
 
     def compute_mu_z(self, h):
-        xp = cupy.get_array_module(h.data)
+        xp = get_array_module(h)
         mean = self.params.mean_z(h)
         return mean
 
     def sample_z(self, h):
-        xp = cupy.get_array_module(h.data)
+        xp = get_array_module(h)
         mean = self.compute_mu_z(h)
         return cf.gaussian(mean, xp.zeros_like(mean))
