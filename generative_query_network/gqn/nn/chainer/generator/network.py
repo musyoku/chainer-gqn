@@ -32,24 +32,25 @@ class Network(base.generator.Network):
         next_c = forget_gate * prev_c + input_gate * cf.tanh(
             self.params.lstm_tanh(lstm_in))
         next_h = cf.sigmoid(self.params.lstm_o(lstm_in)) * cf.tanh(next_c)
-        
-        # next_u = self.params.deconv_h(next_h) + prev_u
-        next_u = self.upsample_h(next_h) + prev_u
+
+        next_u = self.params.deconv_h(next_h) + prev_u
+        # next_u = self.upsample_h(next_h) + prev_u
 
         return next_h, next_c, next_u
 
     # pixel shuffler
     def upsample_h(self, h):
         r = 4
-        out = self.params.pixel_shuffle(h) # 畳み込み
+        out = self.params.pixel_shuffle(h)  # 畳み込み
         batchsize = out.shape[0]
         in_channels = out.shape[1]
-        out_channels = in_channels // (r ** 2)
+        out_channels = in_channels // (r**2)
         in_height = out.shape[2]
         in_width = out.shape[3]
         out_height = in_height * r
         out_width = in_width * r
-        out = cf.reshape(out, (batchsize, r, r, out_channels, in_height, in_width))
+        out = cf.reshape(out,
+                         (batchsize, r, r, out_channels, in_height, in_width))
         out = cf.transpose(out, (0, 3, 4, 1, 5, 2))
         out = cf.reshape(out, (batchsize, out_channels, out_height, out_width))
         return out
@@ -60,7 +61,8 @@ class Network(base.generator.Network):
     def sample_z(self, h):
         xp = get_array_module(h)
         mean = self.compute_mu_z(h)
-        return cf.gaussian(mean, xp.zeros_like(mean))
+        ln_var = xp.zeros_like(mean)
+        return cf.gaussian(mean, ln_var)
 
     def compute_mu_x(self, u):
         return self.params.mean_x(u)
