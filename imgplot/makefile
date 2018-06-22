@@ -12,6 +12,7 @@ SOURCES = 	$(wildcard ./external/gl3w/*.c) \
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
 EXTENSION = $(shell python3-config --extension-suffix)
 OUTPUT = ../generative_query_network/gqn
+TARGET = $(OUTPUT)/imgplot$(EXTENSION)
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Linux)
@@ -21,7 +22,7 @@ ifeq ($(UNAME), Darwin)
 	LDFLAGS += -framework OpenGL -undefined dynamic_lookup
 endif
 
-$(OUTPUT)/imgplot$(EXTENSION): $(OBJS)
+$(TARGET): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS)
 
 .c.o:
@@ -29,3 +30,7 @@ $(OUTPUT)/imgplot$(EXTENSION): $(OBJS)
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+.PHONY: clean
+clean:
+	rm -f $(OBJS) $(TARGET)
