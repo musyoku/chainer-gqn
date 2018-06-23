@@ -208,6 +208,12 @@ def main():
 
             loss_nll = cf.mean(negative_log_likelihood)
 
+            loss = loss_nll + loss_kld
+            model.cleargrads()
+            loss.backward()
+            optimizer_all.step(current_training_step)
+
+
             if window.closed() is False:
                 x = model.generation_network.sample_x(ue_l, pixel_ln_var)
                 axis1.update(
@@ -217,11 +223,6 @@ def main():
                     np.uint8(
                         np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1) *
                                 0.5 * 255, 0, 255)))
-
-            loss = loss_nll + loss_kld
-            model.cleargrads()
-            loss.backward()
-            optimizer_inference.step(current_training_step)
 
             # hg_l = hg_0
             # cg_l = cg_0
