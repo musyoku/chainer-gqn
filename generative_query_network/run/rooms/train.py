@@ -127,7 +127,7 @@ def main():
                     (args.batch_size, hyperparams.channels_r) +
                     hyperparams.chrz_size,
                     dtype="float32")
-                r = to_gpu(r)
+                r = chainer.Variable(to_gpu(r))
 
             query_images = images[:, query_index]
             query_viewpoints = viewpoints[:, query_index]
@@ -179,7 +179,7 @@ def main():
             ug_l = u_0
             for l in range(hyperparams.generator_total_timestep):
                 he_next, ce_next = model.inference_network.forward_onestep(
-                    hg_l, he_l, ce_l, query_images, query_viewpoints, r)
+                    hg_l, he_l, ce_l, query_images, query_viewpoints, r.data)
 
                 mu_z_q = model.inference_network.compute_mu_z(he_l)
                 ze_l = cf.gaussian(mu_z_q, z_ln_var)
@@ -211,49 +211,49 @@ def main():
             if window.closed() is False:
                 x = model.generation_network.sample_x(ue_l, pixel_ln_var)
                 axis1.update(
-                    np.uint8((to_cpu(query_images[0].transpose(
-                        1, 2, 0)) + 1) * 0.5 * 255))
+                    np.uint8((to_cpu(query_images[0].transpose(1, 2, 0)) + 1) *
+                             0.5 * 255))
                 axis2.update(
                     np.uint8(
-                        np.clip((to_cpu(x.data[0].transpose(
-                            1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
+                        np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1) *
+                                0.5 * 255, 0, 255)))
 
             loss = loss_nll + loss_kld
             model.cleargrads()
-            loss_kld.backward()
+            loss.backward()
             optimizer_inference.step(current_training_step)
 
-            hg_l = hg_0
-            cg_l = cg_0
-            ug_l = u_0
-            for l in range(hyperparams.generator_total_timestep):
-                zg_l = model.generation_network.sample_z(hg_l)
-                hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                    hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
+            # hg_l = hg_0
+            # cg_l = cg_0
+            # ug_l = u_0
+            # for l in range(hyperparams.generator_total_timestep):
+            #     zg_l = model.generation_network.sample_z(hg_l)
+            #     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+            #         hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
 
-                hg_l = hg_next
-                cg_l = cg_next
-                ug_l = u_next
+            #     hg_l = hg_next
+            #     cg_l = cg_next
+            #     ug_l = u_next
 
-            mu_x = model.generation_network.compute_mu_x(ug_l)
-            negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                query_images, mu_x, pixel_var, pixel_ln_var)
+            # mu_x = model.generation_network.compute_mu_x(ug_l)
+            # negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+            #     query_images, mu_x, pixel_var, pixel_ln_var)
 
-            loss_nll = cf.mean(negative_log_likelihood)
+            # loss_nll = cf.mean(negative_log_likelihood)
 
-            model.cleargrads()
-            loss_nll.backward()
-            optimizer_generation.step(current_training_step)
+            # model.cleargrads()
+            # loss_nll.backward()
+            # optimizer_generation.step(current_training_step)
 
-            if window.closed() is False:
-                x = model.generation_network.sample_x(ug_l, pixel_ln_var)
-                axis1.update(
-                    np.uint8((to_cpu(query_images[0].transpose(
-                        1, 2, 0)) + 1) * 0.5 * 255))
-                axis2.update(
-                    np.uint8(
-                        np.clip((to_cpu(x.data[0].transpose(
-                            1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
+            # if window.closed() is False:
+            #     x = model.generation_network.sample_x(ug_l, pixel_ln_var)
+            #     axis1.update(
+            #         np.uint8((to_cpu(query_images[0].transpose(
+            #             1, 2, 0)) + 1) * 0.5 * 255))
+            #     axis2.update(
+            #         np.uint8(
+            #             np.clip((to_cpu(x.data[0].transpose(
+            #                 1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
             print(
                 "Iteration {}: {} / {} - loss: {:3f} {:3f} - lr: {:.4e} {:.4e} - sigma_t: {}".
