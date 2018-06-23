@@ -1,6 +1,7 @@
 import os
 import sys
 import chainer
+import uuid
 from chainer.serializers import load_hdf5, save_hdf5
 
 sys.path.append(os.path.join("..", ".."))
@@ -25,21 +26,30 @@ class Model():
             channels_r=hyperparams.channels_r)
 
         if hdf5_path:
-            load_hdf5(
-                os.path.join(hdf5_path, "generation.hdf5"),
-                self.generation_network_params)
-            load_hdf5(
-                os.path.join(hdf5_path, "inference.hdf5"),
-                self.inference_network_params)
-            load_hdf5(
-                os.path.join(hdf5_path, "representation.hdf5"),
-                self.representation_network_params)
+            try:
+                load_hdf5(
+                    os.path.join(hdf5_path, "generation.hdf5"),
+                    self.generation_network_params)
+                load_hdf5(
+                    os.path.join(hdf5_path, "inference.hdf5"),
+                    self.inference_network_params)
+                load_hdf5(
+                    os.path.join(hdf5_path, "representation.hdf5"),
+                    self.representation_network_params)
+            except:
+                pass
 
-        self.parameters = chainer.Chain(
+        self.all_parameters = chainer.Chain(
             g=self.generation_network_params,
             i=self.inference_network_params,
             r=self.representation_network_params,
         )
+        self.generation_parameters = chainer.Chain(
+            r=self.representation_network_params,
+            g=self.generation_network_params,
+        )
+        self.inference_parameters = chainer.Chain(
+            i=self.inference_network_params, )
 
     def build_generation_network(self, total_timestep, channels_chrz,
                                  channels_u):
@@ -65,18 +75,22 @@ class Model():
         raise NotImplementedError
 
     def to_gpu(self):
-        self.parameters.to_gpu()
+        self.all_parameters.to_gpu()
 
     def cleargrads(self):
-        self.parameters.cleargrads()
+        self.all_parameters.cleargrads()
 
     def serialize(self, path):
+        self.serialize_parameter(path, "generation.hdf5",
+                                 self.generation_network_params)
+        self.serialize_parameter(path, "inference.hdf5",
+                                 self.inference_network_params)
+        self.serialize_parameter(path, "representation.hdf5",
+                                 self.representation_network_params)
+
+    def serialize_parameter(self, path, filename, params):
+        tmp_filename = str(uuid.uuid4())
         save_hdf5(
-            os.path.join(path, "generation.hdf5"),
-            self.generation_network_params)
-        save_hdf5(
-            os.path.join(path, "inference.hdf5"),
-            self.inference_network_params)
-        save_hdf5(
-            os.path.join(path, "representation.hdf5"),
-            self.representation_network_params)
+            os.path.join(path, tmp_filename), self.generation_network_params)
+        os.rename(
+            os.path.join(path, tmp_filename), os.path.join(path, filename))

@@ -3,6 +3,7 @@ import sys
 import os
 import random
 import math
+import time
 import numpy as np
 import cupy as xp
 import chainer
@@ -44,15 +45,6 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
-
-    camera = gqn.three.PerspectiveCamera(
-        eye=(3, 1, 0),
-        center=(0, 0, 0),
-        up=(0, 1, 0),
-        fov_rad=math.pi / 4.0,
-        aspect_ratio=hyperparams.image_size[0] / hyperparams.image_size[1],
-        z_near=0.1,
-        z_far=10)
 
     with chainer.using_config("train", False), chainer.using_config(
             "enable_backprop", False):
@@ -104,82 +96,102 @@ def main():
             query_images = images[:, query_index]
             query_viewpoints = viewpoints[:, query_index]
 
+            # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
+            query_images = query_images.transpose((0, 3, 1, 2))
+
             # transfer to gpu
+            query_images = chainer.cuda.to_gpu(query_images)
             query_viewpoints = chainer.cuda.to_gpu(query_viewpoints)
 
-            total_frames = 100
-            for tick in range(total_frames):
-                rad = math.pi * 2 * tick / total_frames
+            hg_0 = xp.zeros(
+                (
+                    args.batch_size,
+                    hyperparams.channels_chz,
+                ) + hyperparams.chrz_size,
+                dtype="float32")
+            cg_0 = xp.zeros(
+                (
+                    args.batch_size,
+                    hyperparams.channels_chz,
+                ) + hyperparams.chrz_size,
+                dtype="float32")
+            u_0 = xp.zeros(
+                (
+                    args.batch_size,
+                    hyperparams.generator_u_channels,
+                ) + image_size,
+                dtype="float32")
+            he_0 = xp.zeros(
+                (
+                    args.batch_size,
+                    hyperparams.channels_chz,
+                ) + hyperparams.chrz_size,
+                dtype="float32")
+            ce_0 = xp.zeros(
+                (
+                    args.batch_size,
+                    hyperparams.channels_chz,
+                ) + hyperparams.chrz_size,
+                dtype="float32")
 
-                eye = (3.0 * math.cos(rad), 1, 3.0 * math.sin(rad))
-                center = (0.0, 0.5, 0.0)
+            kld = 0
+            he_l = he_0
+            ce_l = ce_0
+            hg_l = hg_0
+            cg_l = cg_0
+            u_l = u_0
+            for l in range(hyperparams.generator_total_timestep):
+                he_next, ce_next = model.inference_network.forward_onestep(
+                    hg_l, he_l, ce_l, query_images, query_viewpoints, r)
 
-                yaw = gqn.math.yaw(eye, center)
-                pitch = gqn.math.pitch(eye, center)
-                camera.look_at(
-                    eye=eye,
-                    center=center,
-                    up=(0.0, 1.0, 0.0),
-                )
-                query = eye + (math.cos(yaw), math.cos(yaw), math.sin(pitch),
-                               math.sin(pitch))
-                query_viewpoints[:] = xp.asarray(query)
+                mu_z_q = model.inference_network.compute_mu_z(he_l)
+                mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                kld += cf.mean(gqn.nn.chainer.functions.gaussian_kl_divergence(
+                    mu_z_q, mu_z_p))
 
-                hg_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                cg_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                u_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.generator_u_channels,
-                    ) + image_size,
-                    dtype="float32")
+                ze_l = model.inference_network.sample_z(he_l)
+                zg_l = model.generation_network.sample_z(hg_l)
 
-                hg_l = hg_0
-                cg_l = cg_0
-                u_l = u_0
-                for l in range(hyperparams.generator_total_timestep):
-                    zg_l = model.generation_network.sample_z(hg_l)
-                    hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, u_l, zg_l, query_viewpoints, r)
+                hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                    hg_l, cg_l, u_l, ze_l, query_viewpoints, r)
 
-                    hg_l = hg_next
-                    cg_l = cg_next
-                    u_l = u_next
+                hg_l = hg_next
+                cg_l = cg_next
+                u_l = u_next
+                he_l = he_next
+                ce_l = ce_next
 
-                generated_images = model.generation_network.sample_x(
-                    u_l, pixel_ln_var)
-                generated_images = chainer.cuda.to_cpu(generated_images.data)
-                generated_images = generated_images.transpose(0, 2, 3, 1)
+            print(kld)
 
-                if window.closed():
-                    exit()
+            generated_images = model.generation_network.sample_x(
+                u_l, pixel_ln_var)
+            generated_images = chainer.cuda.to_cpu(generated_images.data)
+            generated_images = generated_images.transpose(0, 2, 3, 1)
 
-                for batch_index in range(args.batch_size):
-                    axis = axes[batch_index * 2 + 0]
-                    image = query_images[batch_index]
-                    axis.update(
-                        np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+            query_images = chainer.cuda.to_cpu(query_images)
+            query_images = query_images.transpose(0, 2, 3, 1)
 
-                    axis = axes[batch_index * 2 + 1]
-                    image = generated_images[batch_index]
-                    axis.update(
-                        np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+            if window.closed():
+                exit()
+
+            for batch_index in range(args.batch_size):
+                axis = axes[batch_index * 2 + 0]
+                image = query_images[batch_index]
+                axis.update(
+                    np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+
+                axis = axes[batch_index * 2 + 1]
+                image = generated_images[batch_index]
+                axis.update(
+                    np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+
+            time.sleep(1)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-path", type=str, default="../rooms_dataset")
     parser.add_argument("--snapshot-path", type=str, default="../snapshot")
-    parser.add_argument("--batch-size", "-b", type=int, default=25)
+    parser.add_argument("--batch-size", "-b", type=int, default=16)
     args = parser.parse_args()
     main()

@@ -25,7 +25,6 @@ class Network(base.inference.Network):
         x = cf.relu(self.params.conv_x_1(x))
         x = cf.relu(self.params.conv_x_2(x))
 
-
         lstm_in = cf.concat((prev_h_e, prev_h_g, x, v, r), axis=1)
         forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))
         input_gate = cf.sigmoid(self.params.lstm_i(lstm_in))
@@ -37,7 +36,7 @@ class Network(base.inference.Network):
     def compute_mu_z(self, h):
         return self.params.mean_z(h)
 
-    def sample_z(self, h):
+    def sample_z(self, h, ln_var):
         xp = get_array_module(h)
         mean = self.compute_mu_z(h)
-        return cf.gaussian(mean, xp.zeros_like(mean))
+        return cf.gaussian(mean, ln_var)

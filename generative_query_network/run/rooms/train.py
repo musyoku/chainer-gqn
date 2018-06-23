@@ -26,10 +26,12 @@ def main():
     iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
 
     hyperparams = HyperParameters()
-    model = Model(hyperparams)
+    model = Model(hyperparams, hdf5_path=args.snapshot_path)
     model.to_gpu()
 
-    optimizer = Optimizer(model.parameters)
+    optimizer_all = Optimizer(model.all_parameters)
+    optimizer_generation = Optimizer(model.generation_parameters)
+    optimizer_inference = Optimizer(model.inference_parameters)
 
     figure = gqn.imgplot.Figure()
     axis1 = gqn.imgplot.ImageData(hyperparams.image_size[0],
@@ -49,6 +51,12 @@ def main():
     pixel_ln_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
+        dtype="float32")
+    z_ln_var = xp.zeros(
+        (
+            args.batch_size,
+            hyperparams.channels_chz,
+        ) + hyperparams.chrz_size,
         dtype="float32")
 
     for iteration in range(args.training_steps):
@@ -145,16 +153,20 @@ def main():
             ce_l = ce_0
             hg_l = hg_0
             cg_l = cg_0
-            u_l = u_0
+            ue_l = u_0
+            ug_l = u_0
             for l in range(hyperparams.generator_total_timestep):
                 he_next, ce_next = model.inference_network.forward_onestep(
                     hg_l, he_l, ce_l, query_images, query_viewpoints, r)
+
                 mu_z_q = model.inference_network.compute_mu_z(he_l)
-                ze_l = cf.gaussian(mu_z_q, xp.zeros_like(mu_z_q))
+                ze_l = cf.gaussian(mu_z_q, z_ln_var)
+
+                mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                zg_l = cf.gaussian(mu_z_p, z_ln_var)
 
                 hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                    hg_l, cg_l, u_l, ze_l, query_viewpoints, r)
-                mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                    hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
 
                 kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                     mu_z_q, mu_z_p)
@@ -163,11 +175,11 @@ def main():
 
                 hg_l = hg_next
                 cg_l = cg_next
-                u_l = u_next
+                ue_l = u_next
                 he_l = he_next
                 ce_l = ce_next
 
-            mu_x = model.generation_network.compute_mu_x(u_l)
+            mu_x = model.generation_network.compute_mu_x(ue_l)
 
             negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                 query_images, mu_x, pixel_var, pixel_ln_var)
@@ -175,7 +187,7 @@ def main():
             loss_nll = cf.mean(negative_log_likelihood)
 
             if window.closed() is False:
-                x = model.generation_network.sample_x(u_l, pixel_ln_var)
+                x = model.generation_network.sample_x(ue_l, pixel_ln_var)
                 axis1.update(
                     np.uint8((chainer.cuda.to_cpu(query_images[0].transpose(
                         1, 2, 0)) + 1) * 0.5 * 255))
@@ -186,14 +198,47 @@ def main():
 
             loss = loss_nll + loss_kld
             model.cleargrads()
-            loss.backward()
-            optimizer.step(current_training_step)
+            loss_kld.backward()
+            optimizer_inference.step(current_training_step)
+
+            hg_l = hg_0
+            cg_l = cg_0
+            ug_l = u_0
+            for l in range(hyperparams.generator_total_timestep):
+                zg_l = model.generation_network.sample_z(hg_l)
+                hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                    hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
+
+                hg_l = hg_next
+                cg_l = cg_next
+                ug_l = u_next
+
+            mu_x = model.generation_network.compute_mu_x(ug_l)
+            negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                query_images, mu_x, pixel_var, pixel_ln_var)
+
+            loss_nll = cf.mean(negative_log_likelihood)
+
+            model.cleargrads()
+            loss_nll.backward()
+            optimizer_generation.step(current_training_step)
+
+            if window.closed() is False:
+                x = model.generation_network.sample_x(ug_l, pixel_ln_var)
+                axis1.update(
+                    np.uint8((chainer.cuda.to_cpu(query_images[0].transpose(
+                        1, 2, 0)) + 1) * 0.5 * 255))
+                axis2.update(
+                    np.uint8(
+                        np.clip((chainer.cuda.to_cpu(x.data[0].transpose(
+                            1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
             print(
-                "Iteration {}: {} / {} - loss: {:3f} {:3f} - lr: {:.4e} - sigma_t: {}".
+                "Iteration {}: {} / {} - loss: {:3f} {:3f} - lr: {:.4e} {:.4e} - sigma_t: {}".
                 format(iteration + 1, batch_index + 1, len(iterator),
                        float(loss_nll.data), float(loss_kld.data),
-                       optimizer.optimizer.alpha, sigma_t))
+                       optimizer_all.optimizer.alpha,
+                       optimizer_generation.optimizer.alpha, sigma_t))
 
             sf = hyperparams.pixel_sigma_f
             si = hyperparams.pixel_sigma_i
