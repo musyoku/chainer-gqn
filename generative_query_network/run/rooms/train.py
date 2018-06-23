@@ -127,7 +127,7 @@ def main():
                     (args.batch_size, hyperparams.channels_r) +
                     hyperparams.chrz_size,
                     dtype="float32")
-                r = chainer.Variable(to_gpu(r))
+                r = to_gpu(r)
 
             query_images = images[:, query_index]
             query_viewpoints = viewpoints[:, query_index]
@@ -179,7 +179,7 @@ def main():
             ug_l = u_0
             for l in range(hyperparams.generator_total_timestep):
                 he_next, ce_next = model.inference_network.forward_onestep(
-                    hg_l, he_l, ce_l, query_images, query_viewpoints, r.data)
+                    hg_l, he_l, ce_l, query_images, query_viewpoints, r)
 
                 mu_z_q = model.inference_network.compute_mu_z(he_l)
                 ze_l = cf.gaussian(mu_z_q, z_ln_var)
@@ -212,7 +212,6 @@ def main():
             model.cleargrads()
             loss.backward()
             optimizer_all.step(current_training_step)
-
 
             if window.closed() is False:
                 x = model.generation_network.sample_x(ue_l, pixel_ln_var)

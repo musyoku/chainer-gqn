@@ -66,7 +66,7 @@ void Window::_run()
         double y = std::get<2>(frame);
         double width = std::get<3>(frame);
         double height = std::get<4>(frame);
-        _images.emplace_back(std::make_unique<view::ImageView>(data, x, y, width, height));
+        _images.push_back(std::make_unique<view::ImageView>(data, x, y, width, height));
     }
 
     for (const auto& frame : _figure->_objects) {
@@ -75,7 +75,7 @@ void Window::_run()
         double y = std::get<2>(frame);
         double width = std::get<3>(frame);
         double height = std::get<4>(frame);
-        _objects.emplace_back(std::make_unique<view::ObjectView>(data, x, y, width, height));
+        _objects.push_back(std::make_unique<view::ObjectView>(data, x, y, width, height));
     }
 
     while (!!glfwWindowShouldClose(_shared_window) == false) {
