@@ -1,18 +1,33 @@
 import argparse
-import sys
+import math
 import os
 import random
-import math
-import numpy as np
-import cupy as xp
+import sys
+
 import chainer
 import chainer.functions as cf
+import cupy
+import numpy as np
+from chainer.backends import cuda
 
 sys.path.append(os.path.join("..", ".."))
 import gqn
+
 from hyper_parameters import HyperParameters
 from model import Model
 from optimizer import Optimizer
+
+
+def to_gpu(array):
+    if args.gpu_device >= 0:
+        return cuda.to_gpu(array)
+    return array
+
+
+def to_cpu(array):
+    if args.gpu_device >= 0:
+        return cuda.to_cpu(array)
+    return array
 
 
 def main():
@@ -21,13 +36,20 @@ def main():
     except:
         pass
 
+    xp = np
+    using_gpu = args.gpu_device >= 0
+    if using_gpu:
+        cuda.get_device(args.gpu_device).use()
+        xp = cupy
+
     dataset = gqn.data.Dataset(args.dataset_path)
     sampler = gqn.data.Sampler(dataset)
     iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
-    model.to_gpu()
+    if using_gpu:
+        model.to_gpu()
 
     optimizer_all = Optimizer(model.all_parameters)
     optimizer_generation = Optimizer(model.generation_parameters)
@@ -89,8 +111,8 @@ def main():
                 observed_images = observed_images.transpose((0, 3, 1, 2))
 
                 # transfer to gpu
-                observed_images = chainer.cuda.to_gpu(observed_images)
-                observed_viewpoints = chainer.cuda.to_gpu(observed_viewpoints)
+                observed_images = to_gpu(observed_images)
+                observed_viewpoints = to_gpu(observed_viewpoints)
 
                 r = model.representation_network.compute_r(
                     observed_images, observed_viewpoints)
@@ -105,7 +127,7 @@ def main():
                     (args.batch_size, hyperparams.channels_r) +
                     hyperparams.chrz_size,
                     dtype="float32")
-                r = chainer.cuda.to_gpu(r)
+                r = to_gpu(r)
 
             query_images = images[:, query_index]
             query_viewpoints = viewpoints[:, query_index]
@@ -114,8 +136,8 @@ def main():
             query_images = query_images.transpose((0, 3, 1, 2))
 
             # transfer to gpu
-            query_images = chainer.cuda.to_gpu(query_images)
-            query_viewpoints = chainer.cuda.to_gpu(query_viewpoints)
+            query_images = to_gpu(query_images)
+            query_viewpoints = to_gpu(query_viewpoints)
 
             hg_0 = xp.zeros(
                 (
@@ -189,11 +211,11 @@ def main():
             if window.closed() is False:
                 x = model.generation_network.sample_x(ue_l, pixel_ln_var)
                 axis1.update(
-                    np.uint8((chainer.cuda.to_cpu(query_images[0].transpose(
+                    np.uint8((to_cpu(query_images[0].transpose(
                         1, 2, 0)) + 1) * 0.5 * 255))
                 axis2.update(
                     np.uint8(
-                        np.clip((chainer.cuda.to_cpu(x.data[0].transpose(
+                        np.clip((to_cpu(x.data[0].transpose(
                             1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
             loss = loss_nll + loss_kld
@@ -226,11 +248,11 @@ def main():
             if window.closed() is False:
                 x = model.generation_network.sample_x(ug_l, pixel_ln_var)
                 axis1.update(
-                    np.uint8((chainer.cuda.to_cpu(query_images[0].transpose(
+                    np.uint8((to_cpu(query_images[0].transpose(
                         1, 2, 0)) + 1) * 0.5 * 255))
                 axis2.update(
                     np.uint8(
-                        np.clip((chainer.cuda.to_cpu(x.data[0].transpose(
+                        np.clip((to_cpu(x.data[0].transpose(
                             1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
             print(
@@ -257,6 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-path", type=str, default="rooms_dataset")
     parser.add_argument("--snapshot-path", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
+    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     parser.add_argument(
         "--training-steps", "-smax", type=int, default=2 * 10**6)
     args = parser.parse_args()

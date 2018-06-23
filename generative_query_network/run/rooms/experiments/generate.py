@@ -1,12 +1,14 @@
 import argparse
-import sys
+import math
 import os
 import random
-import math
-import numpy as np
-import cupy as xp
+import sys
+
 import chainer
 import chainer.functions as cf
+import cupy
+import numpy as np
+from chainer.backends import cuda
 
 sys.path.append(os.path.join("..", "..", ".."))
 import gqn
@@ -16,14 +18,33 @@ from hyper_parameters import HyperParameters
 from model import Model
 
 
+def to_gpu(array):
+    if args.gpu_device >= 0:
+        return cuda.to_gpu(array)
+    return array
+
+
+def to_cpu(array):
+    if args.gpu_device >= 0:
+        return cuda.to_cpu(array)
+    return array
+
+
 def main():
+    xp = np
+    using_gpu = args.gpu_device >= 0
+    if using_gpu:
+        cuda.get_device(args.gpu_device).use()
+        xp = cupy
+
     dataset = gqn.data.Dataset(args.dataset_path)
     sampler = gqn.data.Sampler(dataset)
     iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
-    model.to_gpu()
+    if using_gpu:
+        model.to_gpu()
 
     figure = gqn.imgplot.Figure()
     axes = []
@@ -83,8 +104,8 @@ def main():
                 observed_images = observed_images.transpose((0, 3, 1, 2))
 
                 # transfer to gpu
-                observed_images = chainer.cuda.to_gpu(observed_images)
-                observed_viewpoints = chainer.cuda.to_gpu(observed_viewpoints)
+                observed_images = to_gpu(observed_images)
+                observed_viewpoints = to_gpu(observed_viewpoints)
 
                 r = model.representation_network.compute_r(
                     observed_images, observed_viewpoints)
@@ -99,13 +120,13 @@ def main():
                     (args.batch_size, hyperparams.channels_r) +
                     hyperparams.chrz_size,
                     dtype="float32")
-                r = chainer.cuda.to_gpu(r)
+                r = to_gpu(r)
 
             query_images = images[:, query_index]
             query_viewpoints = viewpoints[:, query_index]
 
             # transfer to gpu
-            query_viewpoints = chainer.cuda.to_gpu(query_viewpoints)
+            query_viewpoints = to_gpu(query_viewpoints)
 
             total_frames = 100
             for tick in range(total_frames):
@@ -158,7 +179,7 @@ def main():
 
                 generated_images = model.generation_network.sample_x(
                     u_l, pixel_ln_var)
-                generated_images = chainer.cuda.to_cpu(generated_images.data)
+                generated_images = to_cpu(generated_images.data)
                 generated_images = generated_images.transpose(0, 2, 3, 1)
 
                 if window.closed():
@@ -181,5 +202,6 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-path", type=str, default="../rooms_dataset")
     parser.add_argument("--snapshot-path", type=str, default="../snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=25)
+    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     args = parser.parse_args()
     main()

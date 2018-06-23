@@ -91,6 +91,6 @@ class Model():
     def serialize_parameter(self, path, filename, params):
         tmp_filename = str(uuid.uuid4())
         save_hdf5(
-            os.path.join(path, tmp_filename), self.generation_network_params)
+            os.path.join(path, tmp_filename), params)
         os.rename(
             os.path.join(path, tmp_filename), os.path.join(path, filename))
