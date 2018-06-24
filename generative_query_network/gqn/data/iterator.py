@@ -1,6 +1,8 @@
+from .sampler import Sampler
+
 class Iterator:
-    def __init__(self, sampler, batch_size, drop_last=True):
-        self.sampler = sampler
+    def __init__(self, subset, batch_size, drop_last=True):
+        self.sampler = Sampler(subset)
         self.drop_last = drop_last
         self.batch_size = batch_size
 

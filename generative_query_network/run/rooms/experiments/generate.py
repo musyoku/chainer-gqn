@@ -76,9 +76,7 @@ def main():
     with chainer.using_config("train", False), chainer.using_config(
             "enable_backprop", False):
         for subset_index, subset in enumerate(dataset):
-            sampler = gqn.data.Sampler(subset)
-            iterator = gqn.data.Iterator(
-                sampler, batch_size=args.batch_size)
+            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for data_indices in iterator:
                 # shape: (batch, views, height, width, channels)
@@ -105,8 +103,7 @@ def main():
                         observed_viewpoints.shape[2:])
 
                     # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
-                    observed_images = observed_images.transpose((0, 3, 1,
-                                                                    2))
+                    observed_images = observed_images.transpose((0, 3, 1, 2))
 
                     # transfer to gpu
                     observed_images = to_gpu(observed_images)
@@ -116,8 +113,7 @@ def main():
                         observed_images, observed_viewpoints)
 
                     # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
-                    r = r.reshape((args.batch_size, num_views) +
-                                    r.shape[1:])
+                    r = r.reshape((args.batch_size, num_views) + r.shape[1:])
 
                     # sum element-wise across views
                     r = cf.sum(r, axis=1)
@@ -149,7 +145,7 @@ def main():
                         up=(0.0, 1.0, 0.0),
                     )
                     query = eye + (math.cos(yaw), math.cos(yaw),
-                                    math.sin(pitch), math.sin(pitch))
+                                   math.sin(pitch), math.sin(pitch))
                     query_viewpoints[:] = xp.asarray(query)
 
                     hg_0 = xp.zeros(
@@ -186,8 +182,7 @@ def main():
                     generated_images = model.generation_network.sample_x(
                         u_l, pixel_ln_var)
                     generated_images = to_cpu(generated_images.data)
-                    generated_images = generated_images.transpose(
-                        0, 2, 3, 1)
+                    generated_images = generated_images.transpose(0, 2, 3, 1)
 
                     if window.closed():
                         exit()
@@ -197,15 +192,13 @@ def main():
                         image = query_images[batch_index]
                         axis.update(
                             np.uint8(
-                                np.clip((image + 1.0) * 0.5 * 255, 0,
-                                        255)))
+                                np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
 
                         axis = axes[batch_index * 2 + 1]
                         image = generated_images[batch_index]
                         axis.update(
                             np.uint8(
-                                np.clip((image + 1.0) * 0.5 * 255, 0,
-                                        255)))
+                                np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
 
 
 if __name__ == "__main__":

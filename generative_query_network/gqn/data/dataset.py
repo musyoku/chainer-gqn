@@ -1,4 +1,5 @@
 import os
+import random
 import numpy as np
 from .subset import Subset
 
@@ -14,11 +15,12 @@ class Dataset():
                 self.subset_filenames.append(filename)
 
     def __iter__(self):
+        self.current_subset_index = 0
+        random.shuffle(self.subset_filenames)
         return self
 
     def __next__(self):
         if self.current_subset_index >= len(self.subset_filenames):
-            self.current_subset_index = 0
             raise StopIteration
         filename = self.subset_filenames[self.current_subset_index]
         images_npy_path = os.path.join(self.path, "images", filename)

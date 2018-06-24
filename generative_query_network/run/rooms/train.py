@@ -82,8 +82,7 @@ def main():
     for iteration in range(args.training_steps):
 
         for subset_index, subset in enumerate(dataset):
-            sampler = gqn.data.Sampler(subset)
-            iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
+            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for batch_index, data_indices in enumerate(iterator):
                 current_training_step = iteration * len(iterator) + batch_index

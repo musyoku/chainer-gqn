@@ -68,8 +68,7 @@ def main():
     with chainer.using_config("train", False), chainer.using_config(
             "enable_backprop", False):
         for subset_index, subset in enumerate(dataset):
-            sampler = gqn.data.Sampler(subset)
-            iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
+            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for data_indices in iterator:
                 # shape: (batch, views, height, width, channels)
