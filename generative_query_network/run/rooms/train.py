@@ -183,7 +183,7 @@ def main():
                     mu_z_p = model.generation_network.compute_mu_z(hg_l)
                     zg_l = cf.gaussian(mu_z_p, z_ln_var)
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ug_l, zg_l, query_viewpoints, r.data)
+                        hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
 
                     hg_l = hg_next
                     cg_l = cg_next
@@ -198,18 +198,20 @@ def main():
                 cg_l = cg_0
                 ue_l = u_0
                 ug_l = u_0
+                r_no_grad = r.data
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
-                        hg_l, he_l, ce_l, query_images, query_viewpoints, r)
+                        hg_l, he_l, ce_l, query_images, query_viewpoints,
+                        r_no_grad)
 
                     mu_z_q = model.inference_network.compute_mu_z(he_l)
                     ze_l = cf.gaussian(mu_z_q, z_ln_var)
 
-                    # mu_z_p = mu_z_p_at_l[l]
-                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                    mu_z_p = mu_z_p_at_l[l]
+                    # mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
+                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r_no_grad)
 
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mu_z_q, mu_z_p)
