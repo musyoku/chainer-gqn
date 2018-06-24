@@ -205,8 +205,8 @@ def main():
                     mu_z_q = model.inference_network.compute_mu_z(he_l)
                     ze_l = cf.gaussian(mu_z_q, z_ln_var)
 
-                    mu_z_p = mu_z_p_at_l[l]
-                    # mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                    # mu_z_p = mu_z_p_at_l[l]
+                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
@@ -214,7 +214,7 @@ def main():
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mu_z_q, mu_z_p)
 
-                    loss_kld += cf.mean(kld)
+                    loss_kld += cf.sum(kld)
 
                     hg_l = hg_next
                     cg_l = cg_next
@@ -227,9 +227,9 @@ def main():
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                     query_images, mu_x, pixel_var, pixel_ln_var)
 
-                loss_nll = cf.mean(negative_log_likelihood)
+                loss_nll = cf.sum(negative_log_likelihood)
 
-                loss = loss_nll + loss_kld
+                loss = loss_nll / args.batch_size + loss_kld / hyperparams.generator_total_timestep / args.batch_size
                 model.cleargrads()
                 loss.backward()
                 optimizer_all.step(current_training_step)
@@ -278,11 +278,12 @@ def main():
                 #                 1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
                 print(
-                    "Iteration {}: {} / {} - loss: {:3f} {:3f} - lr: {:.4e} {:.4e} - sigma_t: {}".
-                    format(iteration + 1, batch_index + 1, len(iterator),
-                           float(loss_nll.data), float(loss_kld.data),
-                           optimizer_all.optimizer.alpha,
-                           optimizer_generation.optimizer.alpha, sigma_t))
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:3f} kld: {:3f} - lr: {:.4e} - sigma_t: {}".
+                    format(iteration + 1,
+                           subset_index + 1, len(dataset), batch_index + 1,
+                           len(iterator), float(loss_nll.data),
+                           float(loss_kld.data), optimizer_all.optimizer.alpha,
+                           sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
