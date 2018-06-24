@@ -204,8 +204,7 @@ def main():
                 r_no_grad = r.data
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
-                        hg_l, he_l, ce_l, query_images, query_viewpoints,
-                        r_no_grad)
+                        hg_l, he_l, ce_l, query_images, query_viewpoints, r)
 
                     mu_z_q = model.inference_network.compute_mu_z(he_l)
                     ze_l = cf.gaussian(mu_z_q, z_ln_var)
@@ -214,7 +213,7 @@ def main():
                     mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r_no_grad)
+                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
 
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mu_z_q, mu_z_p)
@@ -233,11 +232,11 @@ def main():
                 optimizer_all.step(current_training_step)
 
                 if window.closed() is False:
-                    x = model.generation_network.sample_x(ue_l, pixel_ln_var)
                     axis1.update(
                         np.uint8(
                             (to_cpu(query_images[0].transpose(1, 2, 0)) + 1) *
                             0.5 * 255))
+                    x = model.generation_network.sample_x(ug_l, pixel_ln_var)
                     axis2.update(
                         np.uint8(
                             np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
@@ -277,11 +276,13 @@ def main():
 
                 print(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:3f} kld: {:3f} - lr: {:.4e} - sigma_t: {}".
-                    format(iteration + 1,
-                           subset_index + 1, len(dataset), batch_index + 1,
-                           len(iterator), float(loss_nll.data),
-                           float(loss_kld.data), optimizer_all.optimizer.alpha,
-                           sigma_t))
+                    format(
+                        iteration + 1, subset_index + 1, len(dataset),
+                        batch_index + 1, len(iterator),
+                        float(loss_nll.data) / args.batch_size,
+                        float(loss_kld.data) /
+                        hyperparams.generator_total_timestep / args.batch_size,
+                        optimizer_all.optimizer.alpha, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
