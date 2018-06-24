@@ -190,6 +190,11 @@ def main():
                     ug_l = u_next
                     mu_z_p_at_l.append(mu_z_p)
 
+                mu_x = model.generation_network.compute_mu_x(ug_l)
+                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                    query_images, mu_x, pixel_var, pixel_ln_var)
+                loss_nll = cf.sum(negative_log_likelihood)
+
                 # Inference
                 loss_kld = 0
                 he_l = he_0
@@ -197,7 +202,6 @@ def main():
                 hg_l = hg_0
                 cg_l = cg_0
                 ue_l = u_0
-                ug_l = u_0
                 r_no_grad = r.data
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
@@ -223,13 +227,6 @@ def main():
                     ue_l = u_next
                     he_l = he_next
                     ce_l = ce_next
-
-                mu_x = model.generation_network.compute_mu_x(ue_l)
-
-                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mu_x, pixel_var, pixel_ln_var)
-
-                loss_nll = cf.sum(negative_log_likelihood)
 
                 loss = loss_nll / args.batch_size + loss_kld / hyperparams.generator_total_timestep / args.batch_size
                 model.cleargrads()
