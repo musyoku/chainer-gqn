@@ -210,8 +210,8 @@ def main():
                     mu_z_q = model.inference_network.compute_mu_z(he_l)
                     ze_l = cf.gaussian(mu_z_q, z_ln_var)
 
-                    mu_z_p = mu_z_p_at_l[l]
-                    # mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                    # mu_z_p = mu_z_p_at_l[l]
+                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, ue_l, ze_l, query_viewpoints, r_no_grad)
