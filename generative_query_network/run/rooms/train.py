@@ -58,9 +58,12 @@ def main():
                                   hyperparams.image_size[1], 3)
     axis2 = gqn.imgplot.ImageData(hyperparams.image_size[0],
                                   hyperparams.image_size[1], 3)
-    figure.add(axis1, 0, 0, 0.5, 1)
-    figure.add(axis2, 0.5, 0, 0.5, 1)
-    window = gqn.imgplot.Window(figure, (1600, 800))
+    axis3 = gqn.imgplot.ImageData(hyperparams.image_size[0],
+                                  hyperparams.image_size[1], 3)
+    figure.add(axis1, 0, 0, 1 / 3, 1)
+    figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
+    figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
+    window = gqn.imgplot.Window(figure, (500 * 3, 500))
     window.show()
 
     sigma_t = hyperparams.pixel_sigma_i
@@ -189,11 +192,6 @@ def main():
                     ug_l = u_next
                     mu_z_p_at_l.append(mu_z_p)
 
-                mu_x = model.generation_network.compute_mu_x(ug_l)
-                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mu_x, pixel_var, pixel_ln_var)
-                loss_nll = cf.sum(negative_log_likelihood)
-
                 # Inference
                 loss_kld = 0
                 he_l = he_0
@@ -209,8 +207,8 @@ def main():
                     mu_z_q = model.inference_network.compute_mu_z(he_l)
                     ze_l = cf.gaussian(mu_z_q, z_ln_var)
 
-                    # mu_z_p = mu_z_p_at_l[l]
-                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                    mu_z_p = mu_z_p_at_l[l]
+                    # mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
@@ -226,6 +224,11 @@ def main():
                     he_l = he_next
                     ce_l = ce_next
 
+                mu_x = model.generation_network.compute_mu_x(ue_l)
+                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                    query_images, mu_x, pixel_var, pixel_ln_var)
+                loss_nll = cf.sum(negative_log_likelihood)
+
                 loss_nll /= args.batch_size
                 loss_kld /= hyperparams.generator_total_timestep * args.batch_size
                 loss = loss_nll + loss_kld
@@ -240,6 +243,11 @@ def main():
                             0.5 * 255))
                     x = model.generation_network.sample_x(ug_l, pixel_ln_var)
                     axis2.update(
+                        np.uint8(
+                            np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
+                                    * 0.5 * 255, 0, 255)))
+                    x = model.generation_network.sample_x(ue_l, pixel_ln_var)
+                    axis3.update(
                         np.uint8(
                             np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
                                     * 0.5 * 255, 0, 255)))
