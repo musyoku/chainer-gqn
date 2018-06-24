@@ -226,7 +226,9 @@ def main():
                     he_l = he_next
                     ce_l = ce_next
 
-                loss = loss_nll / args.batch_size + loss_kld / hyperparams.generator_total_timestep / args.batch_size
+                loss_nll /= args.batch_size
+                loss_kld /= hyperparams.generator_total_timestep * args.batch_size
+                loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
                 optimizer_all.step(current_training_step)
@@ -276,13 +278,11 @@ def main():
 
                 print(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:3f} kld: {:3f} - lr: {:.4e} - sigma_t: {}".
-                    format(
-                        iteration + 1, subset_index + 1, len(dataset),
-                        batch_index + 1, len(iterator),
-                        float(loss_nll.data) / args.batch_size,
-                        float(loss_kld.data) /
-                        hyperparams.generator_total_timestep / args.batch_size,
-                        optimizer_all.optimizer.alpha, sigma_t))
+                    format(iteration + 1,
+                           subset_index + 1, len(dataset), batch_index + 1,
+                           len(iterator), float(loss_nll.data),
+                           float(loss_kld.data), optimizer_all.optimizer.alpha,
+                           sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
