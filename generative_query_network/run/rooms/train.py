@@ -127,7 +127,7 @@ def main():
                     (args.batch_size, hyperparams.channels_r) +
                     hyperparams.chrz_size,
                     dtype="float32")
-                r = to_gpu(r)
+                r = chainer.Variable(to_gpu(r))
 
             query_images = images[:, query_index]
             query_viewpoints = viewpoints[:, query_index]
@@ -170,6 +170,23 @@ def main():
                 ) + hyperparams.chrz_size,
                 dtype="float32")
 
+            # Generation
+            hg_l = hg_0
+            cg_l = cg_0
+            ug_l = u_0
+            mu_z_p_at_l = []
+            for l in range(hyperparams.generator_total_timestep):
+                mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                zg_l = cf.gaussian(mu_z_p, z_ln_var)
+                hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                    hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
+
+                hg_l = hg_next
+                cg_l = cg_next
+                ug_l = u_next
+                mu_z_p_at_l.append(mu_z_p)
+
+            # Inference
             loss_kld = 0
             he_l = he_0
             ce_l = ce_0
@@ -184,8 +201,7 @@ def main():
                 mu_z_q = model.inference_network.compute_mu_z(he_l)
                 ze_l = cf.gaussian(mu_z_q, z_ln_var)
 
-                mu_z_p = model.generation_network.compute_mu_z(hg_l)
-                zg_l = cf.gaussian(mu_z_p, z_ln_var)
+                mu_z_p = mu_z_p_at_l[l]
 
                 hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                     hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)

@@ -23,7 +23,7 @@
 - OpenGL 4
 - Ubuntu
 - C++14 (gcc-6)
-- Chainer / PyTorch
+- Chainer 4+
 
 # Installation
 
