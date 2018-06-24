@@ -45,6 +45,12 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
+    z_ln_var = xp.zeros(
+        (
+            args.batch_size,
+            hyperparams.channels_chz,
+        ) + hyperparams.chrz_size,
+        dtype="float32")
 
     with chainer.using_config("train", False), chainer.using_config(
             "enable_backprop", False):
@@ -149,8 +155,7 @@ def main():
                 kld += cf.mean(gqn.nn.chainer.functions.gaussian_kl_divergence(
                     mu_z_q, mu_z_p))
 
-                ze_l = model.inference_network.sample_z(he_l)
-                zg_l = model.generation_network.sample_z(hg_l)
+                ze_l = model.inference_network.sample_z(he_l, z_ln_var)
 
                 hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                     hg_l, cg_l, u_l, ze_l, query_viewpoints, r)

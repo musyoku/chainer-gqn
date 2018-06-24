@@ -7,23 +7,19 @@
 **Todo**
 
 - [x] OpenGL Renderer
-- Chainer
-    - [x] Implement GQN
-    - [x] Implement training loop
-    - [ ] Debug
-- PyTorch
-    - [ ] Implement GQN
-    - [ ] Implement training loop
-    - [ ] Debug
+- [x] Implement GQN
+- [x] Implement training loop
+- [ ] Debug
 
 # Requirements
 
 - pybind11
 - Python 3
 - OpenGL 4
+- GLFW 3
 - Ubuntu
 - C++14 (gcc-6)
-- Chainer 4+
+- Chainer 4
 
 # Installation
 
