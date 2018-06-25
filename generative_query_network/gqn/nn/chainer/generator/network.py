@@ -58,10 +58,8 @@ class Network(base.generator.Network):
     def compute_mu_z(self, h):
         return self.params.mean_z(h)
 
-    def sample_z(self, h):
-        xp = get_array_module(h)
+    def sample_z(self, h, ln_var):
         mean = self.compute_mu_z(h)
-        ln_var = xp.zeros_like(mean)
         return cf.gaussian(mean, ln_var)
 
     def compute_mu_x(self, u):

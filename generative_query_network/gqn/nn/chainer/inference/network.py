@@ -22,8 +22,8 @@ class Network(base.inference.Network):
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        x = cf.relu(self.params.conv_x_1(x))
-        x = cf.relu(self.params.conv_x_2(x))
+        # x = cf.relu(self.params.conv_x(x))
+        x = cf.average_pooling_2d(x, ksize=4)
 
         lstm_in = cf.concat((prev_h_e, prev_h_g, x, v, r), axis=1)
         forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))

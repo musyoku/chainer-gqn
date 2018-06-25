@@ -8,7 +8,7 @@
 
 - [x] OpenGL Renderer
 - [x] Implement GQN
-- [x] Implement training loop
+- [ ] Implement training loop
 - [ ] Debug
 
 # Requirements

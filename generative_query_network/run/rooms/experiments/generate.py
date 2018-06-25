@@ -63,6 +63,12 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
+    z_ln_var = xp.zeros(
+        (
+            args.batch_size,
+            hyperparams.channels_chz,
+        ) + hyperparams.chrz_size,
+        dtype="float32")
 
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
@@ -171,7 +177,7 @@ def main():
                     cg_l = cg_0
                     u_l = u_0
                     for l in range(hyperparams.generator_total_timestep):
-                        zg_l = model.generation_network.sample_z(hg_l)
+                        zg_l = model.generation_network.sample_z(hg_l, z_ln_var)
                         hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                             hg_l, cg_l, u_l, zg_l, query_viewpoints, r)
 

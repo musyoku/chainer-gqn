@@ -18,6 +18,11 @@ from model import Model
 from optimizer import Optimizer
 
 
+def printr(string):
+    sys.stdout.write(string)
+    sys.stdout.write("\r")
+
+
 def to_gpu(array):
     if args.gpu_device >= 0:
         return cuda.to_gpu(array)
@@ -82,14 +87,15 @@ def main():
         ) + hyperparams.chrz_size,
         dtype="float32")
 
+    current_training_step = 0
     for iteration in range(args.training_steps):
-
+        mean_kld = 0
+        mean_nll = 0
+        total_batch = 0
         for subset_index, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for batch_index, data_indices in enumerate(iterator):
-                current_training_step = iteration * len(iterator) + batch_index
-
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
@@ -184,12 +190,12 @@ def main():
                 for l in range(hyperparams.generator_total_timestep):
                     mu_z_p = model.generation_network.compute_mu_z(hg_l)
                     zg_l = cf.gaussian(mu_z_p, z_ln_var)
-                    hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                    hg_next, cg_next, ug_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
 
                     hg_l = hg_next
                     cg_l = cg_next
-                    ug_l = u_next
+                    ug_l = ug_next
                     mu_z_p_at_l.append(mu_z_p)
 
                 # Inference
@@ -199,7 +205,6 @@ def main():
                 hg_l = hg_0
                 cg_l = cg_0
                 ue_l = u_0
-                r_no_grad = r.data
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
                         hg_l, he_l, ce_l, query_images, query_viewpoints, r)
@@ -207,10 +212,10 @@ def main():
                     mu_z_q = model.inference_network.compute_mu_z(he_l)
                     ze_l = cf.gaussian(mu_z_q, z_ln_var)
 
-                    mu_z_p = mu_z_p_at_l[l]
-                    # mu_z_p = model.generation_network.compute_mu_z(hg_l)
+                    # mu_z_p = mu_z_p_at_l[l]
+                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
 
-                    hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                    hg_next, cg_next, ue_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
 
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
@@ -220,7 +225,7 @@ def main():
 
                     hg_l = hg_next
                     cg_l = cg_next
-                    ue_l = u_next
+                    ue_l = ue_next
                     he_l = he_next
                     ce_l = ce_next
 
@@ -230,7 +235,7 @@ def main():
                 loss_nll = cf.sum(negative_log_likelihood)
 
                 loss_nll /= args.batch_size
-                loss_kld /= hyperparams.generator_total_timestep * args.batch_size
+                loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
@@ -257,12 +262,12 @@ def main():
                 # ug_l = u_0
                 # for l in range(hyperparams.generator_total_timestep):
                 #     zg_l = model.generation_network.sample_z(hg_l)
-                #     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
+                #     hg_next, cg_next, ug_next = model.generation_network.forward_onestep(
                 #         hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
 
                 #     hg_l = hg_next
                 #     cg_l = cg_next
-                #     ug_l = u_next
+                #     ug_l = ug_next
 
                 # mu_x = model.generation_network.compute_mu_x(ug_l)
                 # negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
@@ -284,8 +289,8 @@ def main():
                 #             np.clip((to_cpu(x.data[0].transpose(
                 #                 1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
-                print(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:3f} kld: {:3f} - lr: {:.4e} - sigma_t: {}".
+                printr(
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
                            len(iterator), float(loss_nll.data),
@@ -301,7 +306,18 @@ def main():
                 pixel_var[...] = sigma_t**2
                 pixel_ln_var[...] = math.log(sigma_t**2)
 
+                total_batch += 1
+                current_training_step += 1
+                mean_kld += float(loss_kld.data)
+                mean_nll += float(loss_nll.data)
+
             model.serialize(args.snapshot_path)
+
+        print(
+            "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
+            format(iteration + 1, mean_nll / total_batch,
+                   mean_kld / total_batch, optimizer_all.optimizer.alpha,
+                   sigma_t, current_training_step))
 
 
 if __name__ == "__main__":
