@@ -183,11 +183,9 @@ def main():
                 hg_l = hg_0
                 cg_l = cg_0
                 ue_l = u_0
-                r_no_grad = r.data
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
-                        hg_l, he_l, ce_l, query_images, query_viewpoints,
-                        r_no_grad)
+                        hg_l, he_l, ce_l, query_images, query_viewpoints, r)
 
                     mean_z_q = model.inference_network.compute_mean_z(he_l)
                     ln_var_z_q = model.inference_network.compute_ln_var_z(he_l)

@@ -58,12 +58,6 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
-    z_ln_var = xp.zeros(
-        (
-            args.batch_size,
-            hyperparams.channels_chz,
-        ) + hyperparams.chrz_size,
-        dtype="float32")
 
     with chainer.using_config("train", False), chainer.using_config(
             "enable_backprop", False):
@@ -157,7 +151,6 @@ def main():
                     ) + hyperparams.chrz_size,
                     dtype="float32")
 
-                kld = 0
                 he_l = he_0
                 ce_l = ce_0
                 hg_l = hg_0
@@ -166,14 +159,7 @@ def main():
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
                         hg_l, he_l, ce_l, query_images, query_viewpoints, r)
-
-                    mu_z_q = model.inference_network.compute_mu_z(he_l)
-                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
-                    kld += cf.mean(
-                        gqn.nn.chainer.functions.gaussian_kl_divergence(
-                            mu_z_q, mu_z_p))
-
-                    ze_l = model.inference_network.sample_z(he_l, z_ln_var)
+                    ze_l = model.inference_network.sample_z(he_l)
 
                     hg_next, cg_next, u_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, u_l, ze_l, query_viewpoints, r)
