@@ -182,22 +182,6 @@ def main():
                     ) + hyperparams.chrz_size,
                     dtype="float32")
 
-                # Generation
-                hg_l = hg_0
-                cg_l = cg_0
-                ug_l = u_0
-                mu_z_p_at_l = []
-                for l in range(hyperparams.generator_total_timestep):
-                    mu_z_p = model.generation_network.compute_mu_z(hg_l)
-                    zg_l = cf.gaussian(mu_z_p, z_ln_var)
-                    hg_next, cg_next, ug_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
-
-                    hg_l = hg_next
-                    cg_l = cg_next
-                    ug_l = ug_next
-                    mu_z_p_at_l.append(mu_z_p)
-
                 # Inference
                 loss_kld = 0
                 he_l = he_0
@@ -236,16 +220,34 @@ def main():
 
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
-                loss = loss_nll + loss_kld
+                loss = 0.01 * loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                optimizer_all.step(current_training_step)
+                optimizer_all.update(current_training_step)
 
                 if window.closed() is False:
                     axis1.update(
                         np.uint8(
                             (to_cpu(query_images[0].transpose(1, 2, 0)) + 1) *
                             0.5 * 255))
+
+                    # Generation
+                    with chainer.using_config("train",
+                                              False), chainer.using_config(
+                                                  "enable_backprop", False):
+                        hg_l = hg_0
+                        cg_l = cg_0
+                        ug_l = u_0
+                        for l in range(hyperparams.generator_total_timestep):
+                            zg_l = model.generation_network.sample_z(
+                                hg_l, z_ln_var)
+                            hg_next, cg_next, ug_next = model.generation_network.forward_onestep(
+                                hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
+
+                            hg_l = hg_next
+                            cg_l = cg_next
+                            ug_l = ug_next
+
                     x = model.generation_network.sample_x(ug_l, pixel_ln_var)
                     axis2.update(
                         np.uint8(
