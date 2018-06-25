@@ -36,6 +36,6 @@ class Optimizer:
     def anneal_learning_rate(self, training_step):
         self.optimizer.hyperparam.alpha = self.mu_s(training_step)
 
-    def step(self, training_step):
+    def update(self, training_step):
         self.optimizer.update()
         self.optimizer.alpha = self.mu_s(training_step)
