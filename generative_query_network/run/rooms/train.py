@@ -193,7 +193,6 @@ def main():
                     ln_var_z_q = model.inference_network.compute_ln_var_z(he_l)
                     ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
 
-                    # mean_z_p = mean_z_p_at_l[l]
                     mean_z_p = model.generation_network.compute_mean_z(hg_l)
                     ln_var_z_p = model.generation_network.compute_ln_var_z(
                         he_l)

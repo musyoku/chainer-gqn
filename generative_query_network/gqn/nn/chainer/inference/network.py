@@ -22,7 +22,6 @@ class Network(base.inference.Network):
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        # x = cf.relu(self.params.conv_x(x))
         x = cf.average_pooling_2d(x, ksize=4)
 
         lstm_in = cf.concat((prev_h_e, prev_h_g, x, v, r), axis=1)
@@ -40,7 +39,6 @@ class Network(base.inference.Network):
         return self.params.ln_var_z(h)
 
     def sample_z(self, h):
-        xp = get_array_module(h)
         mean = self.compute_mean_z(h)
         ln_var = self.compute_ln_var_z(h)
         return cf.gaussian(mean, ln_var)
