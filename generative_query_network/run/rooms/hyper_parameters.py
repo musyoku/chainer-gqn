@@ -8,9 +8,8 @@ class HyperParameters():
         self.generator_u_channels = 32
         self.pixel_sigma_i = 2.0 / 255
         self.pixel_sigma_f = 0.7 / 255
-        self.pixel_n = 2 * 10**5
+        self.pixel_n = 2 * 1e5
         self.representation_architecture = "tower"
-
 
         # for debug
         self.channels_chz = 32

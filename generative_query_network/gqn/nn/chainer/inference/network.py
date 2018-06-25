@@ -33,10 +33,14 @@ class Network(base.inference.Network):
         next_h = cf.sigmoid(self.params.lstm_o(lstm_in)) * cf.tanh(next_c)
         return next_h, next_c
 
-    def compute_mu_z(self, h):
+    def compute_mean_z(self, h):
         return self.params.mean_z(h)
 
-    def sample_z(self, h, ln_var):
+    def compute_ln_var_z(self, h):
+        return self.params.ln_var_z(h)
+
+    def sample_z(self, h):
         xp = get_array_module(h)
-        mean = self.compute_mu_z(h)
+        mean = self.compute_mean_z(h)
+        ln_var = self.compute_ln_var_z(h)
         return cf.gaussian(mean, ln_var)

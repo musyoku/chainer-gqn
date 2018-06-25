@@ -55,16 +55,20 @@ class Network(base.generator.Network):
         out = cf.reshape(out, (batchsize, out_channels, out_height, out_width))
         return out
 
-    def compute_mu_z(self, h):
+    def compute_mean_z(self, h):
         return self.params.mean_z(h)
 
-    def sample_z(self, h, ln_var):
-        mean = self.compute_mu_z(h)
+    def compute_ln_var_z(self, h):
+        return self.params.ln_var_z(h)
+
+    def sample_z(self, h):
+        mean = self.compute_mean_z(h)
+        ln_var = self.compute_ln_var_z(h)
         return cf.gaussian(mean, ln_var)
 
-    def compute_mu_x(self, u):
+    def compute_mean_x(self, u):
         return self.params.mean_x(u)
 
     def sample_x(self, u, ln_var):
-        mean = self.compute_mu_x(u)
+        mean = self.compute_mean_x(u)
         return cf.gaussian(mean, ln_var)

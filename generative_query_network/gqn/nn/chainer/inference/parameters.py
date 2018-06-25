@@ -40,4 +40,11 @@ class Parameters(chainer.Chain):
                 ksize=5,
                 stride=1,
                 pad=2,
+                initialW=HeNormal(0.1)),
+            ln_var_z=L.Convolution2D(
+                None,
+                channels_chz,
+                ksize=5,
+                stride=1,
+                pad=2,
                 initialW=HeNormal(0.1)))
