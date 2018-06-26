@@ -27,7 +27,7 @@ class Optimizer:
         self.optimizer = optimizers.Adam(
             lr, beta1=beta_1, beta2=beta_2, eps=eps)
         self.optimizer.setup(model_parameters)
-        self.optimizer.add_hook(GradientClipping(5.0))
+        self.optimizer.add_hook(GradientClipping(10.0))
 
     def mu_s(self, training_step):
         return max(
