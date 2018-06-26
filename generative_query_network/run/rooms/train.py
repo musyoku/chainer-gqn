@@ -317,7 +317,7 @@ def main():
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
                            len(iterator), float(loss_nll.data),
-                           float(loss_kld.data), optimizer_all.optimizer.alpha,
+                           float(loss_kld.data), optimizer_all.learning_rate,
                            sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
@@ -339,7 +339,7 @@ def main():
         print(
             "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
             format(iteration + 1, mean_nll / total_batch,
-                   mean_kld / total_batch, optimizer_all.optimizer.alpha,
+                   mean_kld / total_batch, optimizer_all.learning_rate,
                    sigma_t, current_training_step))
 
 

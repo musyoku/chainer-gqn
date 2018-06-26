@@ -29,6 +29,10 @@ class Optimizer:
         self.optimizer.setup(model_parameters)
         self.optimizer.add_hook(GradientClipping(10.0))
 
+    @property
+    def learning_rate(self):
+        return self.optimizer.alpha
+
     def mu_s(self, training_step):
         return max(
             self.mu_f +
@@ -40,4 +44,4 @@ class Optimizer:
 
     def update(self, training_step):
         self.optimizer.update()
-        self.optimizer.alpha = self.mu_s(training_step)
+        self.anneal_learning_rate(training_step)
