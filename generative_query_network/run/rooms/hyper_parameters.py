@@ -12,6 +12,7 @@ class HyperParameters():
         self.representation_architecture = "tower"
 
         # for debug
-        self.channels_chz = 32
-        self.channels_r = 32
-        self.generator_u_channels = 32
+        self.channels_chz = 8
+        self.channels_r = 8
+        self.generator_u_channels = 8
+        self.generator_total_timestep = 8

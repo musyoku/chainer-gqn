@@ -108,6 +108,7 @@ namespace scene {
     {
         _num_faces = source->_num_faces;
         _num_vertices = source->_num_vertices;
+        _smoothness = source->_smoothness;
         reserve(_num_faces, _num_vertices);
 
         for (ssize_t face_index = 0; face_index < _num_faces; face_index++) {

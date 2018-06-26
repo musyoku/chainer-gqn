@@ -30,7 +30,7 @@ namespace renderer {
         gl3wInit();
 
         const GLchar vertex_shader[] = R"(
-#version 410
+#version 450
 in vec3 position;
 in vec3 face_normal_vector;
 in vec3 vertex_normal_vector;
@@ -43,52 +43,75 @@ uniform float smoothness;
 out float power;
 out float qa;
 out vec4 frag_object_color;
-out vec3 frag_normal_vector;
-out vec4 frag_light_position;
+out vec3 frag_smooth_normal_vector;
+out vec3 frag_vertex_normal_vector;
 out vec3 frag_light_direction;
 out vec4 frag_position;
 void main(void)
 {
     vec4 model_position = model_mat * vec4(position, 1.0f);
     gl_Position = projection_mat * view_mat * model_position;
-    vec4 light_position = vec4(0.0f, 3.0f, 1.0f, 1.0f);
-    frag_light_direction = model_position.xyz - light_position.xyz;
+    vec3 light_position = vec3(0.0f, 1.0f, 1.0f);
+    frag_light_direction = light_position - model_position.xyz;
     // power = clamp(attenuation, 0.0f, 1.0f);
     frag_object_color = vertex_color;
     qa = quadratic_attenuation;
-    frag_normal_vector = smoothness * vertex_normal_vector 
+    frag_smooth_normal_vector = smoothness * vertex_normal_vector 
         + (1.0 - smoothness) * face_normal_vector;
+    frag_vertex_normal_vector = vertex_normal_vector;
     frag_position = view_mat * model_position;
 }
 )";
 
         const GLchar fragment_shader[] = R"(
-#version 410
+#version 450
 in float power;
 in float qa;
 in vec4 frag_object_color;
 in vec3 frag_light_direction;
-in vec3 frag_normal_vector;
+in vec3 frag_smooth_normal_vector;
+in vec3 frag_vertex_normal_vector;
 in vec4 frag_position;
 out vec4 frag_color;
 void main(){
+    vec3 unit_smooth_normal_vector = normalize(frag_smooth_normal_vector);
+    vec3 unit_light_direction = normalize(frag_light_direction);
+    vec3 unit_eye_direction = normalize(-frag_position.xyz);
+    vec3 unit_reflection = normalize(2.0 * (dot(unit_light_direction, unit_smooth_normal_vector)) * unit_smooth_normal_vector - unit_light_direction);
+    float is_frontface = step(0.0, dot(unit_reflection, unit_smooth_normal_vector));
     float light_distance = length(frag_light_direction);
-    float attenuation = clamp(1.0 / (qa * light_distance * light_distance), 0.0f, 1.0f);
+    float attenuation = clamp(
+        1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
     vec3 eye_direction = -frag_position.xyz;
-    vec3 half = normalize(eye_direction) - normalize(frag_light_direction);
-    float diffuse = clamp(dot(normalize(frag_normal_vector),
-        -normalize(frag_light_direction)), 0.0f, 1.0f);
-    float specular = clamp(dot(normalize(frag_normal_vector), 
-        normalize(half)), 0.0f, 1.0f);
-    specular = pow(specular, 20.0);
+    float diffuse = dot(unit_smooth_normal_vector, unit_light_direction);
+    float specular = clamp(dot(unit_reflection, unit_eye_direction), 0.0f, 1.0f) * is_frontface;
+    specular = pow(specular, 2.0);
     // frag_color = vec4((attenuation) * object_color.xyz, 1.0);
-    vec3 diffuse_color = diffuse * frag_object_color.xyz;
+    vec3 attenuation_color = attenuation * frag_object_color.rgb;
+    vec3 diffuse_color = diffuse * frag_object_color.rgb;
     vec3 specular_color = vec3(specular);
-    vec3 attenuation_color = attenuation * frag_object_color.xyz;
-    frag_color = vec4(clamp(diffuse_color + attenuation_color * 0.5, 0.0, 1.0), 1.0);
+    vec3 ambient_color = frag_object_color.rgb;
+    frag_color = vec4(clamp(diffuse_color + ambient_color * 0.5, 0.0, 1.0), 1.0);
     frag_color = vec4(vec3(attenuation), 1.0);
-    frag_color = vec4(specular_color, 1.0);
-    // frag_color = vec4((eye_direction + 1.0) * 0.5, 1.0);
+    vec3 composite_color = ambient_color * 0.1 + diffuse_color
+        + specular_color * 0.5;
+
+    vec3 top = 0.5 * diffuse_color;
+    vec3 bottom = 0.5 * ambient_color;
+    vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
+
+    // top = 0.5 * specular_color;
+    // bottom = screen;
+    // screen = 1.0 - (1.0 - top) * (1.0 - bottom);
+    frag_color = vec4(screen + specular_color * 0.1, 1.0);
+
+    if(gl_FragCoord.x > 320){
+        // frag_color = vec4(specular_color, 1.0);
+    }
+
+    
+    // frag_color = vec4((unit_smooth_normal_vector + 1.0) * 0.5, 1.0);
+    // frag_color = vec4(vec3(attenuation), 1.0);
 }
 )";
 
@@ -202,7 +225,7 @@ void main(){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        static float quadratic_attenuation = 0.2;
+        static float quadratic_attenuation = 2.0;
 
         glm::mat4& view_mat = camera->_view_matrix;
         glm::mat4& projection_mat = camera->_projection_matrix;
