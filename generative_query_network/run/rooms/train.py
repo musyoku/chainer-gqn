@@ -176,8 +176,7 @@ def main():
                     ) + hyperparams.chrz_size,
                     dtype="float32")
 
-                # Inference
-                loss_kld = 0
+                # Reconstruction phase
                 he_l = he_0
                 ce_l = ce_0
                 hg_l = hg_0
@@ -187,21 +186,10 @@ def main():
                     he_next, ce_next = model.inference_network.forward_onestep(
                         hg_l, he_l, ce_l, query_images, query_viewpoints, r)
 
-                    mean_z_q = model.inference_network.compute_mean_z(he_l)
-                    ln_var_z_q = model.inference_network.compute_ln_var_z(he_l)
-                    ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
-
-                    mean_z_p = model.generation_network.compute_mean_z(hg_l)
-                    ln_var_z_p = model.generation_network.compute_ln_var_z(
-                        he_l)
+                    ze_l = model.inference_network.sample_z(he_l)
 
                     hg_next, cg_next, ue_next = model.generation_network.forward_onestep(
                         hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
-
-                    kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
-                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
-
-                    loss_kld += cf.sum(kld)
 
                     hg_l = hg_next
                     cg_l = cg_next
@@ -215,11 +203,49 @@ def main():
                 loss_nll = cf.sum(negative_log_likelihood)
 
                 loss_nll /= args.batch_size
-                loss_kld /= args.batch_size
-                loss = loss_nll + loss_kld
                 model.cleargrads()
-                loss.backward()
+                loss_nll.backward()
                 optimizer_all.update(current_training_step)
+
+                # Regularization phase
+                loss_kld = 0
+                he_l = he_0
+                ce_l = ce_0
+                hg_l = hg_0
+                cg_l = cg_0
+                ue_l = u_0
+                r_no_grad = r.data  # for faster backprop
+                for l in range(hyperparams.generator_total_timestep):
+                    he_next, ce_next = model.inference_network.forward_onestep(
+                        hg_l, he_l, ce_l, query_images, query_viewpoints,
+                        r_no_grad)
+
+                    mean_z_q = model.inference_network.compute_mean_z(he_l)
+                    ln_var_z_q = model.inference_network.compute_ln_var_z(he_l)
+                    ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
+
+                    mean_z_p = model.generation_network.compute_mean_z(hg_l)
+                    ln_var_z_p = model.generation_network.compute_ln_var_z(
+                        hg_l)
+
+                    hg_next, cg_next, ue_next = model.generation_network.forward_onestep(
+                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r_no_grad)
+
+                    kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
+
+                    loss_kld += cf.sum(kld)
+
+                    hg_l = hg_next
+                    cg_l = cg_next
+                    ue_l = ue_next
+                    he_l = he_next
+                    ce_l = ce_next
+
+                loss_kld /= args.batch_size
+                model.cleargrads()
+                loss_kld.backward()
+                optimizer_inference.update(current_training_step)
 
                 if window.closed() is False:
                     axis1.update(
