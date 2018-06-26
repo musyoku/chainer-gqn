@@ -23,7 +23,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 $(TARGET): $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
 .c.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
