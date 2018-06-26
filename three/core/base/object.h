@@ -17,6 +17,7 @@ namespace base {
         std::unique_ptr<glm::vec4f[]> _face_vertex_colors;
         int _num_faces;
         int _num_vertices;
+        bool _smoothness;
         glm::vec3 _position; // xyz
         glm::vec3 _rotation_rad; // xyz
         glm::vec3 _scale; // xyz

@@ -1,15 +1,23 @@
 import os
 from .. import geometry, three, color
 
+
 def generate_donut():
     pass
 
+
 def get_realpath():
-    return os.path.realpath(__file__).replace("/gqn/environment/objects.py", "")
+    return os.path.realpath(__file__).replace("/gqn/environment/objects.py",
+                                              "")
+
 
 def load_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
-    vertices, faces = geometry.load("{}/geometries/{}".format(get_realpath(), name))
-    return three.Object(faces, vertices, color, scale), vertices, faces
+    vertices, faces = geometry.load("{}/geometries/{}".format(
+        get_realpath(), name))
+    num_vertices = vertices.shape[0]
+    smoothness = True if num_vertices > 20 else False
+    return three.Object(faces, vertices, color, scale,
+                        smoothness), vertices, faces
 
 
 def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):

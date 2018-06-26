@@ -29,8 +29,16 @@ PYBIND11_MODULE(three, module)
             py::arg("object"), py::arg("position"), py::arg("rotation"));
 
     py::class_<scene::Object, std::shared_ptr<scene::Object>>(module, "Object")
-        .def(py::init<py::array_t<int>, py::array_t<float>, py::tuple, py::tuple>(),
-            py::arg("faces"), py::arg("vertices"), py::arg("color"), py::arg("scale"))
+        .def(py::init<py::array_t<int>,
+                 py::array_t<float>,
+                 py::tuple,
+                 py::tuple,
+                 bool>(),
+            py::arg("faces"),
+            py::arg("vertices"),
+            py::arg("color"),
+            py::arg("scale"),
+            py::arg("smoothness"))
         .def("clone", &scene::Object::clone)
         .def("set_color", &scene::Object::set_color)
         .def("set_scale", &scene::Object::set_scale)
@@ -38,8 +46,16 @@ PYBIND11_MODULE(three, module)
         .def("set_rotation", &scene::Object::set_rotation);
 
     py::class_<scene::CornellBox, std::shared_ptr<scene::CornellBox>>(module, "CornellBox")
-        .def(py::init<py::tuple, py::tuple, py::tuple, py::tuple, py::tuple>(),
-            py::arg("north_wall_color"), py::arg("east_wall_color"), py::arg("south_wall_color"), py::arg("west_wall_color"), py::arg("scale"))
+        .def(py::init<py::tuple,
+                 py::tuple,
+                 py::tuple,
+                 py::tuple,
+                 py::tuple>(),
+            py::arg("north_wall_color"),
+            py::arg("east_wall_color"),
+            py::arg("south_wall_color"),
+            py::arg("west_wall_color"),
+            py::arg("scale"))
         .def("clone", &scene::CornellBox::clone)
         .def("set_north_wall_color", &scene::CornellBox::set_north_wall_color)
         .def("set_east_wall_color", &scene::CornellBox::set_east_wall_color)

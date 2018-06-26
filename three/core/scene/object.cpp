@@ -4,7 +4,11 @@
 
 namespace three {
 namespace scene {
-    Object::Object(py::array_t<int> np_faces, py::array_t<float> np_vertices, py::tuple color, py::tuple scale)
+    Object::Object(py::array_t<int> np_faces,
+        py::array_t<float> np_vertices,
+        py::tuple color,
+        py::tuple scale,
+        bool smoothness)
     {
         if (np_faces.ndim() != 2) {
             throw std::runtime_error("(np_faces.ndim() != 2) -> false");
@@ -21,6 +25,7 @@ namespace scene {
 
         _num_faces = np_faces.shape(0);
         _num_vertices = np_vertices.shape(0);
+        _smoothness = smoothness;
         reserve(_num_faces, _num_vertices);
 
         auto faces = np_faces.mutable_unchecked<2>();

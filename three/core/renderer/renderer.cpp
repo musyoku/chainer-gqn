@@ -39,46 +39,56 @@ uniform float quadratic_attenuation;
 uniform mat4 model_mat;
 uniform mat4 view_mat;
 uniform mat4 projection_mat;
+uniform float smoothness;
 out float power;
-out vec4 object_color;
-out vec3 light_direction;
 out float qa;
-out mat4 _camera_mat;
-out vec4 face_direction;
-out vec3 _normal_vector;
+out vec4 frag_object_color;
+out vec3 frag_normal_vector;
+out vec4 frag_light_position;
+out vec3 frag_light_direction;
+out vec4 frag_position;
 void main(void)
 {
-    mat4 camera_mat = view_mat * model_mat;
-    vec4 model_position = camera_mat * vec4(position, 1.0f);
-    gl_Position = projection_mat * model_position;
-    face_direction = camera_mat * vec4(vertex_normal_vector, 1.0f);
-    vec4 light_position = view_mat * vec4(0.0f, 3.0f, 1.0f, 1.0f);
-    light_direction = model_position.xyz - light_position.xyz;
-    _camera_mat = camera_mat;
-    _normal_vector = vertex_normal_vector;
+    vec4 model_position = model_mat * vec4(position, 1.0f);
+    gl_Position = projection_mat * view_mat * model_position;
+    vec4 light_position = vec4(0.0f, 3.0f, 1.0f, 1.0f);
+    frag_light_direction = model_position.xyz - light_position.xyz;
     // power = clamp(attenuation, 0.0f, 1.0f);
-    object_color = vertex_color;
+    frag_object_color = vertex_color;
     qa = quadratic_attenuation;
+    frag_normal_vector = smoothness * vertex_normal_vector 
+        + (1.0 - smoothness) * face_normal_vector;
+    frag_position = view_mat * model_position;
 }
 )";
 
         const GLchar fragment_shader[] = R"(
 #version 410
 in float power;
-in vec4 face_direction;
-in vec4 object_color;
-in vec3 _normal_vector;
-in vec3 light_direction;
 in float qa;
-in mat4 _camera_mat;
+in vec4 frag_object_color;
+in vec3 frag_light_direction;
+in vec3 frag_normal_vector;
+in vec4 frag_position;
 out vec4 frag_color;
 void main(){
-    float light_distance = length(light_direction);
+    float light_distance = length(frag_light_direction);
     float attenuation = clamp(1.0 / (qa * light_distance * light_distance), 0.0f, 1.0f);
-    // vec3 half = normalize(face_direction.xyz) - normalize(light_direction.xyz);
-    float diffuse = clamp(dot(normalize(face_direction.xyz), -normalize(light_direction)), 0.0f, 1.0f);
-    float power = pow(diffuse, 10.0);
-    frag_color = vec4((attenuation) * object_color.xyz, 1.0);
+    vec3 eye_direction = -frag_position.xyz;
+    vec3 half = normalize(eye_direction) - normalize(frag_light_direction);
+    float diffuse = clamp(dot(normalize(frag_normal_vector),
+        -normalize(frag_light_direction)), 0.0f, 1.0f);
+    float specular = clamp(dot(normalize(frag_normal_vector), 
+        normalize(half)), 0.0f, 1.0f);
+    specular = pow(specular, 20.0);
+    // frag_color = vec4((attenuation) * object_color.xyz, 1.0);
+    vec3 diffuse_color = diffuse * frag_object_color.xyz;
+    vec3 specular_color = vec3(specular);
+    vec3 attenuation_color = attenuation * frag_object_color.xyz;
+    frag_color = vec4(clamp(diffuse_color + attenuation_color * 0.5, 0.0, 1.0), 1.0);
+    frag_color = vec4(vec3(attenuation), 1.0);
+    frag_color = vec4(specular_color, 1.0);
+    // frag_color = vec4((eye_direction + 1.0) * 0.5, 1.0);
 }
 )";
 
@@ -92,6 +102,7 @@ void main(){
         _uniform_view_mat = glGetUniformLocation(_program, "view_mat");
         _uniform_model_mat = glGetUniformLocation(_program, "model_mat");
         _uniform_quadratic_attenuation = glGetUniformLocation(_program, "quadratic_attenuation");
+        _uniform_smoothness = glGetUniformLocation(_program, "smoothness");
 
         glGenRenderbuffers(1, &_render_buffer);
     }
@@ -204,6 +215,8 @@ void main(){
             glUniformMatrix4fv(_uniform_view_mat, 1, GL_FALSE, glm::value_ptr(view_mat));
             glUniformMatrix4fv(_uniform_model_mat, 1, GL_FALSE, glm::value_ptr(model_mat));
             glUniform1f(_uniform_quadratic_attenuation, quadratic_attenuation);
+            float smoothness = object->_smoothness ? 1.0 : 0.0;
+            glUniform1f(_uniform_smoothness, smoothness);
             glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
         }
     }

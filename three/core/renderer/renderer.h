@@ -23,6 +23,7 @@ namespace renderer {
         GLuint _uniform_model_mat;
         GLuint _uniform_view_mat;
         GLuint _uniform_quadratic_attenuation;
+        GLuint _uniform_smoothness;
         GLuint _render_buffer;
         std::unique_ptr<GLuint[]> _vao;
         std::unique_ptr<GLuint[]> _vbo_vertices;

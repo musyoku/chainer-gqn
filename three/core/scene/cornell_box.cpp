@@ -14,6 +14,7 @@ namespace scene {
     {
         _num_faces = 12;
         _num_vertices = 8;
+        _smoothness = false;
         reserve(_num_faces, _num_vertices);
 
         _faces[0] = glm::vec3i(0, 1, 2);
