@@ -24,5 +24,6 @@ def gaussian_kl_divergence(mu_q, ln_var_q, mu_p, ln_var_p):
 
 
 def gaussian_negative_log_likelihood(x, mu, var, ln_var):
+    k = mu.shape[1] * mu.shape[2] * mu.shape[3]
     diff = x - mu
-    return 0.5 * (ln_var + math.log(2 * math.pi) + diff**2 / var)
+    return 0.5 * (k * math.log(2 * math.pi) + cf.sum(ln_var + diff * diff / var, axis=(1, 2, 3)))
