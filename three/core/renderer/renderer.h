@@ -31,6 +31,7 @@ namespace renderer {
         std::unique_ptr<multipass::Main> _main_program;
         std::unique_ptr<GLubyte[]> _color_pixels;
         std::unique_ptr<GLfloat[]> _depth_pixels;
+        std::unique_ptr<GLfloat[]> _depth_texture_data;
         GLFWwindow* _window;
         scene::Scene* _scene;
         int _prev_num_objects;

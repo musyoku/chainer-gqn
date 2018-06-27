@@ -42,9 +42,18 @@ namespace renderer {
         glCreateRenderbuffers(1, &_depth_render_buffer);
         glNamedRenderbufferStorage(_depth_render_buffer, GL_DEPTH_COMPONENT, _width, _height);
 
+        // _depth_texture_data = std::make_unique<GLfloat[]>(width * height);
+        // glCreateTextures(GL_TEXTURE_2D, 1, &_depth_texture);
+        // glTextureStorage2D(_depth_texture, 1, GL_DEPTH_COMPONENT, width, height);
+        // glTextureSubImage2D(_depth_texture, 0, 0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, _depth_texture_data.get());
+        // glTextureParameteri(_depth_texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // glTextureParameteri(_depth_texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_S, GL_NEAREST);
+        // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_T, GL_NEAREST);
+
         glGenTextures(1, &_depth_texture);
         glBindTexture(GL_TEXTURE_2D, _depth_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -160,14 +169,15 @@ namespace renderer {
 
         // First pass
         {
-            // glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
-            // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
             // glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
             // glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
+            // glNamedFramebufferRenderbuffer(_frame_buffer, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
+            // glNamedFramebufferRenderbuffer(_frame_buffer, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
+            // glNamedFramebufferTexture(_frame_buffer, GL_DEPTH_ATTACHMENT, _depth_texture, 0);
             // glDrawBuffer(GL_NONE);
             // glReadBuffer(GL_NONE);
-            glNamedFramebufferRenderbuffer(_frame_buffer, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
-            glNamedFramebufferRenderbuffer(_frame_buffer, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, _width, _height);
             // GLenum buf = GL_DEPTH_ATTACHMENT;
@@ -191,27 +201,28 @@ namespace renderer {
 
             // glBindTexture(GL_TEXTURE_2D, _depth_texture);
 
-            std::unique_ptr<GLfloat[]> buffer = std::make_unique<GLfloat[]>(_width * _height);
-            glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, buffer.get());
-            auto rgb_map = np_rgb_map.mutable_unchecked<3>();
+            // std::unique_ptr<GLfloat[]> buffer = std::make_unique<GLfloat[]>(_width * _height);
+            // glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, buffer.get());
+            // auto rgb_map = np_rgb_map.mutable_unchecked<3>();
 
-            GLfloat min_value = 1.0;
-            for (int h = 0; h < _height; h++) {
-                for (int w = 0; w < _width; w++) {
-                    GLfloat depth = buffer[(_height - h - 1) * _width + w];
-                    if(depth < min_value){
-                        min_value = depth;
-                    }
-                }
-            }
+            // GLfloat min_value = 1.0;
+            // for (int h = 0; h < _height; h++) {
+            //     for (int w = 0; w < _width; w++) {
+            //         GLfloat depth = buffer[(_height - h - 1) * _width + w];
+            //         if(depth < min_value){
+            //             min_value = depth;
+            //         }
+            //     }
+            // }
+            // std::cout << min_value << std::endl;
 
-            for (int h = 0; h < _height; h++) {
-                for (int w = 0; w < _width; w++) {
-                    rgb_map(h, w, 0) = (buffer[(_height - h - 1) * _width + w] - min_value) / (1.0 - min_value) * 255.0;
-                    rgb_map(h, w, 1) = (buffer[(_height - h - 1) * _width + w] - min_value) / (1.0 - min_value) * 255.0;
-                    rgb_map(h, w, 2) = (buffer[(_height - h - 1) * _width + w] - min_value) / (1.0 - min_value) * 255.0;
-                }
-            }
+            // for (int h = 0; h < _height; h++) {
+            //     for (int w = 0; w < _width; w++) {
+            //         rgb_map(h, w, 0) = (buffer[(_height - h - 1) * _width + w] - min_value) / (1.0 - min_value) * 255.0;
+            //         rgb_map(h, w, 1) = (buffer[(_height - h - 1) * _width + w] - min_value) / (1.0 - min_value) * 255.0;
+            //         rgb_map(h, w, 2) = (buffer[(_height - h - 1) * _width + w] - min_value) / (1.0 - min_value) * 255.0;
+            //     }
+            // }
 
             // glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());
             // for (int h = 0; h < _height; h++) {
@@ -242,15 +253,15 @@ namespace renderer {
             glBindTexture(GL_TEXTURE_2D, _depth_texture);
             draw_objects(camera);
 
-            // glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());
-            // auto rgb_map = np_rgb_map.mutable_unchecked<3>();
-            // for (int h = 0; h < _height; h++) {
-            //     for (int w = 0; w < _width; w++) {
-            //         rgb_map(h, w, 0) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 0];
-            //         rgb_map(h, w, 1) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 1];
-            //         rgb_map(h, w, 2) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 2];
-            //     }
-            // }
+            glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());
+            auto rgb_map = np_rgb_map.mutable_unchecked<3>();
+            for (int h = 0; h < _height; h++) {
+                for (int w = 0; w < _width; w++) {
+                    rgb_map(h, w, 0) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 0];
+                    rgb_map(h, w, 1) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 1];
+                    rgb_map(h, w, 2) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 2];
+                }
+            }
         }
 
         glUseProgram(0);
