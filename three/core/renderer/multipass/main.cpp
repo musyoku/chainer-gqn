@@ -72,7 +72,7 @@ void main(){
 
     frag_color = vec4(screen + specular_color * 0.08, 1.0);
 
-    // frag_color = vec4(vec3(texture(depth_map, gl_FragCoord.xy / 640).x), 1.0);
+    frag_color = vec4(vec3(texture(depth_map, gl_FragCoord.xy / 640).x), 1.0);
 }
 )";
 

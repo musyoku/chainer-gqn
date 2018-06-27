@@ -18,7 +18,8 @@ namespace renderer {
         int _width;
         int _height;
         GLuint _frame_buffer;
-        GLuint _render_buffer;
+        GLuint _color_render_buffer;
+        GLuint _depth_render_buffer;
         GLuint _depth_texture;
         GLuint _color_texture;
         const GLuint _uniform_model_mat = 0;
