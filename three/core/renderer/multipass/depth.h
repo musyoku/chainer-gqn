@@ -11,6 +11,7 @@ namespace renderer {
         public:
             Depth();
             void use();
+            void uniform_matrix(GLuint location, const GLfloat* matrix);
         };
     }
 }

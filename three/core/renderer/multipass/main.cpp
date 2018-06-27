@@ -51,8 +51,7 @@ void main(){
     vec3 unit_reflection = normalize(2.0 * (dot(unit_light_direction, unit_smooth_normal_vector)) * unit_smooth_normal_vector - unit_light_direction);
     float is_frontface = step(0.0, dot(unit_reflection, unit_smooth_normal_vector));
     float light_distance = length(frag_light_direction);
-    float attenuation = clamp(
-        1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
+    float attenuation = clamp(1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
     vec3 eye_direction = -frag_position.xyz;
     float diffuse = dot(unit_smooth_normal_vector, unit_light_direction);
     float specular = clamp(dot(unit_reflection, unit_eye_direction), 0.0f, 1.0f) * is_frontface;
@@ -72,6 +71,8 @@ void main(){
     vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
 
     frag_color = vec4(screen + specular_color * 0.08, 1.0);
+
+    // frag_color = vec4(vec3(texture(depth_map, gl_FragCoord.xy / 640).x), 1.0);
 }
 )";
 

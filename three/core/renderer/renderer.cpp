@@ -36,19 +36,27 @@ namespace renderer {
 
         glGenFramebuffers(1, &_frame_buffer);
 
-        glGenRenderbuffers(1, &_render_buffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGB, _width, _height);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        // glGenRenderbuffers(1, &_render_buffer);
+        // glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
+        // glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, _width, _height);
+        // glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
         glGenTextures(1, &_depth_texture);
         glBindTexture(GL_TEXTURE_2D, _depth_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
+        glGenTextures(1, &_color_texture);
+        glBindTexture(GL_TEXTURE_2D, _color_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glBindTexture(GL_TEXTURE_2D, 0);
 
         glEnable(GL_CULL_FACE);
@@ -144,23 +152,45 @@ namespace renderer {
         // OpenGL commands are executed in global context (per thread).
         glfwMakeContextCurrent(_window);
 
-        // First pass
-        {
-            glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
-            glViewport(0, 0, _width, _height);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            _depth_program->use();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
-            glViewport(0, 0, _width, _height);
-            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                throw std::runtime_error("glCheckFramebufferStatus() != GL_FRAMEBUFFER_COMPLETE");
-            }
-
-            draw_objects(camera);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            throw std::runtime_error("glCheckFramebufferStatus() != GL_FRAMEBUFFER_COMPLETE");
         }
+
+        // First pass
+        // {
+        //     glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
+        //     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
+        //     // glDrawBuffer(GL_NONE);
+        //     // glReadBuffer(GL_NONE);
+        //     glEnable(GL_DEPTH_TEST);
+        //     glViewport(0, 0, _width, _height);
+        //     // GLenum buf = GL_DEPTH_ATTACHMENT;
+        //     // glDrawBuffers(1, &buf);
+        //     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        //     _depth_program->use();
+
+        //     glm::mat4& view_mat = camera->_view_matrix;
+        //     glm::mat4& projection_mat = camera->_projection_matrix;
+        //     std::vector<std::shared_ptr<base::Object>>& objects = _scene->_objects;
+        //     for (int object_index = 0; object_index < objects.size(); object_index++) {
+        //         std::shared_ptr<base::Object> object = objects[object_index];
+        //         glm::mat4& model_mat = object->_model_matrix;
+        //         _vao->bind_object(object_index);
+        //         _depth_program->uniform_matrix(_uniform_model_mat, glm::value_ptr(model_mat));
+        //         _depth_program->uniform_matrix(_uniform_view_mat, glm::value_ptr(view_mat));
+        //         _depth_program->uniform_matrix(_uniform_projection_mat, glm::value_ptr(projection_mat));
+
+        //         glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
+        //     }
+
+        //     // glBindTexture(GL_TEXTURE_2D, _depth_texture);
+
+        //     // glFlush();
+        //     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //     glUseProgram(0);
+        //     glBindVertexArray(0);
+        // }
 
         // Second pass
         {
@@ -168,8 +198,10 @@ namespace renderer {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             _main_program->use();
+            // glActiveTexture(GL_TEXTURE0);
+            // glBindTexture(GL_TEXTURE_2D, _depth_texture);
             draw_objects(camera);
-            
+
             glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());
             auto rgb_map = np_rgb_map.mutable_unchecked<3>();
             for (int h = 0; h < _height; h++) {

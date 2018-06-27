@@ -20,6 +20,7 @@ namespace renderer {
         GLuint _frame_buffer;
         GLuint _render_buffer;
         GLuint _depth_texture;
+        GLuint _color_texture;
         const GLuint _uniform_model_mat = 0;
         const GLuint _uniform_view_mat = 1;
         const GLuint _uniform_projection_mat = 2;

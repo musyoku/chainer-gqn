@@ -1,5 +1,6 @@
 #include "depth.h"
 #include "../opengl/functions.h"
+#include <iostream>
 
 namespace three {
 namespace renderer {
@@ -23,9 +24,8 @@ void main(void)
 
             const GLchar fragment_shader[] = R"(
 #version 450
-out vec4 frag_color;
 void main(){
-    frag_color = vec4(1.0);
+    
 }
 )";
 
@@ -35,6 +35,10 @@ void main(){
         void Depth::use()
         {
             glUseProgram(_program);
+        }
+        void Depth::uniform_matrix(GLuint location, const GLfloat* matrix)
+        {
+            glUniformMatrix4fv(location, 1, GL_FALSE, matrix);
         }
     }
 }
