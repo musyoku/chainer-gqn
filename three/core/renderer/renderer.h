@@ -1,7 +1,8 @@
 #pragma once
-#include "../camera/perspective.h"
 #include "../base/object.h"
+#include "../camera/perspective.h"
 #include "../scene/scene.h"
+#include "opengl/vao.h"
 #include <gl3w/gl3w.h>
 #include <glfw/glfw3.h>
 #include <memory>
@@ -25,19 +26,14 @@ namespace renderer {
         GLuint _uniform_quadratic_attenuation;
         GLuint _uniform_smoothness;
         GLuint _render_buffer;
-        std::unique_ptr<GLuint[]> _vao;
-        std::unique_ptr<GLuint[]> _vbo_vertices;
-        std::unique_ptr<GLuint[]> _vbo_normal_vectors;
-        std::unique_ptr<GLuint[]> _vbo_vertex_normal_vectors;
-        std::unique_ptr<GLuint[]> _vbo_vertex_colors;
-        std::unique_ptr<GLuint[]> _vbo_faces;
+        GLuint _texture_depth_map;
+        std::unique_ptr<opengl::VertexArrayObject> _vao;
         std::unique_ptr<GLubyte[]> _color_buffer;
         std::unique_ptr<GLfloat[]> _depth_buffer;
         GLFWwindow* _window;
         scene::Scene* _scene;
         int _prev_num_objects;
         void render_objects(camera::PerspectiveCamera* camera);
-        void delete_buffers();
         void initialize(int width, int height);
 
     public:

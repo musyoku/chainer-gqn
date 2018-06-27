@@ -1,5 +1,5 @@
 #include "renderer.h"
-#include "opengl.h"
+#include "opengl/functions.h"
 #include <glm/gtc/type_ptr.hpp>
 
 namespace three {
@@ -11,6 +11,7 @@ namespace renderer {
         _depth_buffer = std::make_unique<GLfloat[]>(width * height);
         _color_buffer = std::make_unique<GLubyte[]>(width * height * 3);
         _prev_num_objects = -1;
+        _vao = std::make_unique<opengl::VertexArrayObject>();
 
         glfwSetErrorCallback([](int error, const char* description) {
             fprintf(stderr, "Error %d: %s\n", error, description);
@@ -31,10 +32,10 @@ namespace renderer {
 
         const GLchar vertex_shader[] = R"(
 #version 450
-in vec3 position;
-in vec3 face_normal_vector;
-in vec3 vertex_normal_vector;
-in vec4 vertex_color;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 face_normal_vector;
+layout(location = 2) in vec3 vertex_normal_vector;
+layout(location = 3) in vec4 vertex_color;
 uniform float quadratic_attenuation;
 uniform mat4 model_mat;
 uniform mat4 view_mat;
@@ -100,18 +101,7 @@ void main(){
     vec3 bottom = 0.5 * ambient_color;
     vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
 
-    // top = 0.5 * specular_color;
-    // bottom = screen;
-    // screen = 1.0 - (1.0 - top) * (1.0 - bottom);
-    frag_color = vec4(screen + specular_color * 0.1, 1.0);
-
-    if(gl_FragCoord.x > 320){
-        // frag_color = vec4(specular_color, 1.0);
-    }
-
-    
-    // frag_color = vec4((unit_smooth_normal_vector + 1.0) * 0.5, 1.0);
-    // frag_color = vec4(vec3(attenuation), 1.0);
+    frag_color = vec4(screen + specular_color * 0.05, 1.0);
 }
 )";
 
@@ -140,82 +130,15 @@ void main(){
     }
     Renderer::~Renderer()
     {
-        delete_buffers();
         glfwDestroyWindow(_window);
         glfwTerminate();
-    }
-    void Renderer::delete_buffers()
-    {
-        if (_prev_num_objects == -1) {
-            return;
-        }
-        glDeleteVertexArrays(_prev_num_objects, _vao.get());
-        glDeleteBuffers(_prev_num_objects, _vbo_faces.get());
-        glDeleteBuffers(_prev_num_objects, _vbo_vertices.get());
-        glDeleteBuffers(_prev_num_objects, _vbo_normal_vectors.get());
-        glDeleteBuffers(_prev_num_objects, _vbo_vertex_normal_vectors.get());
-        glDeleteBuffers(_prev_num_objects, _vbo_vertex_colors.get());
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
     void Renderer::set_scene(scene::Scene* scene)
     {
         glfwMakeContextCurrent(_window);
         glUseProgram(_program);
-        delete_buffers();
         _scene = scene;
-
-        int num_objects = scene->_objects.size();
-        _prev_num_objects = num_objects;
-
-        _vao = std::make_unique<GLuint[]>(num_objects);
-        glGenVertexArrays(num_objects, _vao.get());
-
-        _vbo_faces = std::make_unique<GLuint[]>(num_objects);
-        glGenBuffers(num_objects, _vbo_faces.get());
-
-        _vbo_vertices = std::make_unique<GLuint[]>(num_objects);
-        glGenBuffers(num_objects, _vbo_vertices.get());
-
-        _vbo_normal_vectors = std::make_unique<GLuint[]>(num_objects);
-        glGenBuffers(num_objects, _vbo_normal_vectors.get());
-
-        _vbo_vertex_normal_vectors = std::make_unique<GLuint[]>(num_objects);
-        glGenBuffers(num_objects, _vbo_vertex_normal_vectors.get());
-
-        _vbo_vertex_colors = std::make_unique<GLuint[]>(num_objects);
-        glGenBuffers(num_objects, _vbo_vertex_colors.get());
-
-        for (int n = 0; n < num_objects; n++) {
-            glBindVertexArray(_vao[n]);
-
-            auto& object = scene->_objects[n];
-            int num_faces = object->_num_faces;
-            int num_vertices = object->_num_vertices;
-
-            glBindBuffer(GL_ARRAY_BUFFER, _vbo_vertices[n]);
-            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_vertices.get(), GL_STATIC_DRAW);
-            glVertexAttribPointer(_attribute_position, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(_attribute_position);
-
-            glBindBuffer(GL_ARRAY_BUFFER, _vbo_normal_vectors[n]);
-            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_normal_vectors.get(), GL_STATIC_DRAW);
-            glVertexAttribPointer(_attribute_face_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(_attribute_face_normal_vector);
-
-            glBindBuffer(GL_ARRAY_BUFFER, _vbo_vertex_normal_vectors[n]);
-            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec3f), object->_face_vertex_normal_vectors.get(), GL_STATIC_DRAW);
-            glVertexAttribPointer(_attribute_vertex_normal_vector, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(_attribute_vertex_normal_vector);
-
-            glBindBuffer(GL_ARRAY_BUFFER, _vbo_vertex_colors[n]);
-            glBufferData(GL_ARRAY_BUFFER, 3 * num_faces * sizeof(glm::vec4f), object->_face_vertex_colors.get(), GL_STATIC_DRAW);
-            glVertexAttribPointer(_attribute_vertex_color, 4, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(_attribute_vertex_color);
-
-            glBindVertexArray(0);
-        }
-
-        glBindVertexArray(0);
+        _vao->build(scene);
     }
     void Renderer::render_objects(camera::PerspectiveCamera* camera)
     {
@@ -232,7 +155,7 @@ void main(){
         std::vector<std::shared_ptr<base::Object>>& objects = _scene->_objects;
         for (int object_index = 0; object_index < objects.size(); object_index++) {
             std::shared_ptr<base::Object> object = objects[object_index];
-            glBindVertexArray(_vao[object_index]);
+            _vao->bind_object(object_index);
             glm::mat4& model_mat = object->_model_matrix;
             glUniformMatrix4fv(_uniform_projection_mat, 1, GL_FALSE, glm::value_ptr(projection_mat));
             glUniformMatrix4fv(_uniform_view_mat, 1, GL_FALSE, glm::value_ptr(view_mat));
