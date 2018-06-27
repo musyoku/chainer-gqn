@@ -15,8 +15,8 @@ namespace renderer {
 
         _width = width;
         _height = height;
-        _depth_buffer = std::make_unique<GLfloat[]>(width * height);
-        _color_buffer = std::make_unique<GLubyte[]>(width * height * 3);
+        _depth_pixels = std::make_unique<GLfloat[]>(width * height);
+        _color_pixels = std::make_unique<GLubyte[]>(width * height * 3);
         _prev_num_objects = -1;
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -33,8 +33,28 @@ namespace renderer {
         _vao = std::make_unique<opengl::VertexArrayObject>();
         _depth_program = std::make_unique<multipass::Depth>();
         _main_program = std::make_unique<multipass::Main>();
-        
+
+        glGenFramebuffers(1, &_frame_buffer);
+
         glGenRenderbuffers(1, &_render_buffer);
+        glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGB, _width, _height);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+        glGenTextures(1, &_depth_texture);
+        glBindTexture(GL_TEXTURE_2D, _depth_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        glClearColor(0.0, 0.0, 0.0, 1.0);
     }
     Renderer::Renderer(int width, int height)
     {
@@ -56,28 +76,22 @@ namespace renderer {
         _scene = scene;
         _vao->build(scene);
     }
-    void Renderer::render_objects(camera::PerspectiveCamera* camera)
+    void Renderer::draw_objects(camera::PerspectiveCamera* camera)
     {
-        // OpenGL commands are executed in global context (per thread).
-        glfwMakeContextCurrent(_window);
-        glViewport(0, 0, _width, _height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-
-        static float quadratic_attenuation = 2.0;
-
         glm::mat4& view_mat = camera->_view_matrix;
         glm::mat4& projection_mat = camera->_projection_matrix;
         std::vector<std::shared_ptr<base::Object>>& objects = _scene->_objects;
         for (int object_index = 0; object_index < objects.size(); object_index++) {
             std::shared_ptr<base::Object> object = objects[object_index];
-            _vao->bind_object(object_index);
-            glm::mat4& model_mat = object->_model_matrix;
-            _main_program->uniform_matrix(0, glm::value_ptr(model_mat));
-            _main_program->uniform_matrix(1, glm::value_ptr(view_mat));
-            _main_program->uniform_matrix(2, glm::value_ptr(projection_mat));
             float smoothness = object->_smoothness ? 1.0 : 0.0;
-            _main_program->uniform_float(3, smoothness);
+            glm::mat4& model_mat = object->_model_matrix;
+
+            _vao->bind_object(object_index);
+            _main_program->uniform_matrix(_uniform_model_mat, glm::value_ptr(model_mat));
+            _main_program->uniform_matrix(_uniform_view_mat, glm::value_ptr(view_mat));
+            _main_program->uniform_matrix(_uniform_projection_mat, glm::value_ptr(projection_mat));
+            _main_program->uniform_float(_uniform_soothness, smoothness);
+
             glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
         }
     }
@@ -86,70 +100,89 @@ namespace renderer {
         py::array_t<GLfloat, py::array::c_style> np_depth_map)
     {
         if (glfwWindowShouldClose(_window)) {
-            glfwDestroyWindow(_window);
-            glfwTerminate();
             return;
         }
 
+        // OpenGL commands are executed in global context (per thread).
+        glfwMakeContextCurrent(_window);
+        glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
+
+        glViewport(0, 0, _width, _height);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+
         _main_program->use();
+
         glEnable(GL_BLEND);
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _render_buffer);
 
-        render_objects(camera);
+        draw_objects(camera);
 
-        glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, _depth_buffer.get());
+        glReadPixels(0, 0, _width, _height, GL_DEPTH_COMPONENT, GL_FLOAT, _depth_pixels.get());
         auto depth_map = np_depth_map.mutable_unchecked<2>();
         for (int h = 0; h < _height; h++) {
             for (int w = 0; w < _width; w++) {
-                depth_map(h, w) = _depth_buffer[(_height - h - 1) * _width + w];
+                depth_map(h, w) = _depth_pixels[(_height - h - 1) * _width + w];
             }
         }
 
         glUseProgram(0);
         glBindVertexArray(0);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
     void Renderer::render(
         camera::PerspectiveCamera* camera,
         py::array_t<GLuint, py::array::c_style> np_rgb_map)
     {
         if (glfwWindowShouldClose(_window)) {
-            glfwDestroyWindow(_window);
-            glfwTerminate();
             return;
         }
 
-        _main_program->use();
-        glEnable(GL_BLEND);
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_DEPTH_TEST);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        glViewport(0, 0, _width, _height);
+        // OpenGL commands are executed in global context (per thread).
+        glfwMakeContextCurrent(_window);
 
-        glBindRenderbuffer(GL_RENDERBUFFER, _render_buffer);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _render_buffer);
+        // First pass
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
+            glViewport(0, 0, _width, _height);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        render_objects(camera);
+            _depth_program->use();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
+            glViewport(0, 0, _width, _height);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                throw std::runtime_error("glCheckFramebufferStatus() != GL_FRAMEBUFFER_COMPLETE");
+            }
 
-        glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_buffer.get());
-        auto rgb_map = np_rgb_map.mutable_unchecked<3>();
-        for (int h = 0; h < _height; h++) {
-            for (int w = 0; w < _width; w++) {
-                rgb_map(h, w, 0) = _color_buffer[(_height - h - 1) * _width * 3 + w * 3 + 0];
-                rgb_map(h, w, 1) = _color_buffer[(_height - h - 1) * _width * 3 + w * 3 + 1];
-                rgb_map(h, w, 2) = _color_buffer[(_height - h - 1) * _width * 3 + w * 3 + 2];
+            draw_objects(camera);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+
+        // Second pass
+        {
+            glViewport(0, 0, _width, _height);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            _main_program->use();
+            draw_objects(camera);
+            
+            glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());
+            auto rgb_map = np_rgb_map.mutable_unchecked<3>();
+            for (int h = 0; h < _height; h++) {
+                for (int w = 0; w < _width; w++) {
+                    rgb_map(h, w, 0) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 0];
+                    rgb_map(h, w, 1) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 1];
+                    rgb_map(h, w, 2) = _color_pixels[(_height - h - 1) * _width * 3 + w * 3 + 2];
+                }
             }
         }
 
         glUseProgram(0);
         glBindVertexArray(0);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
     void Renderer::render_depth_map(scene::Scene* scene, camera::PerspectiveCamera* camera,
         py::array_t<GLfloat, py::array::c_style> np_depth_map)

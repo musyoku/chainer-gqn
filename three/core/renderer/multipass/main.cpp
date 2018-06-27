@@ -1,6 +1,5 @@
 #include "main.h"
 #include "../opengl/functions.h"
-#include <iostream>
 
 namespace three {
 namespace renderer {
@@ -38,6 +37,7 @@ void main(void)
 
             const GLchar fragment_shader[] = R"(
 #version 450
+uniform sampler2D depth_map;
 in vec4 frag_object_color;
 in vec3 frag_light_direction;
 in vec3 frag_smooth_normal_vector;
@@ -76,16 +76,6 @@ void main(){
 )";
 
             _program = opengl::create_program(vertex_shader, fragment_shader);
-
-            _uniform_projection_mat = glGetUniformLocation(_program, "projection_mat");
-            _uniform_view_mat = glGetUniformLocation(_program, "view_mat");
-            _uniform_model_mat = glGetUniformLocation(_program, "model_mat");
-            _uniform_smoothness = glGetUniformLocation(_program, "smoothness");
-
-            std::cout << _uniform_projection_mat << std::endl;
-            std::cout << _uniform_view_mat << std::endl;
-            std::cout << _uniform_model_mat << std::endl;
-            std::cout << _uniform_smoothness << std::endl;
         }
 
         void Main::use()

@@ -17,17 +17,22 @@ namespace renderer {
     private:
         int _width;
         int _height;
+        GLuint _frame_buffer;
         GLuint _render_buffer;
-        GLuint _texture_depth_map;
+        GLuint _depth_texture;
+        const GLuint _uniform_model_mat = 0;
+        const GLuint _uniform_view_mat = 1;
+        const GLuint _uniform_projection_mat = 2;
+        const GLuint _uniform_soothness = 3;
         std::unique_ptr<opengl::VertexArrayObject> _vao;
         std::unique_ptr<multipass::Depth> _depth_program;
         std::unique_ptr<multipass::Main> _main_program;
-        std::unique_ptr<GLubyte[]> _color_buffer;
-        std::unique_ptr<GLfloat[]> _depth_buffer;
+        std::unique_ptr<GLubyte[]> _color_pixels;
+        std::unique_ptr<GLfloat[]> _depth_pixels;
         GLFWwindow* _window;
         scene::Scene* _scene;
         int _prev_num_objects;
-        void render_objects(camera::PerspectiveCamera* camera);
+        void draw_objects(camera::PerspectiveCamera* camera);
         void initialize(int width, int height);
 
     public:

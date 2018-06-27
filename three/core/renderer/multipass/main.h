@@ -7,10 +7,6 @@ namespace renderer {
         class Main {
         private:
             GLuint _program;
-            GLuint _uniform_projection_mat;
-            GLuint _uniform_model_mat;
-            GLuint _uniform_view_mat;
-            GLuint _uniform_smoothness;
 
         public:
             Main();
