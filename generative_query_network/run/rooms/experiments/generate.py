@@ -58,12 +58,6 @@ def main():
     window = gqn.imgplot.Window(figure, (1600, 800))
     window.show()
 
-    sigma_t = hyperparams.pixel_sigma_f
-    pixel_ln_var = xp.full(
-        (args.batch_size, 3) + hyperparams.image_size,
-        math.log(sigma_t**2),
-        dtype="float32")
-
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
         center=(0, 0, 0),
@@ -179,8 +173,8 @@ def main():
                         cg_l = cg_next
                         u_l = u_next
 
-                    generated_images = model.generation_network.sample_x(
-                        u_l, pixel_ln_var)
+                    generated_images = model.generation_network.compute_mean_x(
+                        u_l)
                     generated_images = to_cpu(generated_images.data)
                     generated_images = generated_images.transpose(0, 2, 3, 1)
 

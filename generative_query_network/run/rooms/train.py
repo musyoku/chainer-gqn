@@ -176,7 +176,7 @@ def main():
                     ) + hyperparams.chrz_size,
                     dtype="float32")
 
-                # Reconstruction phase
+                loss_kld = 0
                 he_l = he_0
                 ce_l = ce_0
                 hg_l = hg_0
@@ -185,40 +185,6 @@ def main():
                 for l in range(hyperparams.generator_total_timestep):
                     he_next, ce_next = model.inference_network.forward_onestep(
                         hg_l, he_l, ce_l, query_images, query_viewpoints, r)
-
-                    ze_l = model.inference_network.sample_z(he_l)
-
-                    hg_next, cg_next, ue_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
-
-                    hg_l = hg_next
-                    cg_l = cg_next
-                    ue_l = ue_next
-                    he_l = he_next
-                    ce_l = ce_next
-
-                mean_x = model.generation_network.compute_mean_x(ue_l)
-                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mean_x, pixel_var, pixel_ln_var)
-                loss_nll = cf.sum(negative_log_likelihood)
-
-                loss_nll /= args.batch_size
-                model.cleargrads()
-                loss_nll.backward()
-                optimizer_all.update(current_training_step)
-
-                # Regularization phase
-                loss_kld = 0
-                he_l = he_0
-                ce_l = ce_0
-                hg_l = hg_0
-                cg_l = cg_0
-                ue_l = u_0
-                r_no_grad = r.data  # for faster backprop
-                for l in range(hyperparams.generator_total_timestep):
-                    he_next, ce_next = model.inference_network.forward_onestep(
-                        hg_l, he_l, ce_l, query_images, query_viewpoints,
-                        r_no_grad)
 
                     mean_z_q = model.inference_network.compute_mean_z(he_l)
                     ln_var_z_q = model.inference_network.compute_ln_var_z(he_l)
@@ -229,7 +195,7 @@ def main():
                         hg_l)
 
                     hg_next, cg_next, ue_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r_no_grad)
+                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
 
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
@@ -242,18 +208,19 @@ def main():
                     he_l = he_next
                     ce_l = ce_next
 
+                mean_x_e = model.generation_network.compute_mean_x(ue_l)
+                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                    query_images, mean_x_e, pixel_var, pixel_ln_var)
+                loss_nll = cf.sum(negative_log_likelihood)
+
+                loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
+                loss = loss_nll + loss_kld
                 model.cleargrads()
-                loss_kld.backward()
-                optimizer_inference.update(current_training_step)
+                loss.backward()
+                optimizer_all.update(current_training_step)
 
                 if window.closed() is False:
-                    axis1.update(
-                        np.uint8(
-                            (to_cpu(query_images[0].transpose(1, 2, 0)) + 1) *
-                            0.5 * 255))
-
-                    # Generation
                     with chainer.using_config("train",
                                               False), chainer.using_config(
                                                   "enable_backprop", False):
@@ -269,48 +236,21 @@ def main():
                             cg_l = cg_next
                             ug_l = ug_next
 
-                    x = model.generation_network.sample_x(ug_l, pixel_ln_var)
+                    axis1.update(
+                        np.uint8(
+                            (to_cpu(query_images[0].transpose(1, 2, 0)) + 1) *
+                            0.5 * 255))
+
+                    mean_x_g = model.generation_network.compute_mean_x(ug_l)
                     axis2.update(
                         np.uint8(
-                            np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
-                                    * 0.5 * 255, 0, 255)))
-                    x = model.generation_network.sample_x(ue_l, pixel_ln_var)
+                            np.clip((to_cpu(mean_x_g.data[0].transpose(
+                                1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
+
                     axis3.update(
                         np.uint8(
-                            np.clip((to_cpu(x.data[0].transpose(1, 2, 0)) + 1)
-                                    * 0.5 * 255, 0, 255)))
-
-                # hg_l = hg_0
-                # cg_l = cg_0
-                # ug_l = u_0
-                # for l in range(hyperparams.generator_total_timestep):
-                #     zg_l = model.generation_network.sample_z(hg_l)
-                #     hg_next, cg_next, ug_next = model.generation_network.forward_onestep(
-                #         hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
-
-                #     hg_l = hg_next
-                #     cg_l = cg_next
-                #     ug_l = ug_next
-
-                # mean_x = model.generation_network.compute_mean_x(ug_l)
-                # negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                #     query_images, mean_x, pixel_var, pixel_ln_var)
-
-                # loss_nll = cf.mean(negative_log_likelihood)
-
-                # model.cleargrads()
-                # loss_nll.backward()
-                # optimizer_generation.step(current_training_step)
-
-                # if window.closed() is False:
-                #     x = model.generation_network.sample_x(ug_l, pixel_ln_var)
-                #     axis1.update(
-                #         np.uint8((to_cpu(query_images[0].transpose(
-                #             1, 2, 0)) + 1) * 0.5 * 255))
-                #     axis2.update(
-                #         np.uint8(
-                #             np.clip((to_cpu(x.data[0].transpose(
-                #                 1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
+                            np.clip((to_cpu(mean_x_e.data[0].transpose(
+                                1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".

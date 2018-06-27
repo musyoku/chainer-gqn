@@ -27,7 +27,6 @@ class Optimizer:
         self.optimizer = optimizers.Adam(
             lr, beta1=beta_1, beta2=beta_2, eps=eps)
         self.optimizer.setup(model_parameters)
-        self.optimizer.add_hook(GradientClipping(10.0))
 
     @property
     def learning_rate(self):
