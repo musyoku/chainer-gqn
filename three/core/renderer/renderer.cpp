@@ -6,19 +6,19 @@ namespace three {
 namespace renderer {
     void Renderer::initialize(int width, int height)
     {
-        _width = width;
-        _height = height;
-        _depth_buffer = std::make_unique<GLfloat[]>(width * height);
-        _color_buffer = std::make_unique<GLubyte[]>(width * height * 3);
-        _prev_num_objects = -1;
-        _vao = std::make_unique<opengl::VertexArrayObject>();
-
         glfwSetErrorCallback([](int error, const char* description) {
             fprintf(stderr, "Error %d: %s\n", error, description);
         });
         if (!!glfwInit() == false) {
             throw std::runtime_error("Failed to initialize GLFW.");
         }
+
+        _width = width;
+        _height = height;
+        _depth_buffer = std::make_unique<GLfloat[]>(width * height);
+        _color_buffer = std::make_unique<GLubyte[]>(width * height * 3);
+        _prev_num_objects = -1;
+
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -30,93 +30,10 @@ namespace renderer {
         glfwMakeContextCurrent(_window);
         gl3wInit();
 
-        const GLchar vertex_shader[] = R"(
-#version 450
-layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 face_normal_vector;
-layout(location = 2) in vec3 vertex_normal_vector;
-layout(location = 3) in vec4 vertex_color;
-uniform float quadratic_attenuation;
-uniform mat4 model_mat;
-uniform mat4 view_mat;
-uniform mat4 projection_mat;
-uniform float smoothness;
-out float power;
-out float qa;
-out vec4 frag_object_color;
-out vec3 frag_smooth_normal_vector;
-out vec3 frag_vertex_normal_vector;
-out vec3 frag_light_direction;
-out vec4 frag_position;
-void main(void)
-{
-    vec4 model_position = model_mat * vec4(position, 1.0f);
-    gl_Position = projection_mat * view_mat * model_position;
-    vec3 light_position = vec3(0.0f, 1.0f, 1.0f);
-    frag_light_direction = light_position - model_position.xyz;
-    // power = clamp(attenuation, 0.0f, 1.0f);
-    frag_object_color = vertex_color;
-    qa = quadratic_attenuation;
-    frag_smooth_normal_vector = smoothness * vertex_normal_vector 
-        + (1.0 - smoothness) * face_normal_vector;
-    frag_vertex_normal_vector = vertex_normal_vector;
-    frag_position = view_mat * model_position;
-}
-)";
-
-        const GLchar fragment_shader[] = R"(
-#version 450
-in float power;
-in float qa;
-in vec4 frag_object_color;
-in vec3 frag_light_direction;
-in vec3 frag_smooth_normal_vector;
-in vec3 frag_vertex_normal_vector;
-in vec4 frag_position;
-out vec4 frag_color;
-void main(){
-    vec3 unit_smooth_normal_vector = normalize(frag_smooth_normal_vector);
-    vec3 unit_light_direction = normalize(frag_light_direction);
-    vec3 unit_eye_direction = normalize(-frag_position.xyz);
-    vec3 unit_reflection = normalize(2.0 * (dot(unit_light_direction, unit_smooth_normal_vector)) * unit_smooth_normal_vector - unit_light_direction);
-    float is_frontface = step(0.0, dot(unit_reflection, unit_smooth_normal_vector));
-    float light_distance = length(frag_light_direction);
-    float attenuation = clamp(
-        1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
-    vec3 eye_direction = -frag_position.xyz;
-    float diffuse = dot(unit_smooth_normal_vector, unit_light_direction);
-    float specular = clamp(dot(unit_reflection, unit_eye_direction), 0.0f, 1.0f) * is_frontface;
-    specular = pow(specular, 2.0);
-    // frag_color = vec4((attenuation) * object_color.xyz, 1.0);
-    vec3 attenuation_color = attenuation * frag_object_color.rgb;
-    vec3 diffuse_color = diffuse * frag_object_color.rgb;
-    vec3 specular_color = vec3(specular);
-    vec3 ambient_color = frag_object_color.rgb;
-    frag_color = vec4(clamp(diffuse_color + ambient_color * 0.5, 0.0, 1.0), 1.0);
-    frag_color = vec4(vec3(attenuation), 1.0);
-    vec3 composite_color = ambient_color * 0.1 + diffuse_color
-        + specular_color * 0.5;
-
-    vec3 top = 0.5 * diffuse_color;
-    vec3 bottom = 0.5 * ambient_color;
-    vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
-
-    frag_color = vec4(screen + specular_color * 0.05, 1.0);
-}
-)";
-
-        _program = opengl::create_program(vertex_shader, fragment_shader);
-
-        _attribute_position = glGetAttribLocation(_program, "position");
-        _attribute_face_normal_vector = glGetAttribLocation(_program, "face_normal_vector");
-        _attribute_vertex_normal_vector = glGetAttribLocation(_program, "vertex_normal_vector");
-        _attribute_vertex_color = glGetAttribLocation(_program, "vertex_color");
-        _uniform_projection_mat = glGetUniformLocation(_program, "projection_mat");
-        _uniform_view_mat = glGetUniformLocation(_program, "view_mat");
-        _uniform_model_mat = glGetUniformLocation(_program, "model_mat");
-        _uniform_quadratic_attenuation = glGetUniformLocation(_program, "quadratic_attenuation");
-        _uniform_smoothness = glGetUniformLocation(_program, "smoothness");
-
+        _vao = std::make_unique<opengl::VertexArrayObject>();
+        _depth_program = std::make_unique<multipass::Depth>();
+        _main_program = std::make_unique<multipass::Main>();
+        
         glGenRenderbuffers(1, &_render_buffer);
     }
     Renderer::Renderer(int width, int height)
@@ -136,7 +53,6 @@ void main(){
     void Renderer::set_scene(scene::Scene* scene)
     {
         glfwMakeContextCurrent(_window);
-        glUseProgram(_program);
         _scene = scene;
         _vao->build(scene);
     }
@@ -157,12 +73,11 @@ void main(){
             std::shared_ptr<base::Object> object = objects[object_index];
             _vao->bind_object(object_index);
             glm::mat4& model_mat = object->_model_matrix;
-            glUniformMatrix4fv(_uniform_projection_mat, 1, GL_FALSE, glm::value_ptr(projection_mat));
-            glUniformMatrix4fv(_uniform_view_mat, 1, GL_FALSE, glm::value_ptr(view_mat));
-            glUniformMatrix4fv(_uniform_model_mat, 1, GL_FALSE, glm::value_ptr(model_mat));
-            glUniform1f(_uniform_quadratic_attenuation, quadratic_attenuation);
+            _main_program->uniform_matrix(0, glm::value_ptr(model_mat));
+            _main_program->uniform_matrix(1, glm::value_ptr(view_mat));
+            _main_program->uniform_matrix(2, glm::value_ptr(projection_mat));
             float smoothness = object->_smoothness ? 1.0 : 0.0;
-            glUniform1f(_uniform_smoothness, smoothness);
+            _main_program->uniform_float(3, smoothness);
             glDrawArrays(GL_TRIANGLES, 0, 3 * object->_num_faces);
         }
     }
@@ -176,7 +91,7 @@ void main(){
             return;
         }
 
-        glUseProgram(_program);
+        _main_program->use();
         glEnable(GL_BLEND);
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
@@ -209,7 +124,7 @@ void main(){
             return;
         }
 
-        glUseProgram(_program);
+        _main_program->use();
         glEnable(GL_BLEND);
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);

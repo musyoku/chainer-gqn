@@ -1,14 +1,11 @@
 #pragma once
 #include "../../scene/scene.h"
 #include <gl3w/gl3w.h>
-#include <glfw/glfw3.h>
 #include <memory>
-#include <pybind11/numpy.h>
 
 namespace three {
 namespace renderer {
     namespace opengl {
-        namespace py = pybind11;
         class VertexArrayObject {
         private:
             const GLuint _attribute_position = 0;

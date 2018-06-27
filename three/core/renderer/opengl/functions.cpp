@@ -77,7 +77,6 @@ namespace renderer {
 
             glLinkProgram(program);
             validate_program(program);
-            glUseProgram(program);
 
             return program;
         }

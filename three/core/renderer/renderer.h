@@ -2,6 +2,8 @@
 #include "../base/object.h"
 #include "../camera/perspective.h"
 #include "../scene/scene.h"
+#include "multipass/depth.h"
+#include "multipass/main.h"
 #include "opengl/vao.h"
 #include <gl3w/gl3w.h>
 #include <glfw/glfw3.h>
@@ -15,19 +17,11 @@ namespace renderer {
     private:
         int _width;
         int _height;
-        GLuint _program;
-        GLuint _attribute_position;
-        GLuint _attribute_face_normal_vector;
-        GLuint _attribute_vertex_normal_vector;
-        GLuint _attribute_vertex_color;
-        GLuint _uniform_projection_mat;
-        GLuint _uniform_model_mat;
-        GLuint _uniform_view_mat;
-        GLuint _uniform_quadratic_attenuation;
-        GLuint _uniform_smoothness;
         GLuint _render_buffer;
         GLuint _texture_depth_map;
         std::unique_ptr<opengl::VertexArrayObject> _vao;
+        std::unique_ptr<multipass::Depth> _depth_program;
+        std::unique_ptr<multipass::Main> _main_program;
         std::unique_ptr<GLubyte[]> _color_buffer;
         std::unique_ptr<GLfloat[]> _depth_buffer;
         GLFWwindow* _window;

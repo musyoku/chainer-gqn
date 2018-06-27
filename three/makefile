@@ -7,6 +7,7 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/camera/*.cpp) \
 		  $(wildcard ./core/renderer/*.cpp) \
 		  $(wildcard ./core/renderer/opengl/*.cpp) \
+		  $(wildcard ./core/renderer/multipass/*.cpp) \
 		  $(wildcard ./core/scene/*.cpp) \
 		  pybind/three.cpp
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
