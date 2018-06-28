@@ -46,7 +46,7 @@ in vec4 frag_position;
 out vec4 frag_color;
 
 const float pi = 3.14159;  
-const float distance_threshold = 0.05; // 距離が離れすぎている場合は無視
+const float distance_threshold = 0.1; // 距離が離れすぎている場合は無視
 const float z_near = 0.01;
 const float z_far = 100.0;
 float compute_true_depth(float z)
@@ -65,12 +65,12 @@ void main(){
     float fov = pi / 4.0;
     float fov_2 = fov / 2.0;
     float tan_fov_2 = tan(fov_2);
-    vec2 texcoord = gl_FragCoord.xy / 640.0;
+    vec2 texcoord = gl_FragCoord.xy / 64.0;
     vec3 center = vec3(texcoord, compute_true_depth(texture(depth_map, texcoord).x));
 
     vec3 face_normal = normalize(frag_face_normal_vector);
 
-    float radius_base = max(0.05 / (center.z * tan_fov_2), 1.0 / 640.0);
+    float radius_base = max(0.05 / (center.z * tan_fov_2), 1.0 / 64.0);
     // float radius_base = 0.05;
     float radius = radius_base;
 
@@ -99,7 +99,7 @@ void main(){
     {
 
         float d = 0.0;
-        for(int i = 0;i < 192;i++){
+        for(int i = 0;i < 64;i++){
             float ratio = float(i) / 384.0;
             vec2 shift = vec2(
                 random(texcoord * float(i)),
@@ -108,9 +108,13 @@ void main(){
             vec2 s1 = center.xy + radius * shift;
             vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
 
+            if( p1.z < center.z - distance_threshold ) continue;  
+
             vec2 s2 = center.xy - radius * shift;
             vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
             
+            if( p2.z < center.z - distance_threshold ) continue;  
+
             // if(p1.z + distance_threshold < center.z){
             //     continue;
             // }
@@ -130,12 +134,16 @@ void main(){
             // d += clamp(dot(face_normal, -p1_n), 0.0, 1.0);
             // d += clamp(dot(face_normal, -p2_n), 0.0, 1.0);
 
-            float rad1 = atan(radius / (center.z - p1.z));
-            float rad2 = atan(radius / (center.z - p2.z));
-            // d += 1.0 - clamp((rad1 + rad2) / pi, 0.0, 1.0);
-            d += (p1.z + p2.z) / 2.0;
+            float rad1 = atan((center.z - p1.z) / length(p1 - center));
+            float rad2 = atan((center.z - p2.z) / length(p2 - center));
+            d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
+
+            
+            // float rad1 = atan(radius / (center.z - p1.z));
+            // float rad2 = atan(radius / (center.z - p2.z));
+            // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
         }
-        frag_color = vec4(1.0 - vec3(d / 192.0 / 30.0), 1.0);
+        frag_color = vec4(1.0 - vec3(d / 64.0), 1.0);
         // frag_color = vec4(vec3((d + 1.0) * 0.5), 1.0);
         return;
     }

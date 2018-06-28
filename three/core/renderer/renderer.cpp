@@ -40,7 +40,7 @@ namespace renderer {
         glNamedRenderbufferStorage(_color_render_buffer, GL_RGB, _width, _height);
 
         glCreateRenderbuffers(1, &_depth_render_buffer);
-        glNamedRenderbufferStorage(_depth_render_buffer, GL_DEPTH_COMPONENT, _width, _height);
+        glNamedRenderbufferStorage(_depth_render_buffer, GL_DEPTH_COMPONENT, _width * 20, _height * 20);
 
         // _depth_texture_data = std::make_unique<GLfloat[]>(width * height);
         // glCreateTextures(GL_TEXTURE_2D, 1, &_depth_texture);
@@ -54,7 +54,7 @@ namespace renderer {
 
         glGenTextures(1, &_depth_texture);
         glBindTexture(GL_TEXTURE_2D, _depth_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * 20, height * 20, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -181,7 +181,7 @@ namespace renderer {
             // glReadBuffer(GL_NONE);
             glNamedFramebufferDrawBuffer(_frame_buffer, GL_NONE);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glViewport(0, 0, _width, _height);
+            glViewport(0, 0, _width * 20, _height * 20);
             // GLenum buf = GL_DEPTH_ATTACHMENT;
             // glDrawBuffers(1, &buf);
 
