@@ -39,17 +39,11 @@ class Model():
             except:
                 pass
 
-        self.all_parameters = chainer.Chain(
+        self.parameters = chainer.Chain(
             g=self.generation_network_params,
             i=self.inference_network_params,
             r=self.representation_network_params,
         )
-        self.generation_parameters = chainer.Chain(
-            r=self.representation_network_params,
-            g=self.generation_network_params,
-        )
-        self.inference_parameters = chainer.Chain(
-            i=self.inference_network_params, )
 
     def build_generation_network(self, total_timestep, channels_chz,
                                  channels_u):
@@ -75,10 +69,10 @@ class Model():
         raise NotImplementedError
 
     def to_gpu(self):
-        self.all_parameters.to_gpu()
+        self.parameters.to_gpu()
 
     def cleargrads(self):
-        self.all_parameters.cleargrads()
+        self.parameters.cleargrads()
 
     def serialize(self, path):
         self.serialize_parameter(path, "generation.hdf5",

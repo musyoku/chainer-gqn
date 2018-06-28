@@ -50,12 +50,13 @@ namespace renderer {
         // glTextureParameteri(_depth_texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_S, GL_NEAREST);
         // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_T, GL_NEAREST);
+        // glBindTextureUnit(0, _depth_texture);
 
         glGenTextures(1, &_depth_texture);
         glBindTexture(GL_TEXTURE_2D, _depth_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -178,6 +179,7 @@ namespace renderer {
             // glNamedFramebufferTexture(_frame_buffer, GL_DEPTH_ATTACHMENT, _depth_texture, 0);
             // glDrawBuffer(GL_NONE);
             // glReadBuffer(GL_NONE);
+            glNamedFramebufferDrawBuffer(_frame_buffer, GL_NONE);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, _width, _height);
             // GLenum buf = GL_DEPTH_ATTACHMENT;
@@ -249,8 +251,9 @@ namespace renderer {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             _main_program->use();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, _depth_texture);
+            // glActiveTexture(GL_TEXTURE0);
+            // glBindTexture(GL_TEXTURE_2D, _depth_texture);
+            glBindTextureUnit(0, _depth_texture);
             draw_objects(camera);
 
             glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());

@@ -6,12 +6,12 @@ class HyperParameters():
         self.image_size = (64, 64)
         self.generator_total_timestep = 12
         self.generator_u_channels = 32
-        self.pixel_sigma_i = 2.0
+        self.pixel_sigma_i = 0.7
         self.pixel_sigma_f = 0.7
         self.pixel_n = 2 * 1e5
         self.representation_architecture = "tower"
 
         # for debug
-        self.channels_chz = 16
+        self.channels_chz = 32
         self.channels_r = 32
-        self.generator_u_channels = 16
+        self.generator_u_channels = 32

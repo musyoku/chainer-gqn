@@ -175,8 +175,7 @@ def main():
 
                     generated_images = model.generation_network.compute_mean_x(
                         u_l)
-                    generated_images = to_cpu(generated_images.data)
-                    generated_images = generated_images.transpose(0, 2, 3, 1)
+                    generated_images = to_cpu(generated_images.data).transpose(0, 2, 3, 1)
 
                     if window.closed():
                         exit()

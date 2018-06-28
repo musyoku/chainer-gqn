@@ -54,9 +54,7 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    optimizer_all = Optimizer(model.all_parameters)
-    optimizer_generation = Optimizer(model.generation_parameters)
-    optimizer_inference = Optimizer(model.inference_parameters)
+    optimizer = Optimizer(model.parameters)
 
     figure = gqn.imgplot.Figure()
     axis1 = gqn.imgplot.ImageData(hyperparams.image_size[0],
@@ -218,7 +216,7 @@ def main():
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                optimizer_all.update(current_training_step)
+                optimizer.update(current_training_step)
 
                 if window.closed() is False:
                     with chainer.using_config("train",
@@ -257,7 +255,7 @@ def main():
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
                            len(iterator), float(loss_nll.data),
-                           float(loss_kld.data), optimizer_all.learning_rate,
+                           float(loss_kld.data), optimizer.learning_rate,
                            sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
@@ -279,7 +277,7 @@ def main():
         print(
             "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
             format(iteration + 1, mean_nll / total_batch,
-                   mean_kld / total_batch, optimizer_all.learning_rate,
+                   mean_kld / total_batch, optimizer.learning_rate,
                    sigma_t, current_training_step))
 
 
