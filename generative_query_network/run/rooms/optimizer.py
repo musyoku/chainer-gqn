@@ -8,7 +8,7 @@ class Optimizer:
             self,
             model_parameters,
             # Learning rate at training step s with annealing
-            mu_i=4.7954e-04,
+            mu_i=4.6844e-04,
             mu_f=5.0 * 1e-5,
             n=1.6 * 1e6,
             # Learning rate as used by the Adam algorithm
