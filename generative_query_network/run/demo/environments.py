@@ -16,7 +16,7 @@ def main():
         eye=(3, 1, 0),
         center=(0, 0.5, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 1.5,
+        fov_rad=math.pi / 4,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.01,
         z_far=100)

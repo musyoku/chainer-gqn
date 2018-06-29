@@ -49,10 +49,12 @@ const float pi = 3.14159;
 const float distance_threshold = 0.1; // 距離が離れすぎている場合は無視
 const float z_near = 0.01;
 const float z_far = 100.0;
+
+// 右手座標系に戻る
 float compute_true_depth(float z)
 {
     z -= 0.001; // シャドウアクネ回避
-    return 2.0 * z_near * z_far / (z_far + z_near - z * (z_far - z_near));
+    return ((z_far * z_near) / (z_far - z_near)) / (z_far / (z_near - z_far) + z);
 }
 
 float random(const vec2 p) {
@@ -65,126 +67,102 @@ void main(){
     float fov = pi / 4.0;
     float fov_2 = fov / 2.0;
     float tan_fov_2 = tan(fov_2);
-    vec2 texcoord = gl_FragCoord.xy / 64.0;
+    vec2 texcoord = gl_FragCoord.xy / 640.0;
     vec3 center = vec3(texcoord, compute_true_depth(texture(depth_map, texcoord).x));
 
     vec3 face_normal = normalize(frag_face_normal_vector);
+    float radius = max(0.05 / -(center.z * tan_fov_2), 1.0 / 640.0);
 
-    float radius_base = max(0.05 / (center.z * tan_fov_2), 1.0 / 64.0);
-    // float radius_base = 0.05;
-    float radius = radius_base;
-
-    
-    // vec2 s1 = center.xy + vec2(radius * cos(pi * 0.5), radius * sin(pi * 0.5));
+    // vec2 s1 = center.xy + radius * vec2(0.0, 1.0);
     // vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
 
-    // vec2 s2 = center.xy + vec2(radius * cos(pi * 0.5 + pi), radius * sin(pi * 0.5 + pi));
+    // // if( p1.z < center.z - distance_threshold ) {
+    // //     return;  
+    // // }
+
+    // vec2 s2 = center.xy - radius * vec2(0.0, 1.0);
     // vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
     
-    // vec3 p1_n = normalize(p1 - center);
-    // vec3 p2_n = normalize(p2 - center);
+    // // if( p2.z < center.z - distance_threshold ){
+    // //     return;  
+    // // }
 
-    // float d = clamp(-dot(p1_n, p2_n), 0.0, 1.0);
-    // frag_color = vec4(vec3(d), 1.0);
-    // // frag_color = vec4(vec3((d + 1.0) * 0.5), 1.0);
+    // vec3 p1_n = p1 - center;
+    // vec3 p2_n = p2 - center;
+
+    // float dd = dot(normalize(p1_n), normalize(p2_n));
+
+    // float z1 = texture(depth_map, texcoord).x;
+    // float z2 = texture(depth_map, s1).x;
+
+    // float rad1 = atan(length(p1.xy - center.xy) / (p1.z - center.z));
+    // // frag_color = vec4(vec3((z1 * 0.5 + z2 * 0.5 - 0.996923) / (1.0 - 0.996923)), 1.0);
+    // frag_color = vec4((normalize(p1_n) + 1.0) * 0.5, 1.0);
     // return;
 
-    // float r = random(texcoord * 5.0);
-    // frag_color = vec4(vec3(r), 1.0);
-    // if(r < 0.0){
-    //     frag_color = vec4(1.0, 0.0, 0.0, 1.0);
-    // }
-    // return;
 
-    {
 
-        float d = 0.0;
-        for(int i = 0;i < 64;i++){
-            float ratio = float(i) / 384.0;
-            vec2 shift = vec2(
-                random(texcoord * float(i)),
-                random(texcoord * float(i) * 2.0)
-            );
-            vec2 s1 = center.xy + radius * shift;
-            vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
 
-            if( p1.z < center.z - distance_threshold ) continue;  
 
-            vec2 s2 = center.xy - radius * shift;
-            vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
-            
-            if( p2.z < center.z - distance_threshold ) continue;  
 
-            // if(p1.z + distance_threshold < center.z){
-            //     continue;
-            // }
+    float d = 0.0;
+    for(int i = 0;i < 192;i++){
+        vec2 shift = vec2(
+            random(texcoord * float(i)),
+            random(texcoord * float(i) * 2.0)
+        );
+        vec2 s1 = center.xy + radius * shift;
+        vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
 
-            // if(p2.z + distance_threshold < center.z){
-            //     continue;
-            // }
-
-            vec3 p1_n = normalize(p1 - center);
-            vec3 p2_n = normalize(p2 - center);
-
-            // if(p1_n.z >= 0.0 && p2_n.z >= 0.0){
-            //     continue;
-            // }
-
-            // d += 1.0 - clamp(-dot(p2_n, p1_n), 0.0, 1.0);
-            // d += clamp(dot(face_normal, -p1_n), 0.0, 1.0);
-            // d += clamp(dot(face_normal, -p2_n), 0.0, 1.0);
-
-            float rad1 = atan((center.z - p1.z) / length(p1 - center));
-            float rad2 = atan((center.z - p2.z) / length(p2 - center));
-            d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
-
-            
-            // float rad1 = atan(radius / (center.z - p1.z));
-            // float rad2 = atan(radius / (center.z - p2.z));
-            // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
+        if( p1.z > center.z + distance_threshold ) {
+            continue;  
         }
-        frag_color = vec4(1.0 - vec3(d / 64.0), 1.0);
-        // frag_color = vec4(vec3((d + 1.0) * 0.5), 1.0);
-        return;
-    }
+
+        vec2 s2 = center.xy - radius * shift;
+        vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
+        
+        if( p2.z > center.z + distance_threshold ){
+            continue;  
+        } 
+
+        vec3 t1 = p1 - center;
+        vec3 t2 = p2 - center;
+        
+
+        // float ddd = dot(normalize(t1), normalize(t2));
+        // float ddd = dot(normalize(t1), face_normal) + dot(normalize(t2), face_normal);
+        // d += clamp(0.5 * ddd, 0.0, 1.0);
 
 
-    int outer_loop = 4;
-    int sum = 0;
-    float ao = 0.0;
-    for(int n = 0;n < outer_loop;n++){
-        for(int i = 0;i < (outer_loop + 2 - n) * (outer_loop + 2 - n);i++){
-            float ratio = float(i) / 12.0;
-            vec2 s1 = center.xy + vec2(radius * cos(pi * ratio), radius * sin(pi * ratio));
-            vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
-            if(p1.z >= center.z){
-                continue;
-            }
-            if(p1.z + distance_threshold < center.z){
-                continue;
-            }
-            vec2 s2 = center.xy + vec2(3.0 * radius * cos(pi * ratio + pi), 3.0 * radius * sin(pi * ratio + pi));
-            vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
-            if(p2.z >= center.z){
-                continue;
-            }
-            if(p2.z + distance_threshold < center.z){
-                continue;
-            }
-            float rad1 = atan(radius / (center.z - p1.z));
-            float rad2 = atan(radius / (center.z - p2.z));
-            ao += 1.0 - clamp((rad1 + rad2) / pi, 0.0, 1.0);
+        // float rad1 = atan((center.z - p1.z) / length(p1.xy - center.xy));
+        // float rad2 = atan((center.z - p2.z) / length(p2.xy - center.xy));
+        // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
+        
 
-            vec3 p1_n = normalize(p1 - center);
-            vec3 p2_n = normalize(p2 - center);
-            float d = 0.5 * (clamp(dot(face_normal, p1_n), 0.0, 1.0) + clamp(dot(face_normal, p2_n), 0.0, 1.0));
-            // ao += d;
-
-            sum += 1;
+        float rad1 = atan(length(t1.xy) / t1.z);
+        float rad2 = atan(length(t2.xy) / t2.z);
+        if(rad1 < 0.0){
+            rad1 += pi;
         }
-        radius += radius_base;
+        if(rad2 < 0.0){
+            rad2 += pi;
+        }
+        // float rad1 = atan(t1.z / length(t1.xy));
+        // float rad2 = atan(t2.z / length(t2.xy));
+        rad1 = clamp(rad1 / pi, 0.0, 1.0);
+        rad2 = clamp(rad2 / pi, 0.0, 1.0);
+        d += 1.0 - clamp((rad1 + rad2), 0.0, 1.0);
+
+        // float rad1 = atan(length(p1 - center) / (center.z - p1.z));
+        // float rad2 = atan(length(p2 - center) / (center.z - p2.z));
+        // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
     }
-    ao = 1.0 - clamp(ao / float(sum), 0.0, 1.0);
+    float ao = 1.0 - d / 192.0;
+    frag_color = vec4(vec3(ao), 1.0);
+    frag_color = vec4(1.0 - vec3(d / 192.0), 1.0);
+    return;
+
+
 
     vec3 unit_smooth_normal_vector = normalize(frag_smooth_normal_vector);
     vec3 unit_light_direction = normalize(frag_light_direction);
@@ -212,15 +190,15 @@ void main(){
     vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
 
     frag_color = vec4(screen * ao + specular_color * 0.08, 1.0);
-    frag_color = vec4(vec3(ao), 1.0);
+    // frag_color = vec4(vec3(ao), 1.0);
 
     // frag_color = vec4(vec3(texture(depth_map, texcoord).x - 0.996923) / (1.0 - 0.996923), 1.0);
 
     // frag_color = vec4(vec3(ao), 1.0);
 
-    // if(gl_FragCoord.x > 320){
-    //     frag_color = vec4(vec3(attenuation), 1.0);
-    // }
+    if(gl_FragCoord.x > 320){
+        frag_color = vec4(screen + specular_color * 0.08, 1.0);
+    }
 
 }
 )";
