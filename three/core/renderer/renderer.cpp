@@ -1,9 +1,14 @@
 #include "renderer.h"
 #include "opengl/functions.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 
 namespace three {
 namespace renderer {
+    void DebugCallbackFunc(GLenum source, GLenum type, GLuint eid, GLenum severity, GLsizei length, const GLchar* message, const void* user_param)
+    {
+        std::cout << message << std::endl;
+    }
     void Renderer::initialize(int width, int height)
     {
         glfwSetErrorCallback([](int error, const char* description) {
@@ -17,6 +22,18 @@ namespace renderer {
         _height = height;
         _depth_pixels = std::make_unique<GLfloat[]>(width * height);
         _color_pixels = std::make_unique<GLubyte[]>(width * height * 3);
+
+        // // SSAO
+        // std::random_device seed;
+        // std::default_random_engine engine(seed());
+        // std::normal_distribution<> normal_dist(0.0, 1.0);
+        // _ssao_texture_data = std::make_unique<GLfloat[]>(192 * 3);
+        // for (int i = 0; i < 192; i++) {
+        //     _ssao_texture_data[i * 3 + 0] = normal_dist(engine);
+        //     _ssao_texture_data[i * 3 + 1] = normal_dist(engine);
+        //     _ssao_texture_data[i * 3 + 2] = 0;
+        // }
+
         _prev_num_objects = -1;
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -52,29 +69,42 @@ namespace renderer {
         // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_T, GL_NEAREST);
         // glBindTextureUnit(0, _depth_texture);
 
-        glGenTextures(1, &_depth_texture);
-        glBindTexture(GL_TEXTURE_2D, _depth_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        // glGenTextures(1, &_depth_texture);
+        // glBindTexture(GL_TEXTURE_2D, _depth_texture);
+        // glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        // glBindTexture(GL_TEXTURE_2D, 0);
 
-        glGenTextures(1, &_color_texture);
-        glBindTexture(GL_TEXTURE_2D, _color_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        // glGenTextures(1, &_color_texture);
+        // glBindTexture(GL_TEXTURE_2D, _color_texture);
+        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        // glBindTexture(GL_TEXTURE_2D, 0);
+
+        // glGenTextures(1, &_ssao_texture);
+        // glBindTexture(GL_TEXTURE_2D, _ssao_texture);
+        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 192, 1, 0, GL_RGB, GL_FLOAT, _ssao_texture_data.get());
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        // glBindTexture(GL_TEXTURE_2D, 0);
 
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_TEXTURE_1D);
         glDepthMask(GL_TRUE);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glClearColor(0.0, 0.0, 0.0, 1.0);
+
+        glDebugMessageCallback(DebugCallbackFunc, nullptr);
+        glEnable(GL_DEBUG_OUTPUT);
     }
     Renderer::Renderer(int width, int height)
     {
@@ -171,7 +201,7 @@ namespace renderer {
         // First pass
         {
             glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
+            _main_program->attach_depth_texture();
             // glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
             // glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
             // glNamedFramebufferRenderbuffer(_frame_buffer, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
@@ -253,7 +283,7 @@ namespace renderer {
             _main_program->use();
             // glActiveTexture(GL_TEXTURE0);
             // glBindTexture(GL_TEXTURE_2D, _depth_texture);
-            glBindTextureUnit(0, _depth_texture);
+            _main_program->bind_textures();
             draw_objects(camera);
 
             glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());

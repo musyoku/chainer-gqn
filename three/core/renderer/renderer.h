@@ -20,8 +20,6 @@ namespace renderer {
         GLuint _frame_buffer;
         GLuint _color_render_buffer;
         GLuint _depth_render_buffer;
-        GLuint _depth_texture;
-        GLuint _color_texture;
         const GLuint _uniform_model_mat = 0;
         const GLuint _uniform_view_mat = 1;
         const GLuint _uniform_projection_mat = 2;
@@ -31,7 +29,6 @@ namespace renderer {
         std::unique_ptr<multipass::Main> _main_program;
         std::unique_ptr<GLubyte[]> _color_pixels;
         std::unique_ptr<GLfloat[]> _depth_pixels;
-        std::unique_ptr<GLfloat[]> _depth_texture_data;
         GLFWwindow* _window;
         scene::Scene* _scene;
         int _prev_num_objects;

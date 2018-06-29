@@ -1,5 +1,6 @@
 #include "main.h"
 #include "../opengl/functions.h"
+#include <random>
 
 namespace three {
 namespace renderer {
@@ -21,6 +22,7 @@ out vec3 frag_smooth_normal_vector;
 out vec3 frag_face_normal_vector;
 out vec3 frag_light_direction;
 out vec4 frag_position;
+out float frag_w;
 void main(void)
 {
     vec4 model_position = model_mat * vec4(position, 1.0f);
@@ -32,28 +34,31 @@ void main(void)
         + (1.0 - smoothness) * face_normal_vector;
     frag_face_normal_vector = (view_mat * vec4(face_normal_vector, 1.0)).xyz;
     frag_position = view_mat * model_position;
+    frag_w = gl_Position.w;
 }
 )";
 
             const GLchar fragment_shader[] = R"(
 #version 450
-uniform sampler2D depth_map;
+layout(binding = 0) uniform sampler2D depth_map;
+layout(binding = 1) uniform sampler1D ssao_sampling_points;
 in vec4 frag_object_color;
 in vec3 frag_light_direction;
 in vec3 frag_smooth_normal_vector;
 in vec3 frag_face_normal_vector;
 in vec4 frag_position;
+in float frag_w;
 out vec4 frag_color;
 
 const float pi = 3.14159;  
-const float distance_threshold = 0.1; // 距離が離れすぎている場合は無視
+const float distance_threshold = 0.08; // 距離が離れすぎている場合は無視
 const float z_near = 0.01;
 const float z_far = 100.0;
 
 // 右手座標系に戻る
 float compute_true_depth(float z)
 {
-    z -= 0.001; // シャドウアクネ回避
+    z -= 0.0005; // シャドウアクネ回避
     return ((z_far * z_near) / (z_far - z_near)) / (z_far / (z_near - z_far) + z);
 }
 
@@ -71,7 +76,19 @@ void main(){
     vec3 center = vec3(texcoord, compute_true_depth(texture(depth_map, texcoord).x));
 
     vec3 face_normal = normalize(frag_face_normal_vector);
-    float radius = max(0.05 / -(center.z * tan_fov_2), 1.0 / 640.0);
+    float radius = max(0.02 / -(center.z * tan_fov_2), 1.0 / 640.0);
+
+
+    // float xyz = 0.0;
+    // for(int i = 0;i < 192;i++){
+    //     vec2 sample_point = texture(ssao_sampling_points, float(i) / 192.0).xy;
+
+    //     vec2 s1 = center.xy + radius * sample_point;
+    //     vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
+    //     xyz += -p1.z;
+    // }
+    // frag_color = vec4(vec3(xyz / 192.0 / 5.0), 1.0);
+    // return;
 
     // vec2 s1 = center.xy + radius * vec2(0.0, 1.0);
     // vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
@@ -107,23 +124,21 @@ void main(){
 
     float d = 0.0;
     for(int i = 0;i < 192;i++){
-        vec2 shift = vec2(
-            random(texcoord * float(i)),
-            random(texcoord * float(i) * 2.0)
-        );
+        vec2 shift = texture(ssao_sampling_points, float(i) / 192.0).xy;
+
         vec2 s1 = center.xy + radius * shift;
         vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
 
-        if( p1.z > center.z + distance_threshold ) {
-            continue;  
-        }
+        // if( p1.z > center.z + distance_threshold ) {
+        //     continue;  
+        // }
 
-        vec2 s2 = center.xy - radius * shift;
+        vec2 s2 = center.xy - 2.0 * radius * shift;
         vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
         
-        if( p2.z > center.z + distance_threshold ){
-            continue;  
-        } 
+        // if( p2.z > center.z + distance_threshold ){
+        //     continue;  
+        // } 
 
         vec3 t1 = p1 - center;
         vec3 t2 = p2 - center;
@@ -138,9 +153,8 @@ void main(){
         // float rad2 = atan((center.z - p2.z) / length(p2.xy - center.xy));
         // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
         
-
-        float rad1 = atan(length(t1.xy) / t1.z);
-        float rad2 = atan(length(t2.xy) / t2.z);
+        float rad1 = atan(length(t1.xy) * frag_w / t1.z);
+        float rad2 = atan(length(t2.xy) * frag_w / t2.z);
         if(rad1 < 0.0){
             rad1 += pi;
         }
@@ -151,7 +165,13 @@ void main(){
         // float rad2 = atan(t2.z / length(t2.xy));
         rad1 = clamp(rad1 / pi, 0.0, 1.0);
         rad2 = clamp(rad2 / pi, 0.0, 1.0);
-        d += 1.0 - clamp((rad1 + rad2), 0.0, 1.0);
+
+        float y = distance_threshold * distance_threshold;
+        float k = 1.0 / (1.0 + 1.0 * (t1.z * t1.z + t2.z * t2.z) / y);
+        float q = 1.0 - clamp((rad1 + rad2), 0.0, 1.0);
+        d += k * q;
+
+        
 
         // float rad1 = atan(length(p1 - center) / (center.z - p1.z));
         // float rad2 = atan(length(p2 - center) / (center.z - p2.z));
@@ -204,6 +224,48 @@ void main(){
 )";
 
             _program = opengl::create_program(vertex_shader, fragment_shader);
+
+            // depth
+            glGenTextures(1, &_depth_texture);
+            glBindTexture(GL_TEXTURE_2D, _depth_texture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 640, 640, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            glGenSamplers(1, &_depth_sampler);
+            glSamplerParameteri(_depth_sampler, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_depth_sampler, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_depth_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glSamplerParameteri(_depth_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            // SSAO
+            glGenTextures(1, &_ssao_texture);
+            std::random_device seed;
+            std::default_random_engine engine(seed());
+            std::normal_distribution<> normal_dist(0.0, 0.8);
+            _ssao_texture_data = std::make_unique<GLfloat[]>(192 * 2);
+            for (int i = 0; i < 192; i++) {
+                _ssao_texture_data[i * 2 + 0] = normal_dist(engine);
+                _ssao_texture_data[i * 2 + 1] = normal_dist(engine);
+            }
+            glActiveTexture(GL_TEXTURE0 + 1);
+            glBindTexture(GL_TEXTURE_1D, _ssao_texture);
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RG32F, 192, 0, GL_RG, GL_FLOAT, _ssao_texture_data.get());
+
+            glTextureParameteri(_ssao_texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTextureParameteri(_ssao_texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTextureParameteri(_ssao_texture, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glTextureParameteri(_ssao_texture, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            glBindTexture(GL_TEXTURE_1D, 0);
+
+            glGenSamplers(1, &_ssao_sampler);
+            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         }
 
         void Main::use()
@@ -217,6 +279,20 @@ void main(){
         void Main::uniform_float(GLuint location, const GLfloat value)
         {
             glUniform1f(location, value);
+        }
+        void Main::attach_depth_texture()
+        {
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
+        }
+        void Main::bind_textures()
+        {
+            // glActiveTexture(GL_TEXTURE0);
+            glBindTextureUnit(0, _depth_texture);
+            glBindSampler(0, _depth_sampler);
+            // glActiveTexture(GL_TEXTURE0 + 1);
+            // glBindTexture(GL_TEXTURE_1D, _ssao_texture);
+            glBindTextureUnit(1, _ssao_texture);
+            glBindSampler(1, _ssao_sampler);
         }
     }
 }
