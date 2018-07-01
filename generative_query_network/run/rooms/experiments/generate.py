@@ -44,18 +44,17 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    figure = gqn.imgplot.Figure()
+    figure = gqn.imgplot.figure()
     axes = []
     sqrt_batch_size = int(math.sqrt(args.batch_size))
     axis_size = 1.0 / sqrt_batch_size
     for y in range(sqrt_batch_size):
         for x in range(sqrt_batch_size * 2):
-            axis = gqn.imgplot.ImageData(hyperparams.image_size[0],
-                                         hyperparams.image_size[1], 3)
+            axis = gqn.imgplot.image()
             axes.append(axis)
             figure.add(axis, axis_size / 2 * x, axis_size * y, axis_size / 2,
                        axis_size)
-    window = gqn.imgplot.Window(figure, (1600, 800))
+    window = gqn.imgplot.window(figure, (1600, 800), "Generated images")
     window.show()
 
     camera = gqn.three.PerspectiveCamera(
@@ -175,7 +174,8 @@ def main():
 
                     generated_images = model.generation_network.compute_mean_x(
                         u_l)
-                    generated_images = to_cpu(generated_images.data).transpose(0, 2, 3, 1)
+                    generated_images = to_cpu(generated_images.data).transpose(
+                        0, 2, 3, 1)
 
                     if window.closed():
                         exit()

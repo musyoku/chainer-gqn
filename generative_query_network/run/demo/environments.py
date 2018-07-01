@@ -21,13 +21,12 @@ def main():
         z_near=0.01,
         z_far=100)
 
-    figure = gqn.imgplot.Figure()
-    axis_room = gqn.imgplot.ImageData(screen_size[0], screen_size[1], 3)
-    axis_shepard_matzler = gqn.imgplot.ImageData(screen_size[0], screen_size[1],
-                                                3)
+    figure = gqn.imgplot.figure()
+    axis_room = gqn.imgplot.image()
+    axis_shepard_matzler = gqn.imgplot.image()
     figure.add(axis_room, 0, 0, 0.5, 1)
     figure.add(axis_shepard_matzler, 0.5, 0, 0.5, 1)
-    window = gqn.imgplot.Window(figure, (1600, 800))
+    window = gqn.imgplot.window(figure, (1600, 800), "Environments")
     window.show()
 
     image_room = np.zeros(screen_size + (3, ), dtype="uint32")

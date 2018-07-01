@@ -1,5 +1,4 @@
 #include "../core/data/image.h"
-#include "../core/data/object.h"
 #include "../core/figure.h"
 #include "../core/view/image.h"
 #include "../core/window.h"
@@ -9,23 +8,17 @@ using namespace imgplot;
 
 PYBIND11_MODULE(imgplot, module)
 {
-    py::class_<data::ImageData>(module, "ImageData")
-        .def(py::init<int, int, int>(), py::arg("height"), py::arg("width"), py::arg("num_channels"))
-        .def("resize", &data::ImageData::resize)
+    py::class_<data::ImageData, std::shared_ptr<data::ImageData>>(module, "image")
+        .def(py::init<>())
+        .def(py::init<py::array_t<GLubyte>>(), py::arg("data"))
         .def("update", &data::ImageData::update);
 
-    py::class_<data::ObjectData>(module, "ObjectData")
-        .def(py::init<pybind11::array_t<GLfloat>, int, pybind11::array_t<GLuint>, int>(), py::arg("vertices"), py::arg("num_vertices"), py::arg("faces"), py::arg("num_faces"))
-        .def("update_vertices", &data::ObjectData::update_vertices)
-        .def("update_faces", &data::ObjectData::update_faces);
-
-    py::class_<Figure>(module, "Figure")
+    py::class_<Figure>(module, "figure")
         .def(py::init<>())
-        .def("add", (void (Figure::*)(data::ImageData*, double, double, double, double)) &Figure::add)
-        .def("add", (void (Figure::*)(data::ObjectData*, double, double, double, double)) &Figure::add);
+        .def("add", &Figure::add, py::arg("data"), py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
 
-    py::class_<Window>(module, "Window")
-        .def(py::init<Figure*, py::tuple>())
+    py::class_<Window>(module, "window")
+        .def(py::init<Figure*, py::tuple, std::string>(), py::arg("figure"), py::arg("size"), py::arg("title"))
         .def("closed", &Window::closed)
         .def("show", &Window::show);
 }

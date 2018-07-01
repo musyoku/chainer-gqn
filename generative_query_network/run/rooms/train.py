@@ -56,17 +56,14 @@ def main():
 
     optimizer = Optimizer(model.parameters)
 
-    figure = gqn.imgplot.Figure()
-    axis1 = gqn.imgplot.ImageData(hyperparams.image_size[0],
-                                  hyperparams.image_size[1], 3)
-    axis2 = gqn.imgplot.ImageData(hyperparams.image_size[0],
-                                  hyperparams.image_size[1], 3)
-    axis3 = gqn.imgplot.ImageData(hyperparams.image_size[0],
-                                  hyperparams.image_size[1], 3)
+    figure = gqn.imgplot.figure()
+    axis1 = gqn.imgplot.image()
+    axis2 = gqn.imgplot.image()
+    axis3 = gqn.imgplot.image()
     figure.add(axis1, 0, 0, 1 / 3, 1)
     figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
     figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
-    window = gqn.imgplot.Window(figure, (500 * 3, 500))
+    window = gqn.imgplot.window(figure, (500 * 3, 500), "Query image / Generator output / Reconstructed image")
     window.show()
 
     sigma_t = hyperparams.pixel_sigma_i
@@ -277,8 +274,8 @@ def main():
         print(
             "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
             format(iteration + 1, mean_nll / total_batch,
-                   mean_kld / total_batch, optimizer.learning_rate,
-                   sigma_t, current_training_step))
+                   mean_kld / total_batch, optimizer.learning_rate, sigma_t,
+                   current_training_step))
 
 
 if __name__ == "__main__":

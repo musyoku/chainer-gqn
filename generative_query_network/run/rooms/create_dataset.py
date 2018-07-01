@@ -22,10 +22,10 @@ def main():
         z_far=10)
 
     if args.with_visualization:
-        figure = gqn.imgplot.Figure()
-        axis = gqn.imgplot.ImageData(screen_size[0], screen_size[1], 3)
+        figure = gqn.imgplot.figure()
+        axis = gqn.imgplot.image()
         figure.add(axis, 0, 0, 1, 1)
-        window = gqn.imgplot.Window(figure, (800, 800))
+        window = gqn.imgplot.window(figure, (800, 800), "Dataset")
         window.show()
 
     image = np.zeros(screen_size + (3, ), dtype="uint32")

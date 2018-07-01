@@ -29,7 +29,7 @@ def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
     return obj, vertices
 
 
-def generate_wall_colors(num_walls_to_paint=2, saturation_range=(0.25, 0.5)):
+def generate_wall_colors(num_walls_to_paint=2, saturation_range=(0.5, 0.75)):
     white = (1, 1, 1, 1)
     if num_walls_to_paint == 0:
         return (white, white, white, white)
