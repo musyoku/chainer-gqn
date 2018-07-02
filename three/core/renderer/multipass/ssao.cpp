@@ -61,7 +61,7 @@ flat in float frag_sampling_radius;
 flat in float frag_screen_width;
 flat in float frag_screen_height;
 flat in float frag_intensity;
-layout(location = 0) out vec4 frag_color;
+out float frag_color;
 
 const float pi = 3.14159;  
 const float distance_threshold = 0.001; // 距離が離れすぎている場合は無視
@@ -78,7 +78,7 @@ void main(){
     float fov_2 = fov / 2.0;
     float tan_fov_2 = tan(fov_2);
     vec2 texcoord = gl_FragCoord.xy / vec2(frag_screen_width, frag_screen_height);
-    vec3 center = vec3(texcoord, compute_true_depth(texture(depth_buffer, texcoord).x));
+    vec3 center = vec3(texcoord, compute_true_depth(texture(depth_buffer, texcoord)[0]));
 
     float radius = frag_sampling_radius / -(center.z * tan_fov_2);
 
@@ -107,15 +107,14 @@ void main(){
         rad1 = clamp(rad1 / pi, 0.0, 1.0);
         rad2 = clamp(rad2 / pi, 0.0, 1.0);
 
-        float y = distance_threshold * distance_threshold;
         float u1 = max(t1.z - distance_threshold, 0.0);
         float u2 = max(t2.z - distance_threshold, 0.0);
-        float k = 1.0 / (1.0 + 10.0 * (u1 * u1 + u2 * u2));
+        float k = 1.0 / (1.0 + 20.0 * (u1 + u2));
         float q = 1.0 - clamp((rad1 + rad2), 0.0, 1.0);
         occlusion += k * q;
     }
     float luminance = 1.0 - occlusion / frag_num_sampling_points;
-    frag_color = vec4(vec3(luminance) * frag_intensity + vec3(1.0) * (1.0 - frag_intensity), 1.0);
+    frag_color = luminance * frag_intensity + (1.0 - frag_intensity);
 }
 )";
 

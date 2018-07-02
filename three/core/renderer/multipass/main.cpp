@@ -95,7 +95,7 @@ void main(){
     }
 
     // vec2 texcoord = gl_FragCoord.xy / 640.0;
-    frag_color = vec4(texture(ssao_buffer, texcoord).xyz, 1.0);
+    // frag_color = vec4(vec3(texture(ssao_buffer, texcoord)[0]), 1.0);
 }
 )";
 
@@ -126,7 +126,7 @@ void main(){
 
             glBindTextureUnit(0, ssao_buffer_texture_id);
             glBindSampler(0, _ssao_buffer_sampler);
-            
+
             check_framebuffer_status();
             return true;
         }

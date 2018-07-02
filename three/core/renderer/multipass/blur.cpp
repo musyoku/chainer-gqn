@@ -33,11 +33,21 @@ void main(void)
 layout(binding = 0) uniform sampler2D ssao_buffer;
 flat in float frag_screen_width;
 flat in float frag_screen_height;
-out vec4 frag_color;
+out float frag_color;
 
 void main(){
     vec2 texcoord = gl_FragCoord.xy / vec2(frag_screen_width, frag_screen_height);
-    frag_color = texture(ssao_buffer, texcoord);
+    vec2 texel_size = vec2(1.0 / frag_screen_width, 1.0 / frag_screen_height);
+    float sum = 0.0;
+    int blur_radius = 1;
+    for(int y = -blur_radius;y <= blur_radius;y++){
+        for(int x = -blur_radius;x <= blur_radius;x++){
+            vec2 offset = vec2(texel_size.x * float(x), texel_size.y * float(y));
+            float luminance = texture(ssao_buffer, texcoord + offset)[0];
+            sum += luminance;
+        }
+    }
+    frag_color = sum / float((2 * blur_radius + 1) * (2 * blur_radius + 1));
 }
 )";
 
