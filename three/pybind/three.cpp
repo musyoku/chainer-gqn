@@ -68,8 +68,6 @@ PYBIND11_MODULE(three, module)
     py::class_<renderer::Renderer>(module, "Renderer")
         .def(py::init<int, int>(), py::arg("width"), py::arg("height"))
         .def(py::init<scene::Scene*, int, int>(), py::arg("scene"), py::arg("width"), py::arg("height"))
-        .def("render_depth_map", (void (renderer::Renderer::*)(camera::PerspectiveCamera*, py::array_t<GLfloat, py::array::c_style>)) & renderer::Renderer::render_depth_map)
-        .def("render_depth_map", (void (renderer::Renderer::*)(scene::Scene*, camera::PerspectiveCamera*, py::array_t<GLfloat, py::array::c_style>)) & renderer::Renderer::render_depth_map)
         .def("render", (void (renderer::Renderer::*)(camera::PerspectiveCamera*, py::array_t<GLuint, py::array::c_style>)) & renderer::Renderer::render)
         .def("render", (void (renderer::Renderer::*)(scene::Scene*, camera::PerspectiveCamera*, py::array_t<GLuint, py::array::c_style>)) & renderer::Renderer::render)
         .def("set_scene", &renderer::Renderer::set_scene);

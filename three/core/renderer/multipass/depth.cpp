@@ -1,11 +1,10 @@
 #include "depth.h"
 #include "../opengl/functions.h"
-#include <iostream>
 
 namespace three {
 namespace renderer {
     namespace multipass {
-        Depth::Depth()
+        DepthBuffer::DepthBuffer(int viewport_width, int viewport_height)
         {
             const GLchar vertex_shader[] = R"(
 #version 450
@@ -31,22 +30,69 @@ void main(void)
 in vec3 frag_light_direction;
 out vec4 frag_color;
 void main(){
-    float light_distance = length(frag_light_direction);
-    float attenuation = clamp(1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
-    frag_color = vec4(vec3(attenuation), 1.0);
+    // float light_distance = length(frag_light_direction);
+    // float attenuation = clamp(1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
+    // frag_color = vec4(vec3(attenuation), 1.0);
 }
 )";
 
             _program = opengl::create_program(vertex_shader, fragment_shader);
-        }
 
-        void Depth::use()
-        {
-            glUseProgram(_program);
+            glCreateFramebuffers(1, &_fbo);
+
+            reserve(viewport_width, viewport_height);
+
+            glGenSamplers(1, &_sampler_id);
+            glSamplerParameteri(_sampler_id, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_sampler_id, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glSamplerParameteri(_sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         }
-        void Depth::uniform_matrix(GLuint location, const GLfloat* matrix)
+        void DepthBuffer::reserve(int viewport_width, int viewport_height)
         {
-            glUniformMatrix4fv(location, 1, GL_FALSE, matrix);
+            glDeleteTextures(1, &_texture_id);
+
+            _viewport_width = viewport_width;
+            _viewport_height = viewport_height;
+
+            glGenTextures(1, &_texture_id);
+            glBindTexture(GL_TEXTURE_2D, _texture_id);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, viewport_width, viewport_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            glTextureParameteri(_texture_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTextureParameteri(_texture_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTextureParameteri(_texture_id, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glTextureParameteri(_texture_id, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        }
+        void DepthBuffer::reserve_if_needed(int viewport_width, int viewport_height)
+        {
+            if (viewport_width != _viewport_width) {
+                return reserve(viewport_width, viewport_height);
+            }
+            if (viewport_height != _viewport_height) {
+                return reserve(viewport_width, viewport_height);
+            }
+        }
+        bool DepthBuffer::bind(int viewport_width, int viewport_height)
+        {
+            reserve_if_needed(viewport_width, viewport_height);
+
+            glUseProgram(_program);
+            glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _texture_id, 0);
+            glNamedFramebufferDrawBuffer(_fbo, GL_NONE);
+            glClear(GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, viewport_width, viewport_height);
+            check_framebuffer_status();
+            return true;
+        }
+        void DepthBuffer::unbind()
+        {
+            glBindVertexArray(0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glUseProgram(0);
+            check_framebuffer_status();
         }
     }
 }

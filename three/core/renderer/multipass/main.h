@@ -1,26 +1,22 @@
 #pragma once
+#include "../pass.h"
 #include <gl3w/gl3w.h>
 #include <memory>
 
 namespace three {
 namespace renderer {
     namespace multipass {
-        class Main {
+        class Main : public RenderPass {
         private:
-            GLuint _program;
-            GLuint _depth_sampler;
-            GLuint _ssao_sampler;
-            GLuint _depth_texture;
-            GLuint _ssao_texture;
-            std::unique_ptr<GLfloat[]> _ssao_texture_data;
+            GLuint _color_render_buffer;
+            int _viewport_width;
+            int _viewport_height;
 
         public:
-            Main();
-            void use();
-            void uniform_matrix(GLuint location, const GLfloat* matrix);
-            void uniform_float(GLuint location, const GLfloat value);
-            void attach_depth_texture();
-            void bind_textures();
+            Main(int viewport_width, int viewport_height);
+            bool bind();
+            void unbind();
+            virtual void set_additional_uniform_variables(base::Object* object);
         };
     }
 }

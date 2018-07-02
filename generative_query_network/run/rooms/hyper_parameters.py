@@ -10,3 +10,6 @@ class HyperParameters():
         self.pixel_sigma_f = 0.7
         self.pixel_n = 2 * 1e5
         self.representation_architecture = "tower"
+
+
+        self.channels_r = 32

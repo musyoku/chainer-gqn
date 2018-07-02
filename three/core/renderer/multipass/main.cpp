@@ -5,8 +5,11 @@
 namespace three {
 namespace renderer {
     namespace multipass {
-        Main::Main()
+        Main::Main(int viewport_width, int viewport_height)
         {
+            _viewport_width = viewport_width;
+            _viewport_height = viewport_height;
+
             const GLchar vertex_shader[] = R"(
 #version 450
 layout(location = 0) in vec3 position;
@@ -50,139 +53,8 @@ in vec4 frag_position;
 in float frag_w;
 out vec4 frag_color;
 
-const float pi = 3.14159;  
-const float distance_threshold = 0.08; // 距離が離れすぎている場合は無視
-const float z_near = 0.01;
-const float z_far = 100.0;
-
-// 右手座標系に戻る
-float compute_true_depth(float z)
-{
-    z -= 0.0005; // シャドウアクネ回避
-    return ((z_far * z_near) / (z_far - z_near)) / (z_far / (z_near - z_far) + z);
-}
-
-float random(const vec2 p) {
-    float v = fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
-    return (v - 0.5) * 2.0;
-}
-
-
 void main(){
-    float fov = pi / 4.0;
-    float fov_2 = fov / 2.0;
-    float tan_fov_2 = tan(fov_2);
-    vec2 texcoord = gl_FragCoord.xy / 640.0;
-    vec3 center = vec3(texcoord, compute_true_depth(texture(depth_map, texcoord).x));
-
     vec3 face_normal = normalize(frag_face_normal_vector);
-    float radius = max(0.02 / -(center.z * tan_fov_2), 1.0 / 640.0);
-
-
-    // float xyz = 0.0;
-    // for(int i = 0;i < 192;i++){
-    //     vec2 sample_point = texture(ssao_sampling_points, float(i) / 192.0).xy;
-
-    //     vec2 s1 = center.xy + radius * sample_point;
-    //     vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
-    //     xyz += -p1.z;
-    // }
-    // frag_color = vec4(vec3(xyz / 192.0 / 5.0), 1.0);
-    // return;
-
-    // vec2 s1 = center.xy + radius * vec2(0.0, 1.0);
-    // vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
-
-    // // if( p1.z < center.z - distance_threshold ) {
-    // //     return;  
-    // // }
-
-    // vec2 s2 = center.xy - radius * vec2(0.0, 1.0);
-    // vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
-    
-    // // if( p2.z < center.z - distance_threshold ){
-    // //     return;  
-    // // }
-
-    // vec3 p1_n = p1 - center;
-    // vec3 p2_n = p2 - center;
-
-    // float dd = dot(normalize(p1_n), normalize(p2_n));
-
-    // float z1 = texture(depth_map, texcoord).x;
-    // float z2 = texture(depth_map, s1).x;
-
-    // float rad1 = atan(length(p1.xy - center.xy) / (p1.z - center.z));
-    // // frag_color = vec4(vec3((z1 * 0.5 + z2 * 0.5 - 0.996923) / (1.0 - 0.996923)), 1.0);
-    // frag_color = vec4((normalize(p1_n) + 1.0) * 0.5, 1.0);
-    // return;
-
-
-
-
-
-
-    float d = 0.0;
-    for(int i = 0;i < 192;i++){
-        vec2 shift = texture(ssao_sampling_points, float(i) / 192.0).xy;
-
-        vec2 s1 = center.xy + radius * shift;
-        vec3 p1 = vec3(s1, compute_true_depth(texture(depth_map, s1).x));
-
-        // if( p1.z > center.z + distance_threshold ) {
-        //     continue;  
-        // }
-
-        vec2 s2 = center.xy - 2.0 * radius * shift;
-        vec3 p2 = vec3(s2, compute_true_depth(texture(depth_map, s2).x));
-        
-        // if( p2.z > center.z + distance_threshold ){
-        //     continue;  
-        // } 
-
-        vec3 t1 = p1 - center;
-        vec3 t2 = p2 - center;
-        
-
-        // float ddd = dot(normalize(t1), normalize(t2));
-        // float ddd = dot(normalize(t1), face_normal) + dot(normalize(t2), face_normal);
-        // d += clamp(0.5 * ddd, 0.0, 1.0);
-
-
-        // float rad1 = atan((center.z - p1.z) / length(p1.xy - center.xy));
-        // float rad2 = atan((center.z - p2.z) / length(p2.xy - center.xy));
-        // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
-        
-        float rad1 = atan(length(t1.xy) * frag_w / t1.z);
-        float rad2 = atan(length(t2.xy) * frag_w / t2.z);
-        if(rad1 < 0.0){
-            rad1 += pi;
-        }
-        if(rad2 < 0.0){
-            rad2 += pi;
-        }
-        // float rad1 = atan(t1.z / length(t1.xy));
-        // float rad2 = atan(t2.z / length(t2.xy));
-        rad1 = clamp(rad1 / pi, 0.0, 1.0);
-        rad2 = clamp(rad2 / pi, 0.0, 1.0);
-
-        float y = distance_threshold * distance_threshold;
-        float k = 1.0 / (1.0 + 1.0 * (t1.z * t1.z + t2.z * t2.z) / y);
-        float q = 1.0 - clamp((rad1 + rad2), 0.0, 1.0);
-        d += k * q;
-
-        
-
-        // float rad1 = atan(length(p1 - center) / (center.z - p1.z));
-        // float rad2 = atan(length(p2 - center) / (center.z - p2.z));
-        // d += clamp((rad1 + rad2) / pi, 0.0, 1.0);
-    }
-    float ao = 1.0 - d / 192.0;
-    frag_color = vec4(vec3(ao), 1.0);
-    frag_color = vec4(1.0 - vec3(d / 192.0), 1.0);
-    return;
-
-
 
     vec3 unit_smooth_normal_vector = normalize(frag_smooth_normal_vector);
     vec3 unit_light_direction = normalize(frag_light_direction);
@@ -209,90 +81,47 @@ void main(){
     vec3 bottom = 0.5 * ambient_color;
     vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
 
-    frag_color = vec4(screen * ao + specular_color * 0.08, 1.0);
+    frag_color = vec4(screen + specular_color * 0.08, 1.0);
+    // frag_color = vec4(screen * ao + specular_color * 0.08, 1.0);
     // frag_color = vec4(vec3(ao), 1.0);
 
-    // frag_color = vec4(vec3(texture(depth_map, texcoord).x - 0.996923) / (1.0 - 0.996923), 1.0);
 
     // frag_color = vec4(vec3(ao), 1.0);
 
-    if(gl_FragCoord.x > 320){
-        frag_color = vec4(screen + specular_color * 0.08, 1.0);
-    }
+    // if(gl_FragCoord.x > 320){
+    //     frag_color = vec4(screen + specular_color * 0.08, 1.0);
+    // }
 
 }
 )";
 
             _program = opengl::create_program(vertex_shader, fragment_shader);
+            glCreateFramebuffers(1, &_fbo);
 
-            // depth
-            glGenTextures(1, &_depth_texture);
-            glBindTexture(GL_TEXTURE_2D, _depth_texture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 640, 640, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            glGenSamplers(1, &_depth_sampler);
-            glSamplerParameteri(_depth_sampler, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-            glSamplerParameteri(_depth_sampler, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            glSamplerParameteri(_depth_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glSamplerParameteri(_depth_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-            // SSAO
-            glGenTextures(1, &_ssao_texture);
-            std::random_device seed;
-            std::default_random_engine engine(seed());
-            std::normal_distribution<> normal_dist(0.0, 0.8);
-            _ssao_texture_data = std::make_unique<GLfloat[]>(192 * 2);
-            for (int i = 0; i < 192; i++) {
-                _ssao_texture_data[i * 2 + 0] = normal_dist(engine);
-                _ssao_texture_data[i * 2 + 1] = normal_dist(engine);
-            }
-            glActiveTexture(GL_TEXTURE0 + 1);
-            glBindTexture(GL_TEXTURE_1D, _ssao_texture);
-            glTexImage1D(GL_TEXTURE_1D, 0, GL_RG32F, 192, 0, GL_RG, GL_FLOAT, _ssao_texture_data.get());
-
-            glTextureParameteri(_ssao_texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTextureParameteri(_ssao_texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTextureParameteri(_ssao_texture, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-            glTextureParameteri(_ssao_texture, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            glBindTexture(GL_TEXTURE_1D, 0);
-
-            glGenSamplers(1, &_ssao_sampler);
-            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glSamplerParameteri(_ssao_sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glCreateRenderbuffers(1, &_color_render_buffer);
+            glNamedRenderbufferStorage(_color_render_buffer, GL_RGB, _viewport_width, viewport_height);
         }
-
-        void Main::use()
+        bool Main::bind()
         {
             glUseProgram(_program);
+            glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+            glNamedFramebufferRenderbuffer(_fbo, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, _viewport_width, _viewport_height);
+            check_framebuffer_status();
+            return true;
         }
-        void Main::uniform_matrix(GLuint location, const GLfloat* matrix)
+        void Main::unbind()
         {
-            glUniformMatrix4fv(location, 1, GL_FALSE, matrix);
+            glBindVertexArray(0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glUseProgram(0);
+            check_framebuffer_status();
         }
-        void Main::uniform_float(GLuint location, const GLfloat value)
+        void Main::set_additional_uniform_variables(base::Object* object)
         {
-            glUniform1f(location, value);
-        }
-        void Main::attach_depth_texture()
-        {
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depth_texture, 0);
-        }
-        void Main::bind_textures()
-        {
-            // glActiveTexture(GL_TEXTURE0);
-            glBindTextureUnit(0, _depth_texture);
-            glBindSampler(0, _depth_sampler);
-            // glActiveTexture(GL_TEXTURE0 + 1);
-            // glBindTexture(GL_TEXTURE_1D, _ssao_texture);
-            glBindTextureUnit(1, _ssao_texture);
-            glBindSampler(1, _ssao_sampler);
+            float smoothness = object->_smoothness ? 1.0 : 0.0;
+            uniform_1f(3, smoothness);
         }
     }
 }

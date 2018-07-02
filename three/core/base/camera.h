@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 
 namespace three {
-namespace camera {
+namespace base {
     namespace py = pybind11;
     class Camera {
     public:
