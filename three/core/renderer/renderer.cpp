@@ -95,7 +95,7 @@ namespace renderer {
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_TEXTURE_1D);
-        glDepthMask(GL_TRUE);
+        // glDepthMask(GL_TRUE);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glClearColor(0.0, 0.0, 0.0, 1.0);
 

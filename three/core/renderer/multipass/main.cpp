@@ -103,6 +103,9 @@ void main(){
             glCreateRenderbuffers(1, &_color_render_buffer);
             glNamedRenderbufferStorage(_color_render_buffer, GL_RGB, viewport_width, viewport_height);
 
+            glCreateRenderbuffers(1, &_depth_render_buffer);
+            glNamedRenderbufferStorage(_depth_render_buffer, GL_DEPTH_COMPONENT, viewport_width, viewport_height);
+
             glGenSamplers(1, &_ssao_buffer_sampler);
             glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
             glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
@@ -114,6 +117,7 @@ void main(){
             glUseProgram(_program);
             glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
             glNamedFramebufferRenderbuffer(_fbo, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
+            glNamedFramebufferRenderbuffer(_fbo, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, _viewport_width, _viewport_height);
             glBindSampler(1, _ssao_buffer_sampler);
