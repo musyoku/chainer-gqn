@@ -47,54 +47,12 @@ namespace renderer {
         _vao = std::make_unique<opengl::VertexArrayObject>();
         _depth_render_pass = std::make_unique<multipass::DepthBuffer>(width, height);
         _ssao_render_pass = std::make_unique<multipass::ScreenSpaceAmbientOcculusion>(width, height, 192);
+        _blur_render_pass = std::make_unique<multipass::Blur>(width, height);
         _main_render_pass = std::make_unique<multipass::Main>(width, height);
-
-        // glCreateRenderbuffers(1, &_color_render_buffer);
-        // glNamedRenderbufferStorage(_color_render_buffer, GL_RGB, _width, _height);
-
-        // glCreateRenderbuffers(1, &_depth_render_buffer);
-        // glNamedRenderbufferStorage(_depth_render_buffer, GL_DEPTH_COMPONENT, _width, _height);
-
-        // _depth_texture_data = std::make_unique<GLfloat[]>(width * height);
-        // glCreateTextures(GL_TEXTURE_2D, 1, &_depth_texture);
-        // glTextureStorage2D(_depth_texture, 1, GL_DEPTH_COMPONENT, width, height);
-        // glTextureSubImage2D(_depth_texture, 0, 0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, _depth_texture_data.get());
-        // glTextureParameteri(_depth_texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        // glTextureParameteri(_depth_texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_S, GL_NEAREST);
-        // glTextureParameteri(_depth_texture, GL_TEXTURE_WRAP_T, GL_NEAREST);
-        // glBindTextureUnit(0, _depth_texture);
-
-        // glGenTextures(1, &_depth_texture);
-        // glBindTexture(GL_TEXTURE_2D, _depth_texture);
-        // glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        // glBindTexture(GL_TEXTURE_2D, 0);
-
-        // glGenTextures(1, &_color_texture);
-        // glBindTexture(GL_TEXTURE_2D, _color_texture);
-        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        // glBindTexture(GL_TEXTURE_2D, 0);
-
-        // glGenTextures(1, &_ssao_texture);
-        // glBindTexture(GL_TEXTURE_2D, _ssao_texture);
-        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 192, 1, 0, GL_RGB, GL_FLOAT, _ssao_texture_data.get());
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        // glBindTexture(GL_TEXTURE_2D, 0);
 
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_TEXTURE_1D);
+        // glEnable(GL_TEXTURE_1D);
         // glDepthMask(GL_TRUE);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -194,21 +152,24 @@ namespace renderer {
             //     }
             // }
 
+
             _depth_render_pass->unbind();
         }
 
-
         // SSAO
-        if (_ssao_render_pass->bind(192)) {
-            _depth_render_pass->bind_depth_buffer();
+        if (_ssao_render_pass->bind(64, 0.5, _depth_render_pass->get_buffer_texture_id())) {
             draw_objects(camera, _ssao_render_pass.get());
             _ssao_render_pass->unbind();
         }
 
+        // SSAO Blur
+        if (_blur_render_pass->bind(_ssao_render_pass->get_buffer_texture_id())) {
+            draw_objects(camera, _blur_render_pass.get());
+            _blur_render_pass->unbind();
+        }
 
         // Main pass
-        if (_main_render_pass->bind()) {
-            _ssao_render_pass->bind_ssao_buffer();
+        if (_main_render_pass->bind(_blur_render_pass->get_buffer_texture_id())) {
             draw_objects(camera, _main_render_pass.get());
 
             glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());

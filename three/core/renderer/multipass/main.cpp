@@ -43,7 +43,7 @@ void main(void)
 
             const GLchar fragment_shader[] = R"(
 #version 450
-layout(binding = 1) uniform sampler2D ssao_buffer;
+layout(binding = 0) uniform sampler2D ssao_buffer;
 in vec4 frag_object_color;
 in vec3 frag_light_direction;
 in vec3 frag_smooth_normal_vector;
@@ -73,26 +73,29 @@ void main(){
     vec3 ambient_color = frag_object_color.rgb;
     frag_color = vec4(clamp(diffuse_color + ambient_color * 0.5, 0.0, 1.0), 1.0);
     frag_color = vec4(vec3(attenuation), 1.0);
-    vec3 composite_color = ambient_color * 0.1 + diffuse_color
-        + specular_color * 0.5;
+    vec3 composite_color = ambient_color * 0.5 + diffuse_color * 0.5
+        + specular_color * 0.08;
 
-    vec3 top = 0.5 * diffuse_color;
-    vec3 bottom = 0.5 * ambient_color;
-    vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
+    // vec3 top = 0.5 * diffuse_color;
+    // vec3 bottom = 0.5 * ambient_color;
+    // vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
 
-    frag_color = vec4(screen + specular_color * 0.08, 1.0);
+    frag_color = vec4(composite_color, 1.0);
     // frag_color = vec4(screen * ao + specular_color * 0.08, 1.0);
     // frag_color = vec4(vec3(ao), 1.0);
 
 
     // frag_color = vec4(vec3(ao), 1.0);
 
+    vec2 texcoord = gl_FragCoord.xy / 640.0;
+    float ssao_luminance = texture(ssao_buffer, texcoord)[0];
+
     if(gl_FragCoord.x > 320){
-        frag_color = vec4(top + bottom + specular_color * 0.08, 1.0);
+        frag_color = vec4(composite_color * ssao_luminance, 1.0);
     }
 
     // vec2 texcoord = gl_FragCoord.xy / 640.0;
-    // frag_color = vec4(texture(ssao_buffer, texcoord).xyz, 1.0);
+    frag_color = vec4(texture(ssao_buffer, texcoord).xyz, 1.0);
 }
 )";
 
@@ -112,7 +115,7 @@ void main(){
             glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         }
-        bool Main::bind()
+        bool Main::bind(GLuint ssao_buffer_texture_id)
         {
             glUseProgram(_program);
             glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
@@ -120,7 +123,10 @@ void main(){
             glNamedFramebufferRenderbuffer(_fbo, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, _viewport_width, _viewport_height);
-            glBindSampler(1, _ssao_buffer_sampler);
+
+            glBindTextureUnit(0, ssao_buffer_texture_id);
+            glBindSampler(0, _ssao_buffer_sampler);
+            
             check_framebuffer_status();
             return true;
         }

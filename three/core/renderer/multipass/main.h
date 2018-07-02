@@ -16,7 +16,7 @@ namespace renderer {
 
         public:
             Main(int viewport_width, int viewport_height);
-            bool bind();
+            bool bind(GLuint ssao_buffer_texture_id);
             void unbind();
             virtual void set_additional_uniform_variables(base::Object* object);
         };

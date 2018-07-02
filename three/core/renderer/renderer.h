@@ -2,6 +2,7 @@
 #include "../base/object.h"
 #include "../camera/perspective.h"
 #include "../scene/scene.h"
+#include "multipass/blur.h"
 #include "multipass/depth.h"
 #include "multipass/main.h"
 #include "multipass/ssao.h"
@@ -29,6 +30,7 @@ namespace renderer {
 
         std::unique_ptr<multipass::DepthBuffer> _depth_render_pass;
         std::unique_ptr<multipass::ScreenSpaceAmbientOcculusion> _ssao_render_pass;
+        std::unique_ptr<multipass::Blur> _blur_render_pass;
         std::unique_ptr<multipass::Main> _main_render_pass;
 
         std::unique_ptr<GLubyte[]> _color_pixels;
