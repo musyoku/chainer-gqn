@@ -10,9 +10,12 @@ namespace renderer {
     {
         glUniform1f(location, value);
     }
+    void RenderPass::uniform_1i(GLuint location, const GLint value)
+    {
+        glUniform1i(location, value);
+    }
     void RenderPass::set_additional_uniform_variables(base::Object* object)
     {
-
     }
     void RenderPass::check_framebuffer_status()
     {

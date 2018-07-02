@@ -43,8 +43,7 @@ void main(void)
 
             const GLchar fragment_shader[] = R"(
 #version 450
-layout(binding = 0) uniform sampler2D depth_map;
-layout(binding = 1) uniform sampler1D ssao_sampling_points;
+layout(binding = 1) uniform sampler2D ssao_buffer;
 in vec4 frag_object_color;
 in vec3 frag_light_direction;
 in vec3 frag_smooth_normal_vector;
@@ -88,18 +87,27 @@ void main(){
 
     // frag_color = vec4(vec3(ao), 1.0);
 
-    // if(gl_FragCoord.x > 320){
-    //     frag_color = vec4(screen + specular_color * 0.08, 1.0);
-    // }
+    if(gl_FragCoord.x > 320){
+        frag_color = vec4(top + bottom + specular_color * 0.08, 1.0);
+    }
 
+    // vec2 texcoord = gl_FragCoord.xy / 640.0;
+    // frag_color = vec4(texture(ssao_buffer, texcoord).xyz, 1.0);
 }
 )";
 
             _program = opengl::create_program(vertex_shader, fragment_shader);
+
             glCreateFramebuffers(1, &_fbo);
 
             glCreateRenderbuffers(1, &_color_render_buffer);
-            glNamedRenderbufferStorage(_color_render_buffer, GL_RGB, _viewport_width, viewport_height);
+            glNamedRenderbufferStorage(_color_render_buffer, GL_RGB, viewport_width, viewport_height);
+
+            glGenSamplers(1, &_ssao_buffer_sampler);
+            glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glSamplerParameteri(_ssao_buffer_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         }
         bool Main::bind()
         {
@@ -108,6 +116,7 @@ void main(){
             glNamedFramebufferRenderbuffer(_fbo, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _color_render_buffer);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, _viewport_width, _viewport_height);
+            glBindSampler(1, _ssao_buffer_sampler);
             check_framebuffer_status();
             return true;
         }

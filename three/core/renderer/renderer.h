@@ -25,10 +25,12 @@ namespace renderer {
         const GLuint _uniform_model_mat = 0;
         const GLuint _uniform_view_mat = 1;
         const GLuint _uniform_projection_mat = 2;
-        const GLuint _uniform_soothness = 3;
         std::unique_ptr<opengl::VertexArrayObject> _vao;
+
         std::unique_ptr<multipass::DepthBuffer> _depth_render_pass;
+        std::unique_ptr<multipass::ScreenSpaceAmbientOcculusion> _ssao_render_pass;
         std::unique_ptr<multipass::Main> _main_render_pass;
+
         std::unique_ptr<GLubyte[]> _color_pixels;
         std::unique_ptr<GLfloat[]> _depth_pixels;
         GLFWwindow* _window;

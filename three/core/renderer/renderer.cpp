@@ -46,6 +46,7 @@ namespace renderer {
 
         _vao = std::make_unique<opengl::VertexArrayObject>();
         _depth_render_pass = std::make_unique<multipass::DepthBuffer>(width, height);
+        _ssao_render_pass = std::make_unique<multipass::ScreenSpaceAmbientOcculusion>(width, height, 192);
         _main_render_pass = std::make_unique<multipass::Main>(width, height);
 
         // glCreateRenderbuffers(1, &_color_render_buffer);
@@ -197,11 +198,17 @@ namespace renderer {
         }
 
 
+        // SSAO
+        if (_ssao_render_pass->bind(192)) {
+            _depth_render_pass->bind_depth_buffer();
+            draw_objects(camera, _ssao_render_pass.get());
+            _ssao_render_pass->unbind();
+        }
+
+
         // Main pass
         if (_main_render_pass->bind()) {
-            // glActiveTexture(GL_TEXTURE0);
-            // glBindTexture(GL_TEXTURE_2D, _depth_texture);
-            // _main_render_pass->bind_textures();
+            _ssao_render_pass->bind_ssao_buffer();
             draw_objects(camera, _main_render_pass.get());
 
             glReadPixels(0, 0, _width, _height, GL_RGB, GL_UNSIGNED_BYTE, _color_pixels.get());

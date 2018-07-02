@@ -8,15 +8,20 @@ namespace renderer {
     namespace multipass {
         class ScreenSpaceAmbientOcculusion : public RenderPass {
         private:
-            GLuint _ssao_sampler;
-            GLuint _depth_texture;
-            GLuint _ssao_texture;
-            std::unique_ptr<GLfloat[]> _ssao_texture_data;
+            GLuint _sampling_points_sampler_id;
+            GLuint _sampling_points_texture_id;
+            GLuint _render_result_texture_id;
+            std::unique_ptr<GLfloat[]> _sampling_points_data;
+            int _viewport_width;
+            int _viewport_height;
+            int _total_sampling_points;
 
         public:
-            ScreenSpaceAmbientOcculusion();
+            ScreenSpaceAmbientOcculusion(int viewport_width, int viewport_height, int total_sampling_points);
             bool bind(int num_sampling_points);
+            bool bind();
             void unbind();
+            void bind_ssao_buffer();
         };
     }
 }

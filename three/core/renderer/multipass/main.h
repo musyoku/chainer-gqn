@@ -9,6 +9,7 @@ namespace renderer {
         class Main : public RenderPass {
         private:
             GLuint _color_render_buffer;
+            GLuint _ssao_buffer_sampler;
             int _viewport_width;
             int _viewport_height;
 

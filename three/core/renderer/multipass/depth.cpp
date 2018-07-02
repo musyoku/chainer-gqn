@@ -41,12 +41,6 @@ void main(){
             glCreateFramebuffers(1, &_fbo);
 
             reserve(viewport_width, viewport_height);
-
-            glGenSamplers(1, &_sampler_id);
-            glSamplerParameteri(_sampler_id, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-            glSamplerParameteri(_sampler_id, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            glSamplerParameteri(_sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glSamplerParameteri(_sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         }
         void DepthBuffer::reserve(int viewport_width, int viewport_height)
         {
@@ -57,7 +51,7 @@ void main(){
 
             glGenTextures(1, &_texture_id);
             glBindTexture(GL_TEXTURE_2D, _texture_id);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, viewport_width, viewport_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, viewport_width, viewport_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
             glBindTexture(GL_TEXTURE_2D, 0);
 
             glTextureParameteri(_texture_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -80,11 +74,11 @@ void main(){
 
             glUseProgram(_program);
             glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _texture_id, 0);
+            glNamedFramebufferTexture(_fbo, GL_DEPTH_ATTACHMENT, _texture_id, 0);
             glNamedFramebufferDrawBuffer(_fbo, GL_NONE);
             glClear(GL_DEPTH_BUFFER_BIT);
-            glViewport(0, 0, viewport_width, viewport_height);
             check_framebuffer_status();
+            glViewport(0, 0, viewport_width, viewport_height);
             return true;
         }
         void DepthBuffer::unbind()
@@ -93,6 +87,10 @@ void main(){
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUseProgram(0);
             check_framebuffer_status();
+        }
+        void DepthBuffer::bind_depth_buffer()
+        {
+            glBindTexture(GL_TEXTURE_2D, _texture_id);
         }
     }
 }
