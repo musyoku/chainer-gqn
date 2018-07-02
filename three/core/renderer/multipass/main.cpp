@@ -95,7 +95,7 @@ void main(){
     }
 
     // vec2 texcoord = gl_FragCoord.xy / 640.0;
-    // frag_color = vec4(vec3(texture(ssao_buffer, texcoord)[0]), 1.0);
+    // frag_color = vec4(vec3(ssao_luminance), 1.0);
 }
 )";
 

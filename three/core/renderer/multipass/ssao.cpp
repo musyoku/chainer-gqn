@@ -64,7 +64,7 @@ flat in float frag_intensity;
 out float frag_color;
 
 const float pi = 3.14159;  
-const float distance_threshold = 0.001; // 距離が離れすぎている場合は無視
+const float distance_threshold = 0.08; // 距離が離れすぎている場合は無視
 
 // 右手座標系に戻る
 float compute_true_depth(float z)
@@ -83,9 +83,9 @@ void main(){
     float radius = frag_sampling_radius / -(center.z * tan_fov_2);
 
     float occlusion = 0.0;
-    int loop = int(frag_num_sampling_points);
+    int loop = frag_num_sampling_points;
     for(int i = 0;i < loop;i++){
-        vec2 shift = texture(ssao_sampling_points, float(i) / frag_num_sampling_points).xy;
+        vec2 shift = texture(ssao_sampling_points, float(i) / float(frag_num_sampling_points)).xy;
 
         vec2 s1 = center.xy + radius * shift;
         vec3 p1 = vec3(s1, compute_true_depth(texture(depth_buffer, s1).x));
@@ -109,11 +109,12 @@ void main(){
 
         float u1 = max(t1.z - distance_threshold, 0.0);
         float u2 = max(t2.z - distance_threshold, 0.0);
-        float k = 1.0 / (1.0 + 20.0 * (u1 + u2));
+        float p = max(u1, u2);
+        float k = 1.0 / (1.0 + 20.0 * (exp(p) - 1.0));
         float q = 1.0 - clamp((rad1 + rad2), 0.0, 1.0);
         occlusion += k * q;
     }
-    float luminance = 1.0 - occlusion / frag_num_sampling_points;
+    float luminance = 1.0 - occlusion / float(frag_num_sampling_points);
     frag_color = luminance * frag_intensity + (1.0 - frag_intensity);
 }
 )";
