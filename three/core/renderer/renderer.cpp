@@ -45,9 +45,14 @@ namespace renderer {
         gl3wInit();
 
         _vao = std::make_unique<opengl::VertexArrayObject>();
-        _depth_render_pass = std::make_unique<multipass::DepthBuffer>(width, height);
-        _ssao_render_pass = std::make_unique<multipass::ScreenSpaceAmbientOcculusion>(width, height, 192);
-        _blur_render_pass = std::make_unique<multipass::Blur>(width, height);
+
+        int buffer_height = std::min(_height * 5, std::max(640, _height));
+        double aspect_ratio = (double)_width / (double)_height;
+        int buffer_width = (double)buffer_height * aspect_ratio;
+
+        _depth_render_pass = std::make_unique<multipass::DepthBuffer>(buffer_width, buffer_height);
+        _ssao_render_pass = std::make_unique<multipass::ScreenSpaceAmbientOcculusion>(buffer_width, buffer_height, 192);
+        _blur_render_pass = std::make_unique<multipass::Blur>(buffer_width, buffer_height);
         _main_render_pass = std::make_unique<multipass::Main>(width, height);
 
         glEnable(GL_CULL_FACE);
@@ -111,11 +116,9 @@ namespace renderer {
         // OpenGL commands are executed in global context (per thread).
         glfwMakeContextCurrent(_window);
 
-        int screen_width, screen_height;
-        glfwGetFramebufferSize(_window, &screen_width, &screen_height);
 
         // Z pre-pass
-        if (_depth_render_pass->bind(_width, _height)) {
+        if (_depth_render_pass->bind()) {
             draw_objects(camera, _depth_render_pass.get());
 
             // glBindTexture(GL_TEXTURE_2D, _depth_texture);
@@ -157,7 +160,7 @@ namespace renderer {
         }
 
         // SSAO
-        if (_ssao_render_pass->bind(64, 0.5, _depth_render_pass->get_buffer_texture_id())) {
+        if (_ssao_render_pass->bind(64, 1.0, _depth_render_pass->get_buffer_texture_id())) {
             draw_objects(camera, _ssao_render_pass.get());
             _ssao_render_pass->unbind();
         }

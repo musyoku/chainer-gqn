@@ -20,17 +20,21 @@ layout(location = 0) uniform mat4 model_mat;
 layout(location = 1) uniform mat4 view_mat;
 layout(location = 2) uniform mat4 projection_mat;
 layout(location = 3) uniform float smoothness;
+layout(location = 4) uniform float screen_width;
+layout(location = 5) uniform float screen_height;
 out vec4 frag_object_color;
 out vec3 frag_smooth_normal_vector;
 out vec3 frag_face_normal_vector;
 out vec3 frag_light_direction;
 out vec4 frag_position;
 out float frag_w;
+flat out float frag_screen_width;
+flat out float frag_screen_height;
 void main(void)
 {
     vec4 model_position = model_mat * vec4(position, 1.0f);
     gl_Position = projection_mat * view_mat * model_position;
-    vec3 light_position = vec3(0.0f, 1.0f, 1.0f);
+    vec3 light_position = vec3(0.0f, 2.0f, 1.0f);
     frag_light_direction = light_position - model_position.xyz;
     frag_object_color = vertex_color;
     frag_smooth_normal_vector = smoothness * vertex_normal_vector 
@@ -38,6 +42,8 @@ void main(void)
     frag_face_normal_vector = (view_mat * vec4(face_normal_vector, 1.0)).xyz;
     frag_position = view_mat * model_position;
     frag_w = gl_Position.w;
+    frag_screen_width = screen_width;
+    frag_screen_height = screen_height;
 }
 )";
 
@@ -50,6 +56,8 @@ in vec3 frag_smooth_normal_vector;
 in vec3 frag_face_normal_vector;
 in vec4 frag_position;
 in float frag_w;
+flat in float frag_screen_width;
+flat in float frag_screen_height;
 out vec4 frag_color;
 
 void main(){
@@ -76,26 +84,34 @@ void main(){
     vec3 composite_color = ambient_color * 0.5 + diffuse_color * 0.5
         + specular_color * 0.08;
 
-    // vec3 top = 0.5 * diffuse_color;
-    // vec3 bottom = 0.5 * ambient_color;
-    // vec3 screen = 1.0 - (1.0 - top) * (1.0 - bottom);
+    vec3 a = diffuse_color;
+    vec3 b = 0.5 * ambient_color;
+    vec3 screen = 1.0 - (1.0 - a) * (1.0 - b);
+
+    vec2 texcoord = gl_FragCoord.xy / vec2(frag_screen_width, frag_screen_height);
+    float ssao_luminance = texture(ssao_buffer, texcoord)[0];
+
+    a = vec3(attenuation) * ssao_luminance * 0.5 + ambient_color * 0.3 + diffuse_color * 0.2;
+    b = vec3(attenuation) * ssao_luminance * 0.5 + ambient_color * 0.3 + diffuse_color * 0.2;
+
+    vec3 softlight = (1.0 - step(0.5, b)) * (2.0 * a * b + a * a * (1.0 - 2.0 * b)) + step(0.5, b) * (2.0 * a * (1.0 - b) + sqrt(a) * (2.0 * b - 1.0));
+
 
     frag_color = vec4(composite_color, 1.0);
+    frag_color = vec4(vec3(attenuation), 1.0);
+    frag_color = vec4(softlight, 1.0);
     // frag_color = vec4(screen * ao + specular_color * 0.08, 1.0);
     // frag_color = vec4(vec3(ao), 1.0);
 
 
     // frag_color = vec4(vec3(ao), 1.0);
 
-    vec2 texcoord = gl_FragCoord.xy / 640.0;
-    float ssao_luminance = texture(ssao_buffer, texcoord)[0];
 
-    if(gl_FragCoord.x > 320){
-        frag_color = vec4(composite_color * ssao_luminance, 1.0);
-    }
+    // if(gl_FragCoord.x > 320){
+    //     frag_color = vec4(a, 1.0);
+    // }
 
-    // vec2 texcoord = gl_FragCoord.xy / 640.0;
-    // frag_color = vec4(vec3(ssao_luminance), 1.0);
+    frag_color = vec4(vec3(ssao_luminance), 1.0);
 }
 )";
 
@@ -123,6 +139,9 @@ void main(){
             glNamedFramebufferRenderbuffer(_fbo, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depth_render_buffer);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, _viewport_width, _viewport_height);
+
+            uniform_1f(4, _viewport_width);
+            uniform_1f(5, _viewport_height);
 
             glBindTextureUnit(0, ssao_buffer_texture_id);
             glBindSampler(0, _ssao_buffer_sampler);

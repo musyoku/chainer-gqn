@@ -30,12 +30,6 @@ void main(){}
 
             glCreateFramebuffers(1, &_fbo);
 
-            reserve(viewport_width, viewport_height);
-        }
-        void DepthBuffer::reserve(int viewport_width, int viewport_height)
-        {
-            glDeleteTextures(1, &_render_result_texture_id);
-
             _viewport_width = viewport_width;
             _viewport_height = viewport_height;
 
@@ -48,26 +42,17 @@ void main(){}
             glTextureParameteri(_render_result_texture_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTextureParameteri(_render_result_texture_id, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
             glTextureParameteri(_render_result_texture_id, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+       
         }
-        void DepthBuffer::reserve_if_needed(int viewport_width, int viewport_height)
+        bool DepthBuffer::bind()
         {
-            if (viewport_width != _viewport_width) {
-                return reserve(viewport_width, viewport_height);
-            }
-            if (viewport_height != _viewport_height) {
-                return reserve(viewport_width, viewport_height);
-            }
-        }
-        bool DepthBuffer::bind(int viewport_width, int viewport_height)
-        {
-            reserve_if_needed(viewport_width, viewport_height);
             glUseProgram(_program);
             glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
             glNamedFramebufferTexture(_fbo, GL_DEPTH_ATTACHMENT, _render_result_texture_id, 0);
             glNamedFramebufferDrawBuffer(_fbo, GL_NONE);
             glClear(GL_DEPTH_BUFFER_BIT);
             check_framebuffer_status();
-            glViewport(0, 0, viewport_width, viewport_height);
+            glViewport(0, 0, _viewport_width, _viewport_height);
             return true;
         }
         void DepthBuffer::unbind()

@@ -10,12 +10,10 @@ namespace renderer {
             GLuint _render_result_texture_id;
             int _viewport_width;
             int _viewport_height;
-            void reserve(int viewport_width, int viewport_height);
-            void reserve_if_needed(int viewport_width, int viewport_height);
 
         public:
             DepthBuffer(int viewport_width, int viewport_height);
-            bool bind(int viewport_width, int viewport_height);
+            bool bind();
             void unbind();
             GLuint get_buffer_texture_id();
         };
