@@ -1,2 +1,2 @@
-from .network import Network
-from .parameters import Parameters
+from .network import TowerNetwork
+from .parameters import TowerParameters

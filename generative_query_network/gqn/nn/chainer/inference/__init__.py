@@ -1,2 +1,2 @@
-from .network import Network
-from .parameters import Parameters
+from .network import CoreNetwork, PosteriorNetwork, Downsampler
+from .parameters import CoreParameters, PosteriorParameters, DownsamplerParameters

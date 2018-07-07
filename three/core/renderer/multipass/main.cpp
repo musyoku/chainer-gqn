@@ -67,6 +67,22 @@ void main(){
     vec3 unit_light_direction = normalize(frag_light_direction);
     vec3 unit_eye_direction = normalize(-frag_position.xyz);
     vec3 unit_reflection = normalize(2.0 * (dot(unit_light_direction, unit_smooth_normal_vector)) * unit_smooth_normal_vector - unit_light_direction);
+
+    frag_color = vec4((unit_smooth_normal_vector + 1.0) * 0.5, 1.0);
+    float kk = dot(unit_light_direction, unit_smooth_normal_vector);
+    vec3 r = 2.0 * unit_smooth_normal_vector * kk - unit_light_direction;
+    vec3 h = (unit_light_direction + unit_eye_direction) * 0.5;
+    float vv = dot(r, unit_eye_direction);
+    float rr = dot(h, unit_eye_direction);
+    vec3 qq = step(0.0, kk) * (frag_object_color.rgb * 0.5 + vec3(0.5)) * pow(vv, 10.0);
+    float ee = clamp(pow(vv, 3.0), 0.0, 1.0);
+    // if(gl_FragCoord.x > 320){
+    //     frag_color = vec4(qq, 1.0);
+    // }
+    frag_color = vec4(vec3(r + 1.0) * 0.5, 1.0);
+    return;
+
+
     float is_frontface = step(0.0, dot(unit_reflection, unit_smooth_normal_vector));
     float light_distance = length(frag_light_direction);
     float attenuation = clamp(1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
@@ -91,15 +107,16 @@ void main(){
     vec2 texcoord = gl_FragCoord.xy / vec2(frag_screen_width, frag_screen_height);
     float ssao_luminance = texture(ssao_buffer, texcoord)[0];
 
-    a = vec3(attenuation) * ssao_luminance * 0.5 + ambient_color * 0.3 + diffuse_color * 0.2;
-    b = vec3(attenuation) * ssao_luminance * 0.5 + ambient_color * 0.3 + diffuse_color * 0.2;
+    vec3 shadow = vec3(attenuation) * ssao_luminance;
+    a = ambient_color * 0.4 + shadow * ambient_color * 0.4 + diffuse_color * 0.12 + ee * 0.08;
+    b = a;
 
     vec3 softlight = (1.0 - step(0.5, b)) * (2.0 * a * b + a * a * (1.0 - 2.0 * b)) + step(0.5, b) * (2.0 * a * (1.0 - b) + sqrt(a) * (2.0 * b - 1.0));
 
 
-    frag_color = vec4(composite_color, 1.0);
-    frag_color = vec4(vec3(attenuation), 1.0);
-    frag_color = vec4(softlight, 1.0);
+    // frag_color = vec4(composite_color, 1.0);
+    // frag_color = vec4(vec3(attenuation), 1.0);
+    frag_color = vec4(a, 1.0);
     // frag_color = vec4(screen * ao + specular_color * 0.08, 1.0);
     // frag_color = vec4(vec3(ao), 1.0);
 
@@ -111,7 +128,7 @@ void main(){
     //     frag_color = vec4(a, 1.0);
     // }
 
-    frag_color = vec4(vec3(ssao_luminance), 1.0);
+    // frag_color = vec4(vec3(ssao_luminance), 1.0);
 }
 )";
 

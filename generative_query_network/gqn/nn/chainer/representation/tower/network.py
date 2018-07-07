@@ -2,12 +2,12 @@ import chainer
 import chainer.functions as F
 
 from .... import base
-from .parameters import Parameters
+from .parameters import TowerParameters
 
 
-class Network(base.representation.Network):
-    def __init__(self, params):
-        assert isinstance(params, Parameters)
+class TowerNetwork(base.representation.Network):
+    def __init__(self, params: TowerParameters):
+        assert isinstance(params, TowerParameters)
         self.params = params
 
     def compute_r(self, x, v):

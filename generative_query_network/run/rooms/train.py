@@ -18,6 +18,11 @@ from model import Model
 from optimizer import Optimizer
 
 
+def make_uint8(array):
+    return np.uint8(
+        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+
+
 def printr(string):
     sys.stdout.write(string)
     sys.stdout.write("\r")
@@ -63,8 +68,10 @@ def main():
     figure.add(axis1, 0, 0, 1 / 3, 1)
     figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
     figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
-    window = gqn.imgplot.window(figure, (500 * 3, 500), "Query image / Generator output / Reconstructed image")
-    window.show()
+    plot = gqn.imgplot.window(
+        figure, (500 * 3, 500),
+        "Query image / Reconstructed image / Generated image")
+    plot.show()
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -140,72 +147,49 @@ def main():
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
-                hg_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                cg_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                u_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.generator_u_channels,
-                    ) + image_size,
-                    dtype="float32")
-                he_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                ce_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
+                h0_g, c0_g, u_0, h0_e, c0_e = model.generate_initial_state(
+                    args.batch_size, xp)
 
                 loss_kld = 0
-                he_l = he_0
-                ce_l = ce_0
-                hg_l = hg_0
-                cg_l = cg_0
-                ue_l = u_0
-                for l in range(hyperparams.generator_total_timestep):
-                    he_next, ce_next = model.inference_network.forward_onestep(
-                        hg_l, he_l, ce_l, query_images, query_viewpoints, r)
+                hl_e = h0_e
+                cl_e = c0_e
+                hl_g = h0_g
+                cl_g = c0_g
+                ul_e = u_0
+                for l in range(model.generation_steps):
+                    inference_core = model.get_inference_core(l)
+                    generation_core = model.get_generation_core(l)
 
-                    mean_z_q = model.inference_network.compute_mean_z(he_l)
-                    ln_var_z_q = model.inference_network.compute_ln_var_z(he_l)
+                    xq = model.inference_downsampler.downsample(query_images)
+
+                    he_next, ce_next = inference_core.forward_onestep(
+                        hl_g, hl_e, cl_e, xq, query_viewpoints, r)
+
+                    mean_z_q = model.inference_posterior.compute_mean_z(hl_e)
+                    ln_var_z_q = model.inference_posterior.compute_ln_var_z(
+                        hl_e)
                     ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
 
-                    mean_z_p = model.generation_network.compute_mean_z(hg_l)
-                    ln_var_z_p = model.generation_network.compute_ln_var_z(
-                        hg_l)
+                    mean_z_p = model.generation_prior.compute_mean_z(hl_g)
+                    ln_var_z_p = model.generation_prior.compute_ln_var_z(hl_g)
 
-                    hg_next, cg_next, ue_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, ue_l, ze_l, query_viewpoints, r)
+                    hg_next, cg_next, ue_next = generation_core.forward_onestep(
+                        hl_g, cl_g, ul_e, ze_l, query_viewpoints, r)
 
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
 
                     loss_kld += cf.sum(kld)
 
-                    hg_l = hg_next
-                    cg_l = cg_next
-                    ue_l = ue_next
-                    he_l = he_next
-                    ce_l = ce_next
+                    hl_g = hg_next
+                    cl_g = cg_next
+                    ul_e = ue_next
+                    hl_e = he_next
+                    cl_e = ce_next
 
-                mean_x_e = model.generation_network.compute_mean_x(ue_l)
+                mean_x = model.generation_observation.compute_mean_x(ul_e)
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mean_x_e, pixel_var, pixel_ln_var)
+                    query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
 
                 loss_nll /= args.batch_size
@@ -215,37 +199,16 @@ def main():
                 loss.backward()
                 optimizer.update(current_training_step)
 
-                if window.closed() is False:
+                if plot.closed() is False:
+                    axis1.update(make_uint8(query_images[0]))
+                    axis2.update(make_uint8(mean_x.data[0]))
+
                     with chainer.using_config("train",
                                               False), chainer.using_config(
                                                   "enable_backprop", False):
-                        hg_l = hg_0
-                        cg_l = cg_0
-                        ug_l = u_0
-                        for l in range(hyperparams.generator_total_timestep):
-                            zg_l = model.generation_network.sample_z(hg_l)
-                            hg_next, cg_next, ug_next = model.generation_network.forward_onestep(
-                                hg_l, cg_l, ug_l, zg_l, query_viewpoints, r)
-
-                            hg_l = hg_next
-                            cg_l = cg_next
-                            ug_l = ug_next
-
-                    axis1.update(
-                        np.uint8(
-                            (to_cpu(query_images[0].transpose(1, 2, 0)) + 1) *
-                            0.5 * 255))
-
-                    mean_x_g = model.generation_network.compute_mean_x(ug_l)
-                    axis2.update(
-                        np.uint8(
-                            np.clip((to_cpu(mean_x_g.data[0].transpose(
-                                1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
-
-                    axis3.update(
-                        np.uint8(
-                            np.clip((to_cpu(mean_x_e.data[0].transpose(
-                                1, 2, 0)) + 1) * 0.5 * 255, 0, 255)))
+                        generated_x = model.generate_image(
+                            query_viewpoints, r, xp)
+                        axis3.update(make_uint8(generated_x[0]))
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".

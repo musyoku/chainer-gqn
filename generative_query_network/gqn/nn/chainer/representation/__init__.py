@@ -1,1 +1,1 @@
-from . import tower
+from .tower import TowerNetwork, TowerParameters

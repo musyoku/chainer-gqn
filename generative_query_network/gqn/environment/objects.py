@@ -15,7 +15,7 @@ def load_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
     vertices, faces = geometry.load("{}/geometries/{}".format(
         get_realpath(), name))
     num_vertices = vertices.shape[0]
-    smoothness = True if num_vertices > 20 else False
+    smoothness = True if num_vertices > 40 else False
     return three.Object(faces, vertices, color, scale,
                         smoothness), vertices, faces
 
@@ -29,34 +29,49 @@ def create_object(name, color=(1, 1, 1, 1), scale=(1, 1, 1)):
     return obj, vertices
 
 
-def generate_wall_colors(num_walls_to_paint=2, saturation_range=(0.5, 0.75)):
+def generate_wall_colors(num_walls_to_paint=2,
+                         saturation_range=(0.5, 0.75),
+                         brightness_range=(0.5, 0.5)):
     white = (1, 1, 1, 1)
     if num_walls_to_paint == 0:
         return (white, white, white, white)
     if num_walls_to_paint == 1:
         north_wall_color = color.random_color(
-            saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         return (north_wall_color, white, white, white)
     if num_walls_to_paint == 2:
         north_wall_color = color.random_color(
-            saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         south_wall_color = color.random_color(
-            saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         return (north_wall_color, white, south_wall_color, white)
     if num_walls_to_paint == 3:
         north_wall_color = color.random_color(
-            saturation_range=saturation_range)
-        east_wall_color = color.random_color(saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
+        east_wall_color = color.random_color(
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         south_wall_color = color.random_color(
-            saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         return (north_wall_color, east_wall_color, south_wall_color, white)
     if num_walls_to_paint == 4:
         north_wall_color = color.random_color(
-            saturation_range=saturation_range)
-        east_wall_color = color.random_color(saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
+        east_wall_color = color.random_color(
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         south_wall_color = color.random_color(
-            saturation_range=saturation_range)
-        west_wall_color = color.random_color(saturation_range=saturation_range)
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
+        west_wall_color = color.random_color(
+            saturation_range=saturation_range,
+            brightness_range=brightness_range)
         return (north_wall_color, east_wall_color, south_wall_color,
                 west_wall_color)
     assert False

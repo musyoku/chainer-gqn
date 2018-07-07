@@ -4,32 +4,28 @@ import cupy
 import math
 
 from ... import base
-from .parameters import Parameters
+from .parameters import CoreParameters, PriorParameters, ObservationParameters
 from ..functions import get_array_module
 
 
-class Network(base.generator.Network):
-    def __init__(self, params, total_timestep=12):
-        assert isinstance(params, Parameters)
+class CoreNetwork(base.generator.CoreNetwork):
+    def __init__(self, params: CoreParameters):
+        assert isinstance(params, CoreParameters)
         self.params = params
-        self.total_timestep = total_timestep
 
-    def generate_x(self, v, r):
-        pass
-
-    def forward_onestep(self, prev_h, prev_c, prev_u, prev_z, v, r):
+    def forward_onestep(self, prev_hg, prev_cg, prev_u, prev_z, v, r):
         xp = get_array_module(v)
         broadcast_shape = (
-            prev_h.shape[0],
+            prev_hg.shape[0],
             v.shape[1],
-        ) + prev_h.shape[2:]
+        ) + prev_hg.shape[2:]
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        lstm_in = cf.concat((prev_h, v, r, prev_z), axis=1)
+        lstm_in = cf.concat((prev_hg, v, r, prev_z), axis=1)
         forget_gate = cf.sigmoid(self.params.lstm_f(lstm_in))
         input_gate = cf.sigmoid(self.params.lstm_i(lstm_in))
-        next_c = forget_gate * prev_c + input_gate * cf.tanh(
+        next_c = forget_gate * prev_cg + input_gate * cf.tanh(
             self.params.lstm_tanh(lstm_in))
         next_h = cf.sigmoid(self.params.lstm_o(lstm_in)) * cf.tanh(next_c)
 
@@ -55,6 +51,12 @@ class Network(base.generator.Network):
         out = cf.reshape(out, (batchsize, out_channels, out_height, out_width))
         return out
 
+
+class PriorNetwork(base.generator.PriorNetwork):
+    def __init__(self, params: PriorParameters):
+        assert isinstance(params, PriorParameters)
+        self.params = params
+
     def compute_mean_z(self, h):
         return self.params.mean_z(h)
 
@@ -65,6 +67,12 @@ class Network(base.generator.Network):
         mean = self.compute_mean_z(h)
         ln_var = self.compute_ln_var_z(h)
         return cf.gaussian(mean, ln_var)
+
+
+class ObservationNetwork(base.generator.ObservationNetwork):
+    def __init__(self, params: ObservationParameters):
+        assert isinstance(params, ObservationParameters)
+        self.params = params
 
     def compute_mean_x(self, u):
         return self.params.mean_x(u)
