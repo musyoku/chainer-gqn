@@ -187,3 +187,36 @@ class Model():
 
         x = self.generation_observation.compute_mean_x(ul_g)
         return x.data
+
+
+    def reconstruct_image(self, query_images, query_viewpoints, r, xp):
+        batch_size = query_viewpoints.shape[0]
+        h0_g, c0_g, u0, h0_e, c0_e = self.generate_initial_state(batch_size, xp)
+
+        hl_e = h0_e
+        cl_e = c0_e
+        hl_g = h0_g
+        cl_g = c0_g
+        ul_e = u0
+        for l in range(self.generation_steps):
+            inference_core = self.get_inference_core(l)
+            generation_core = self.get_generation_core(l)
+
+            xq = self.inference_downsampler.downsample(query_images)
+
+            he_next, ce_next = inference_core.forward_onestep(
+                hl_g, hl_e, cl_e, xq, query_viewpoints, r)
+
+            ze_l = self.inference_posterior.sample_z(hl_e)
+
+            hg_next, cg_next, ue_next = generation_core.forward_onestep(
+                hl_g, cl_g, ul_e, ze_l, query_viewpoints, r)
+
+            hl_g = hg_next
+            cl_g = cg_next
+            ul_e = ue_next
+            hl_e = he_next
+            cl_e = ce_next
+
+        x = self.generation_observation.compute_mean_x(ul_e)
+        return x.data

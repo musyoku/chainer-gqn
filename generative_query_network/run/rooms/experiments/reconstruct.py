@@ -18,6 +18,13 @@ from hyper_parameters import HyperParameters
 from model import Model
 
 
+def make_uint8(array):
+    if (array.shape[2] == 3):
+        return np.uint8(np.clip((to_cpu(array) + 1) * 0.5 * 255, 0, 255))
+    return np.uint8(
+        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+
+
 def to_gpu(array):
     if args.gpu_device >= 0:
         return cuda.to_gpu(array)
@@ -113,62 +120,8 @@ def main():
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
-                hg_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                cg_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                u_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.generator_u_channels,
-                    ) + image_size,
-                    dtype="float32")
-                he_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-                ce_0 = xp.zeros(
-                    (
-                        args.batch_size,
-                        hyperparams.channels_chz,
-                    ) + hyperparams.chrz_size,
-                    dtype="float32")
-
-                he_l = he_0
-                ce_l = ce_0
-                hg_l = hg_0
-                cg_l = cg_0
-                u_l = u_0
-                for l in range(hyperparams.generator_total_timestep):
-                    he_next, ce_next = model.inference_network.forward_onestep(
-                        hg_l, he_l, ce_l, query_images, query_viewpoints, r)
-                    ze_l = model.inference_network.sample_z(he_l)
-
-                    hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                        hg_l, cg_l, u_l, ze_l, query_viewpoints, r)
-
-                    hg_l = hg_next
-                    cg_l = cg_next
-                    u_l = u_next
-                    he_l = he_next
-                    ce_l = ce_next
-
-                generated_images = model.generation_network.compute_mean_x(u_l)
-                generated_images = to_cpu(generated_images.data)
-                generated_images = generated_images.transpose(0, 2, 3, 1)
-
-                query_images = to_cpu(query_images)
-                query_images = query_images.transpose(0, 2, 3, 1)
+                reconstructed_images = model.reconstruct_image(
+                    query_images, query_viewpoints, r, xp)
 
                 if window.closed():
                     exit()
@@ -176,13 +129,11 @@ def main():
                 for batch_index in range(args.batch_size):
                     axis = axes[batch_index * 2 + 0]
                     image = query_images[batch_index]
-                    axis.update(
-                        np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+                    axis.update(make_uint8(image))
 
                     axis = axes[batch_index * 2 + 1]
-                    image = generated_images[batch_index]
-                    axis.update(
-                        np.uint8(np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+                    image = reconstructed_images[batch_index]
+                    axis.update(make_uint8(image))
 
                 time.sleep(1)
 
