@@ -18,6 +18,13 @@ from hyper_parameters import HyperParameters
 from model import Model
 
 
+def make_uint8(array):
+    if (array.shape[2] == 3):
+        return np.uint8(np.clip((to_cpu(array) + 1) * 0.5 * 255, 0, 255))
+    return np.uint8(
+        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+
+
 def to_gpu(array):
     if args.gpu_device >= 0:
         return cuda.to_gpu(array)
@@ -141,41 +148,8 @@ def main():
                                    math.sin(pitch), math.sin(pitch))
                     query_viewpoints[:] = xp.asarray(query)
 
-                    hg_0 = xp.zeros(
-                        (
-                            args.batch_size,
-                            hyperparams.channels_chz,
-                        ) + hyperparams.chrz_size,
-                        dtype="float32")
-                    cg_0 = xp.zeros(
-                        (
-                            args.batch_size,
-                            hyperparams.channels_chz,
-                        ) + hyperparams.chrz_size,
-                        dtype="float32")
-                    u_0 = xp.zeros(
-                        (
-                            args.batch_size,
-                            hyperparams.generator_u_channels,
-                        ) + image_size,
-                        dtype="float32")
-
-                    hg_l = hg_0
-                    cg_l = cg_0
-                    u_l = u_0
-                    for l in range(hyperparams.generator_total_timestep):
-                        zg_l = model.generation_network.sample_z(hg_l)
-                        hg_next, cg_next, u_next = model.generation_network.forward_onestep(
-                            hg_l, cg_l, u_l, zg_l, query_viewpoints, r)
-
-                        hg_l = hg_next
-                        cg_l = cg_next
-                        u_l = u_next
-
-                    generated_images = model.generation_network.compute_mean_x(
-                        u_l)
-                    generated_images = to_cpu(generated_images.data).transpose(
-                        0, 2, 3, 1)
+                    generated_images = model.generate_image(
+                        query_viewpoints, r, xp)
 
                     if window.closed():
                         exit()
@@ -183,15 +157,11 @@ def main():
                     for batch_index in range(args.batch_size):
                         axis = axes[batch_index * 2 + 0]
                         image = query_images[batch_index]
-                        axis.update(
-                            np.uint8(
-                                np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+                        axis.update(make_uint8(image))
 
                         axis = axes[batch_index * 2 + 1]
                         image = generated_images[batch_index]
-                        axis.update(
-                            np.uint8(
-                                np.clip((image + 1.0) * 0.5 * 255, 0, 255)))
+                        axis.update(make_uint8(image))
 
 
 if __name__ == "__main__":
