@@ -37,5 +37,14 @@ namespace scene {
         object->set_rotation(rotation_rad);
         _objects.push_back(object);
     }
+    void Scene::add(std::shared_ptr<light::DirectionalLight> light)
+    {
+        _lights.push_back(light);
+    }
+    void Scene::add(std::shared_ptr<light::DirectionalLight> light, py::tuple position)
+    {
+        light->set_position(position);
+        _lights.push_back(light);
+    }
 }
 }

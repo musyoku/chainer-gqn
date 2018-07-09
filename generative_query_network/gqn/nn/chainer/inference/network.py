@@ -55,5 +55,5 @@ class Downsampler(base.inference.Downsampler):
 
     def downsample(self, x):
         x = cf.relu(self.params.conv_x_1(x))
-        x = cf.relu(self.params.conv_x_2(x))
+        x = self.params.conv_x_2(x)
         return x

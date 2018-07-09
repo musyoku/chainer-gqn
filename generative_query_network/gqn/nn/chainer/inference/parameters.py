@@ -72,19 +72,19 @@ class PosteriorParameters(chainer.Chain):
 
 
 class DownsamplerParameters(chainer.Chain):
-    def __init__(self, channels_chz):
+    def __init__(self, channels):
         super().__init__()
         with self.init_scope():
             self.conv_x_1 = L.Convolution2D(
                 None,
-                channels_chz,
+                channels // 2,
                 ksize=2,
                 stride=2,
                 pad=0,
                 initialW=HeNormal(0.1))
             self.conv_x_2 = L.Convolution2D(
                 None,
-                channels_chz,
+                channels,
                 ksize=2,
                 stride=2,
                 pad=0,

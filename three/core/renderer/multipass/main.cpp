@@ -34,7 +34,7 @@ void main(void)
 {
     vec4 model_position = model_mat * vec4(position, 1.0f);
     gl_Position = projection_mat * view_mat * model_position;
-    vec3 light_position = vec3(0.0f, 2.0f, 1.0f);
+    vec3 light_position = vec3(0.0f, 2.0f, 0.0f);
     frag_light_direction = light_position - model_position.xyz;
     frag_object_color = vertex_color;
     frag_smooth_normal_vector = smoothness * vertex_normal_vector 
@@ -69,18 +69,19 @@ void main(){
     vec3 unit_reflection = normalize(2.0 * (dot(unit_light_direction, unit_smooth_normal_vector)) * unit_smooth_normal_vector - unit_light_direction);
 
     frag_color = vec4((unit_smooth_normal_vector + 1.0) * 0.5, 1.0);
-    float kk = dot(unit_light_direction, unit_smooth_normal_vector);
+    float kk = max(dot(unit_light_direction, unit_smooth_normal_vector), 0.0);
     vec3 r = 2.0 * unit_smooth_normal_vector * kk - unit_light_direction;
-    vec3 h = (unit_light_direction + unit_eye_direction) * 0.5;
+    vec3 h = (unit_light_direction + unit_eye_direction) / length(unit_light_direction + unit_eye_direction);
     float vv = dot(r, unit_eye_direction);
-    float rr = dot(h, unit_eye_direction);
-    vec3 qq = step(0.0, kk) * (frag_object_color.rgb * 0.5 + vec3(0.5)) * pow(vv, 10.0);
+    float rr = max(dot(h, unit_eye_direction), 0.0);
+    vec3 qq = (frag_object_color.rgb * 0.5 + vec3(0.5)) * pow(vv, 10.0);
+    float specular = pow(rr, 16.0);
     float ee = clamp(pow(vv, 3.0), 0.0, 1.0);
     // if(gl_FragCoord.x > 320){
     //     frag_color = vec4(qq, 1.0);
     // }
-    frag_color = vec4(vec3(r + 1.0) * 0.5, 1.0);
-    return;
+    // frag_color = vec4(qq, 1.0);
+    // return;
 
 
     float is_frontface = step(0.0, dot(unit_reflection, unit_smooth_normal_vector));
@@ -88,8 +89,6 @@ void main(){
     float attenuation = clamp(1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
     vec3 eye_direction = -frag_position.xyz;
     float diffuse = dot(unit_smooth_normal_vector, unit_light_direction);
-    float specular = clamp(dot(unit_reflection, unit_eye_direction), 0.0f, 1.0f) * is_frontface;
-    specular = pow(specular, 2.0);
     // frag_color = vec4((attenuation) * object_color.xyz, 1.0);
     vec3 attenuation_color = attenuation * frag_object_color.rgb;
     vec3 diffuse_color = diffuse * frag_object_color.rgb;
@@ -108,7 +107,7 @@ void main(){
     float ssao_luminance = texture(ssao_buffer, texcoord)[0];
 
     vec3 shadow = vec3(attenuation) * ssao_luminance;
-    a = ambient_color * 0.4 + shadow * ambient_color * 0.4 + diffuse_color * 0.12 + ee * 0.08;
+    a = ambient_color * 0.2 + shadow * ambient_color * 0.5 + diffuse_color * 0.12 + specular_color * 0.18;
     b = a;
 
     vec3 softlight = (1.0 - step(0.5, b)) * (2.0 * a * b + a * a * (1.0 - 2.0 * b)) + step(0.5, b) * (2.0 * a * (1.0 - b) + sqrt(a) * (2.0 * b - 1.0));
@@ -125,7 +124,8 @@ void main(){
 
 
     // if(gl_FragCoord.x > 320){
-    //     frag_color = vec4(a, 1.0);
+    //     frag_color = vec4(vec3(ambient_color * 0.4 + shadow * ambient_color * 0.4 + diffuse_color * 0.2), 1.0);
+    //     frag_color = vec4(specular_color, 1.0);
     // }
 
     // frag_color = vec4(vec3(ssao_luminance), 1.0);
