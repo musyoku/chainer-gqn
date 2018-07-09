@@ -23,7 +23,8 @@ class Model():
 
         self.inference_cores, self.inference_posterior, self.inference_downsampler, self.inference_params = self.build_inference_network(
             generation_steps=self.generation_steps,
-            channels_chz=hyperparams.channels_chz)
+            channels_chz=hyperparams.channels_chz,
+            channels_map_x=hyperparams.inference_channels_map_x)
 
         self.representation_network, self.representation_params = self.build_representation_network(
             architecture=hyperparams.representation_architecture,
@@ -75,7 +76,7 @@ class Model():
 
         return cores, prior, observation, generation_parameters
 
-    def build_inference_network(self, generation_steps, channels_chz):
+    def build_inference_network(self, generation_steps, channels_chz, channels_map_x):
         inference_parameters = chainer.Chain()
         cores = []
         with inference_parameters.init_scope():
@@ -95,7 +96,7 @@ class Model():
 
             # x downsampler
             params = gqn.nn.chainer.inference.DownsamplerParameters(
-                channels_chz=channels_chz)
+                channels=channels_map_x)
             downsampler = gqn.nn.chainer.inference.Downsampler(params)
             inference_parameters.downsampler = params
 
