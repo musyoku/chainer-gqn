@@ -63,8 +63,8 @@ def main():
             # [0, 255] -> [-1, 1]
             normalized_image = (image / 255 - 0.5) * 2.0
 
-            scene_data.add(normalized_image, eye, math.cos(yaw), math.cos(yaw),
-                           math.sin(pitch), math.sin(pitch))
+            scene_data.add(normalized_image, eye, math.cos(yaw), math.sin(yaw),
+                           math.cos(pitch), math.sin(pitch))
 
             if args.with_visualization:
                 axis.update(np.uint8(image))

@@ -207,7 +207,7 @@ def main():
                                               False), chainer.using_config(
                                                   "enable_backprop", False):
                         generated_x = model.generate_image(
-                            query_viewpoints, r, xp)
+                            query_viewpoints[None, 0], r[None, 0], xp)
                         axis3.update(make_uint8(generated_x[0]))
 
                 printr(
