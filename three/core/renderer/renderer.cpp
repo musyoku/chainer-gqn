@@ -62,8 +62,8 @@ namespace renderer {
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        glDebugMessageCallback(DebugCallbackFunc, nullptr);
-        glEnable(GL_DEBUG_OUTPUT);
+        // glDebugMessageCallback(DebugCallbackFunc, nullptr);
+        // glEnable(GL_DEBUG_OUTPUT);
     }
     Renderer::Renderer(int width, int height)
     {
