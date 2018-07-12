@@ -38,6 +38,21 @@ def to_cpu(array):
     return array
 
 
+def generate_random_query_viewpoint(ratio, xp):
+    rad = math.pi * 2 * ratio
+    eye = (3.0 * math.cos(rad), 1, 3.0 * math.sin(rad))
+    center = (0.0, 0.5, 0.0)
+    yaw = gqn.math.yaw(eye, center)
+    pitch = gqn.math.pitch(eye, center)
+    query_viewpoints = xp.array(
+        (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw), math.cos(pitch),
+         math.sin(pitch)),
+        dtype="float32")
+    query_viewpoints = xp.broadcast_to(
+        query_viewpoints, (args.num_generation, ) + query_viewpoints.shape)
+    return query_viewpoints
+
+
 def main():
     xp = np
     using_gpu = args.gpu_device >= 0
@@ -108,6 +123,29 @@ def main():
                 num_objects=random.choice([x for x in range(1, 6)]))
             renderer.set_scene(scene)
 
+            # Generate images without observations
+            r = xp.zeros(
+                (
+                    args.num_generation,
+                    hyperparams.channels_r,
+                ) + hyperparams.chrz_size,
+                dtype="float32")
+            total_frames = 20
+            for tick in range(total_frames):
+                if window.closed():
+                    exit()
+                query_viewpoints = generate_random_query_viewpoint(
+                    tick / total_frames, xp)
+                generated_images = to_cpu(
+                    model.generate_image(query_viewpoints, r, xp))
+
+                for m in range(args.num_generation):
+                    if window.closed():
+                        exit()
+                    image = make_uint8(generated_images[m])
+                    axis = axes_generations[m]
+                    axis.update(image)
+
             for n in range(args.num_views_per_scene):
                 if window.closed():
                     exit()
@@ -139,8 +177,7 @@ def main():
 
                 # sum element-wise across views
                 r = cf.sum(r, axis=1)
-                r = cf.broadcast_to(r,
-                                    (args.num_generation, ) + r.shape[1:])
+                r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
 
                 axis = axes_observations[n]
                 axis.update(np.uint8(raw_observed_images))
@@ -149,20 +186,8 @@ def main():
                 for tick in range(total_frames):
                     if window.closed():
                         exit()
-                    rad = math.pi * 2 * tick / total_frames
-
-                    eye = (3.0 * math.cos(rad), 1, 3.0 * math.sin(rad))
-                    center = (0.0, 0.5, 0.0)
-                    yaw = gqn.math.yaw(eye, center)
-                    pitch = gqn.math.pitch(eye, center)
-                    query_viewpoints = xp.array(
-                        (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
-                         math.cos(pitch), math.sin(pitch)),
-                        dtype="float32")
-                    query_viewpoints = xp.broadcast_to(
-                        query_viewpoints,
-                        (args.num_generation, ) + query_viewpoints.shape)
-
+                    query_viewpoints = generate_random_query_viewpoint(
+                        tick / total_frames, xp)
                     generated_images = to_cpu(
                         model.generate_image(query_viewpoints, r, xp))
 
@@ -173,15 +198,15 @@ def main():
                         axis = axes_generations[m]
                         axis.update(image)
 
-
             raw_observed_images[...] = 0
             for n in range(args.num_views_per_scene):
                 axis = axes_observations[n]
                 axis.update(np.uint8(raw_observed_images))
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-views-per-scene", "-k", type=int, default=16)
+    parser.add_argument("--num-views-per-scene", "-k", type=int, default=9)
     parser.add_argument("--num-generation", "-g", type=int, default=4)
     parser.add_argument("--snapshot-path", type=str, default="../snapshot")
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
