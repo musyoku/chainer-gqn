@@ -130,7 +130,7 @@ def main():
                     hyperparams.channels_r,
                 ) + hyperparams.chrz_size,
                 dtype="float32")
-            total_frames = 20
+            total_frames = 50
             for tick in range(total_frames):
                 if window.closed():
                     exit()
@@ -182,7 +182,7 @@ def main():
                 axis = axes_observations[n]
                 axis.update(np.uint8(raw_observed_images))
 
-                total_frames = 20
+                total_frames = 50
                 for tick in range(total_frames):
                     if window.closed():
                         exit()

@@ -9,7 +9,7 @@
 - [x] OpenGL Renderer
 - [x] Implement GQN
 - [x] Implement training loop
-- [ ] Hyperparameter search
+- [ ] Hyperparameter search (It takes 2 weeks to run a training)
 - [ ] Debug
 
 # Requirements
