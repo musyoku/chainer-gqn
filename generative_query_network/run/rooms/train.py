@@ -10,6 +10,7 @@ import cupy
 import numpy as np
 from chainer.backends import cuda
 
+sys.path.append("generative_query_network")
 sys.path.append(os.path.join("..", ".."))
 import gqn
 
