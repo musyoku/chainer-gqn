@@ -1,6 +1,11 @@
 import random
-from .. import color, geometry, three
+from .. import color, geometry
 from .objects import create_object
+
+try:
+    from .. import three
+except:
+    three = None
 
 
 def generate_blocks(num_blocks=7,

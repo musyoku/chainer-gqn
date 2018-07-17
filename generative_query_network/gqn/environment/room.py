@@ -1,7 +1,11 @@
 import random
 import math
 import numpy as np
-from .. import geometry, three, color
+from .. import geometry, color
+try:
+    from .. import three
+except:
+    pass
 from .objects import create_cornell_box, create_object
 
 
