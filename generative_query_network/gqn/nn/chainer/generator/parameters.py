@@ -35,13 +35,13 @@ class CoreParameters(chainer.Chain):
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
-            self.pixel_shuffle = L.Convolution2D(
-                None,
-                channels_u * 16,
-                ksize=5,
-                stride=1,
-                pad=2,
-                initialW=HeNormal(0.1))
+            # self.pixel_shuffle = L.Convolution2D(
+            #     None,
+            #     channels_u * 16,
+            #     ksize=5,
+            #     stride=1,
+            #     pad=2,
+            #     initialW=HeNormal(0.1))
             self.deconv_h = L.Deconvolution2D(
                 None,
                 channels_u,
