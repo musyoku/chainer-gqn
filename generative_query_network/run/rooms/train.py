@@ -62,17 +62,18 @@ def main():
 
     optimizer = Optimizer(model.parameters)
 
-    figure = gqn.imgplot.figure()
-    axis1 = gqn.imgplot.image()
-    axis2 = gqn.imgplot.image()
-    axis3 = gqn.imgplot.image()
-    figure.add(axis1, 0, 0, 1 / 3, 1)
-    figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
-    figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
-    plot = gqn.imgplot.window(
-        figure, (500 * 3, 500),
-        "Query image / Reconstructed image / Generated image")
-    plot.show()
+    if args.with_visualization:
+        figure = gqn.imgplot.figure()
+        axis1 = gqn.imgplot.image()
+        axis2 = gqn.imgplot.image()
+        axis3 = gqn.imgplot.image()
+        figure.add(axis1, 0, 0, 1 / 3, 1)
+        figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
+        figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
+        plot = gqn.imgplot.window(
+            figure, (500 * 3, 500),
+            "Query image / Reconstructed image / Generated image")
+        plot.show()
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -200,7 +201,7 @@ def main():
                 loss.backward()
                 optimizer.update(current_training_step)
 
-                if plot.closed() is False:
+                if args.with_visualization and plot.closed() is False:
                     axis1.update(make_uint8(query_images[0]))
                     axis2.update(make_uint8(mean_x.data[0]))
 
@@ -248,6 +249,12 @@ if __name__ == "__main__":
     parser.add_argument("--snapshot-path", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
+    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
+    parser.add_argument(
+        "--with-visualization",
+        "-visualize",
+        action="store_true",
+        default=False)
     parser.add_argument(
         "--training-steps", "-smax", type=int, default=2 * 10**6)
     args = parser.parse_args()
