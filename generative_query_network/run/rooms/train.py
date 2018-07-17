@@ -249,7 +249,6 @@ if __name__ == "__main__":
     parser.add_argument("--snapshot-path", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
-    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     parser.add_argument(
         "--with-visualization",
         "-visualize",
