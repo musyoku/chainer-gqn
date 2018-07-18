@@ -187,7 +187,6 @@ def main():
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
-                loss = chainer.Variable(0)
                 model.cleargrads()
                 loss.backward()
                 print(comm.rank, "updating...")
