@@ -59,8 +59,7 @@ def main():
     window = gqn.imgplot.window(figure, (1600, 800), "Reconstucted images")
     window.show()
 
-    with chainer.using_config("train", False), chainer.using_config(
-            "enable_backprop", False):
+    with chainer.no_backprop_mode():
         for subset_index, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 

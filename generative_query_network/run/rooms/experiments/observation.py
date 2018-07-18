@@ -110,8 +110,7 @@ def main():
     observed_viewpoints = xp.zeros(
         (args.num_views_per_scene, 7), dtype="float32")
 
-    with chainer.using_config("train", False), chainer.using_config(
-            "enable_backprop", False):
+    with chainer.no_backprop_mode():
         while True:
             if window.closed():
                 exit()

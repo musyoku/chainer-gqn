@@ -73,8 +73,7 @@ def main():
         z_near=0.1,
         z_far=10)
 
-    with chainer.using_config("train", False), chainer.using_config(
-            "enable_backprop", False):
+    with chainer.no_backprop_mode():
         for subset_index, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 

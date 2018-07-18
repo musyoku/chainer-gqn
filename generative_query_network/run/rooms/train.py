@@ -205,9 +205,7 @@ def main():
                     axis1.update(make_uint8(query_images[0]))
                     axis2.update(make_uint8(mean_x.data[0]))
 
-                    with chainer.using_config("train",
-                                              False), chainer.using_config(
-                                                  "enable_backprop", False):
+                    with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
                             query_viewpoints[None, 0], r[None, 0], xp)
                         axis3.update(make_uint8(generated_x[0]))
