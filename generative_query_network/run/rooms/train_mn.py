@@ -3,12 +3,12 @@ import math
 import os
 import random
 import sys
+import time
 
 import chainer
 import chainermn
 import chainer.functions as cf
 import cupy
-import numpy as np
 from chainer.backends import cuda
 
 sys.path.append("generative_query_network")
@@ -19,9 +19,9 @@ from hyper_parameters import HyperParameters
 from model import Model
 
 
-def make_uint8(array):
-    return np.uint8(
-        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+def printr(string):
+    sys.stdout.write(string)
+    sys.stdout.write("\r")
 
 
 def to_gpu(array):
@@ -40,7 +40,7 @@ def main():
 
     comm = chainermn.create_communicator()
     device = comm.intra_rank
-    print("device", device, comm.size)
+    print("device", device, "/", comm.size)
     cuda.get_device(device).use()
     xp = cupy
 
@@ -72,9 +72,10 @@ def main():
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
-        subset_loop = len(subset_indices) // comm.size
+        subset_size_per_gpu = len(subset_indices) // comm.size
+        start_time = time.time()
 
-        for _ in range(subset_loop):
+        for subset_loop in range(subset_size_per_gpu):
             random.shuffle(subset_indices)
             subset_index = subset_indices[comm.rank]
             subset = dataset.read(subset_index)
@@ -95,6 +96,9 @@ def main():
                 total_views = images.shape[1]
                 num_views = random.choice(range(total_views))
                 query_index = random.choice(range(total_views))
+
+                if current_training_step == 0 and num_views == 0:
+                    num_views = 1
 
                 if num_views > 0:
                     observed_images = images[:, :num_views]
@@ -189,15 +193,14 @@ def main():
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                print(comm.rank, "updating...")
                 optimizer.update()
 
                 if comm.rank == 0:
-                    print(
+                    printr(
                         "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
-                        format(iteration + 1, subset_index + 1, len(dataset),
-                               batch_index + 1,
-                               len(images) // args.batch_size,
+                        format(iteration + 1, subset_loop * comm.size + 1,
+                               len(dataset), batch_index + 1,
+                               len(subset) // args.batch_size,
                                float(loss_nll.data), float(loss_kld.data),
                                optimizer.alpha, sigma_t))
 
@@ -210,8 +213,8 @@ def main():
                 pixel_var[...] = sigma_t**2
                 pixel_ln_var[...] = math.log(sigma_t**2)
 
-                total_batch += args.num_gpus
-                current_training_step += args.num_gpus
+                total_batch += comm.size
+                current_training_step += comm.size
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
@@ -219,11 +222,12 @@ def main():
                 model.serialize(args.snapshot_path)
 
         if comm.rank == 0:
+            elapsed_time = time.time() - start_time
             print(
-                "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
+                "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
                 format(iteration + 1, mean_nll / total_batch,
                        mean_kld / total_batch, optimizer.alpha, sigma_t,
-                       current_training_step))
+                       current_training_step, elapsed_time / 60))
 
 
 if __name__ == "__main__":
