@@ -72,14 +72,16 @@ def main():
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
+        subset_loop = len(subset_indices) // comm.size
 
-        random.shuffle(subset_indices)
+        for _ in range(subset_loop):
+            random.shuffle(subset_indices)
+            subset_index = subset_indices[comm.rank]
+            subset = dataset.read(subset_index)
+            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
+            print("worker", comm.rank, "subset", subset_index)
 
-        subset_index = subset_indices[comm.rank]
-        subset = dataset.read(subset_index)
-        iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
-
-        for batch_index, data_indices in enumerate(iterator):
+            for batch_index, data_indices in enumerate(iterator):
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
