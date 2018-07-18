@@ -13,6 +13,7 @@ class Dataset():
         for filename in files:
             if filename.endswith(".npy"):
                 self.subset_filenames.append(filename)
+        self.subset_filenames.sort()
 
     def __iter__(self):
         self.current_subset_index = 0

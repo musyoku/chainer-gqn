@@ -44,10 +44,7 @@ def main():
     cuda.get_device(device).use()
     xp = cupy
 
-    if comm.rank == 0:
-        dataset = gqn.data.Dataset(args.dataset_path)
-    else:
-        dataset = None
+    dataset = gqn.data.Dataset(args.dataset_path)
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
@@ -66,6 +63,11 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
+
+    random.seed = 0
+    subset_indices = list(range(len(dataset.subset_filenames)))
+    random.shuffle(subset_indices)
+    print(subset_indices)
 
     current_training_step = 0
     for iteration in range(args.training_steps):
@@ -199,7 +201,6 @@ def main():
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
 
-                
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
@@ -247,7 +248,6 @@ if __name__ == "__main__":
     parser.add_argument("--subset-size", type=int, default=200)
     parser.add_argument("--snapshot-path", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
-    parser.add_argument("--num-gpus", "-gpu", type=int, required=True)
     parser.add_argument(
         "--with-visualization",
         "-visualize",
