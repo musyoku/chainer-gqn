@@ -80,7 +80,6 @@ def main():
             subset_index = subset_indices[comm.rank]
             subset = dataset.read(subset_index)
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
-            print("worker", comm.rank, "subset", subset_index)
 
             for batch_index, data_indices in enumerate(iterator):
                 # shape: (batch, views, height, width, channels)
