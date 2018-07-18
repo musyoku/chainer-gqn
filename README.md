@@ -12,6 +12,10 @@
 - [ ] Hyperparameter search (It takes 2 weeks to run a training)
 - [ ] Debug
 
+:thinking:
+
+[https://imgur.com/a/t29nN2W](https://imgur.com/a/t29nN2W)
+
 # Requirements
 
 - pybind11

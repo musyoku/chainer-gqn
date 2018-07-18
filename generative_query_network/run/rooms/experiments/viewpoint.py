@@ -131,8 +131,8 @@ def main():
                 if window.closed():
                     exit()
 
-                yaw += np.random.normal(0, 0.01, size=1)[0]
-                pitch += np.random.normal(0, 0.01, size=1)[0]
+                yaw += np.random.normal(0, 0.02, size=1)[0]
+                pitch += np.random.normal(0, 0.02, size=1)[0]
                 query_viewpoint[0] = xp.array(
                     (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
                      math.cos(pitch), math.sin(pitch)),
