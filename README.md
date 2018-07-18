@@ -14,7 +14,7 @@
 
 :thinking:
 
-[https://imgur.com/a/t29nN2W](https://imgur.com/a/t29nN2W)
+[https://gfycat.com/gifs/detail/DecimalSeriousArmadillo](https://gfycat.com/gifs/detail/DecimalSeriousArmadillo)
 
 # Requirements
 
