@@ -97,7 +97,7 @@ def main():
                 query_index = random.choice(range(total_views))
 
                 if current_training_step == 0 and num_views == 0:
-                    num_views = 1
+                    num_views = 1   # avoid OpenMPI error
 
                 if num_views > 0:
                     observed_images = images[:, :num_views]
