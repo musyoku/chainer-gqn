@@ -64,10 +64,8 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
-    random.seed = 0
+    random.seed(0)
     subset_indices = list(range(len(dataset.subset_filenames)))
-    random.shuffle(subset_indices)
-    print(subset_indices)
 
     current_training_step = 0
     for iteration in range(args.training_steps):
@@ -75,41 +73,24 @@ def main():
         mean_nll = 0
         total_batch = 0
 
-        if comm.rank == 0:
-            random.shuffle(dataset.subset_filenames)
+        random.shuffle(subset_indices)
 
-        for subset_index in range(args.subset_size):
-            if comm.rank == 0:
-                filename = dataset.subset_filenames[subset_index]
-                images_npy_path = os.path.join(dataset.path, "images",
-                                               filename)
-                viewpoints_npy_path = os.path.join(dataset.path, "viewpoints",
-                                                   filename)
-                images = np.load(images_npy_path)
-                viewpoints = np.load(viewpoints_npy_path)
-                subset = chainer.datasets.TupleDataset(images, viewpoints)
-            else:
-                subset = None
-            subset = chainermn.scatter_dataset(subset, comm)
-            iterator = chainer.iterators.SerialIterator(
-                subset, args.batch_size, repeat=False)
+        subset_index = subset_indices[comm.rank]
+        subset = dataset.read(subset_index)
+        iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
-            for batch_index, batch in enumerate(iterator):
-                images = []
-                viewpoints = []
-                for (image, viewpoint) in batch:
-                    images.append(image)
-                    viewpoints.append(viewpoint)
+        for batch_index, data_indices in enumerate(iterator):
+                # shape: (batch, views, height, width, channels)
+                # range: [-1, 1]
+                images, viewpoints = subset[data_indices]
 
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images = xp.asanyarray(images)
                 image_size = images.shape[2:4]
 
-                viewpoints = xp.asanyarray(viewpoints)
-                total_views = images.shape[1]
-
                 # sample number of views
+                total_views = images.shape[1]
                 num_views = random.choice(range(total_views))
                 query_index = random.choice(range(total_views))
 
@@ -206,6 +187,7 @@ def main():
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
+                print(comm.rank "updating...")
                 optimizer.update()
 
                 if comm.rank == 0:
