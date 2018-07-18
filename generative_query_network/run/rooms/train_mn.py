@@ -44,7 +44,10 @@ def main():
     cuda.get_device(device).use()
     xp = cupy
 
-    dataset = gqn.data.Dataset(args.dataset_path)
+    if comm.rank == 0:
+        dataset = gqn.data.Dataset(args.dataset_path)
+    else:
+        dataset = None
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
@@ -64,35 +67,47 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
-    random.seed(0)
-    subset_indices = list(range(len(dataset.subset_filenames)))
-
     current_training_step = 0
     for iteration in range(args.training_steps):
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
-        subset_loop = len(subset_indices) // comm.size
 
-        for _ in range(subset_loop):
-            random.shuffle(subset_indices)
-            subset_index = subset_indices[comm.rank]
-            subset = dataset.read(subset_index)
-            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
-            print("worker", comm.rank, "subset", subset_index)
+        if comm.rank == 0:
+            random.shuffle(dataset.subset_filenames)
 
-            for batch_index, data_indices in enumerate(iterator):
-                # shape: (batch, views, height, width, channels)
-                # range: [-1, 1]
-                images, viewpoints = subset[data_indices]
+        for subset_index in range(args.subset_size):
+            if comm.rank == 0:
+                filename = dataset.subset_filenames[subset_index]
+                images_npy_path = os.path.join(dataset.path, "images",
+                                               filename)
+                viewpoints_npy_path = os.path.join(dataset.path, "viewpoints",
+                                                   filename)
+                images = np.load(images_npy_path)
+                viewpoints = np.load(viewpoints_npy_path)
+                subset = chainer.datasets.TupleDataset(images, viewpoints)
+            else:
+                subset = None
+            subset = chainermn.scatter_dataset(subset, comm)
+            iterator = chainer.iterators.SerialIterator(
+                subset, args.batch_size, repeat=False)
+
+            for batch_index, batch in enumerate(iterator):
+                images = []
+                viewpoints = []
+                for (image, viewpoint) in batch:
+                    images.append(image)
+                    viewpoints.append(viewpoint)
 
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images = xp.asanyarray(images)
                 image_size = images.shape[2:4]
 
-                # sample number of views
+                viewpoints = xp.asanyarray(viewpoints)
                 total_views = images.shape[1]
+
+                # sample number of views
                 num_views = random.choice(range(total_views))
                 query_index = random.choice(range(total_views))
 
@@ -184,12 +199,12 @@ def main():
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
 
+                
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                print(comm.rank, "updating...")
                 optimizer.update()
 
                 if comm.rank == 0:
@@ -232,6 +247,7 @@ if __name__ == "__main__":
     parser.add_argument("--subset-size", type=int, default=200)
     parser.add_argument("--snapshot-path", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
+    parser.add_argument("--num-gpus", "-gpu", type=int, required=True)
     parser.add_argument(
         "--with-visualization",
         "-visualize",
