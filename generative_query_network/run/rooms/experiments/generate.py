@@ -165,8 +165,8 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-path", type=str, default="../rooms_dataset")
-    parser.add_argument("--snapshot-path", type=str, default="../snapshot")
+    parser.add_argument("--dataset-path", "-dataset", type=str, required=True)
+    parser.add_argument("--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--batch-size", "-b", type=int, default=16)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     args = parser.parse_args()

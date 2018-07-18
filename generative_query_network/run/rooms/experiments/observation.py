@@ -207,7 +207,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-views-per-scene", "-k", type=int, default=9)
     parser.add_argument("--num-generation", "-g", type=int, default=4)
-    parser.add_argument("--snapshot-path", type=str, default="../snapshot")
+    parser.add_argument("--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     args = parser.parse_args()
     main()
