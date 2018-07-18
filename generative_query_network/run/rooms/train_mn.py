@@ -187,7 +187,7 @@ def main():
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                print(comm.rank "updating...")
+                print(comm.rank, "updating...")
                 optimizer.update()
 
                 if comm.rank == 0:
