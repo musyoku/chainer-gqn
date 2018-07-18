@@ -133,11 +133,11 @@ def main():
                     # sum element-wise across views
                     r = cf.sum(r, axis=1)
                 else:
-                    r = np.zeros(
+                    r = xp.zeros(
                         (args.batch_size, hyperparams.channels_r) +
                         hyperparams.chrz_size,
                         dtype="float32")
-                    r = chainer.Variable(to_gpu(r))
+                    r = chainer.Variable(r)
 
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
