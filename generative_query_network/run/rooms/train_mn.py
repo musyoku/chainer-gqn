@@ -48,36 +48,21 @@ def main():
     except:
         pass
 
-    xp = np
-    using_gpu = args.gpu_device >= 0
-    if using_gpu:
-        cuda.get_device(args.gpu_device).use()
-        xp = cupy
+    comm = chainermn.create_communicator()
+    device = comm.intra_rank
+    print("device", device)
+    cuda.get_device(device).use()
+    xp = cupy
 
     dataset = gqn.data.Dataset(args.dataset_path)
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
-    if using_gpu:
-        model.to_gpu()
+    model.to_gpu()
 
-    comm = chainermn.create_communicator()
-    print(comm.intra_rank)
-
-    optimizer = Optimizer(model.parameters)
-
-    if args.with_visualization:
-        figure = gqn.imgplot.figure()
-        axis1 = gqn.imgplot.image()
-        axis2 = gqn.imgplot.image()
-        axis3 = gqn.imgplot.image()
-        figure.add(axis1, 0, 0, 1 / 3, 1)
-        figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
-        figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
-        plot = gqn.imgplot.window(
-            figure, (500 * 3, 500),
-            "Query image / Reconstructed image / Generated image")
-        plot.show()
+    optimizer = chainermn.create_multi_node_optimizer(
+        chainer.optimizers.Adam(alpha=5.0 * 1e-4), comm)
+    optimizer.setup(model.parameters)
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -96,6 +81,12 @@ def main():
         total_batch = 0
         for subset_index, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
+
+            if comm.rank == 0:
+                train = chainermn.scatter_dataset(iterator)
+            else:
+                train = None
+                val = None
 
             for batch_index, data_indices in enumerate(iterator):
                 # shape: (batch, views, height, width, channels)
