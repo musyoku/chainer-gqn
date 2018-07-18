@@ -17,7 +17,6 @@ import gqn
 
 from hyper_parameters import HyperParameters
 from model import Model
-from optimizer import Optimizer
 
 
 def make_uint8(array):
@@ -25,21 +24,12 @@ def make_uint8(array):
         np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
 
 
-def printr(string):
-    sys.stdout.write(string)
-    sys.stdout.write("\r")
-
-
 def to_gpu(array):
-    if args.gpu_device >= 0:
-        return cuda.to_gpu(array)
-    return array
+    return cuda.to_gpu(array)
 
 
 def to_cpu(array):
-    if args.gpu_device >= 0:
-        return cuda.to_cpu(array)
-    return array
+    return cuda.to_cpu(array)
 
 
 def main():
@@ -50,11 +40,14 @@ def main():
 
     comm = chainermn.create_communicator()
     device = comm.intra_rank
-    print("device", device)
+    print("device", device, comm.size)
     cuda.get_device(device).use()
     xp = cupy
 
-    dataset = gqn.data.Dataset(args.dataset_path)
+    if comm.rank == 0:
+        dataset = gqn.data.Dataset(args.dataset_path)
+    else:
+        dataset = None
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
@@ -79,21 +72,39 @@ def main():
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
-        for subset_index, subset in enumerate(dataset):
-            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
+        if comm.rank == 0:
+            random.shuffle(dataset.subset_filenames)
+
+        for subset_index in range(args.subset_size):
             if comm.rank == 0:
-                train = chainermn.scatter_dataset(iterator)
+                filename = dataset.subset_filenames[subset_index]
+                images_npy_path = os.path.join(dataset.path, "images",
+                                               filename)
+                viewpoints_npy_path = os.path.join(dataset.path, "viewpoints",
+                                                   filename)
+                images = np.load(images_npy_path)
+                viewpoints = np.load(viewpoints_npy_path)
+                subset = chainer.datasets.TupleDataset(images, viewpoints)
             else:
-                train = None
-                val = None
+                subset = None
+            subset = chainermn.scatter_dataset(subset, comm)
+            iterator = chainer.iterators.SerialIterator(
+                subset, args.batch_size, repeat=False)
 
-            for batch_index, data_indices in enumerate(iterator):
+            for batch_index, batch in enumerate(iterator):
+                images = []
+                viewpoints = []
+                for (image, viewpoint) in batch:
+                    images.append(image)
+                    viewpoints.append(viewpoint)
+
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
-                images, viewpoints = subset[data_indices]
-
+                images = xp.asanyarray(images)
                 image_size = images.shape[2:4]
+
+                viewpoints = xp.asanyarray(viewpoints)
                 total_views = images.shape[1]
 
                 # sample number of views
@@ -106,8 +117,7 @@ def main():
 
                     # (batch, views, height, width, channels) -> (batch * views, height, width, channels)
                     observed_images = observed_images.reshape(
-                        (args.batch_size * num_views, ) +
-                        observed_images.shape[2:])
+                        (args.batch_size * num_views, ) + images.shape[2:])
                     observed_viewpoints = observed_viewpoints.reshape(
                         (args.batch_size * num_views, ) +
                         observed_viewpoints.shape[2:])
@@ -189,29 +199,22 @@ def main():
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
 
+                
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                optimizer.update(current_training_step)
+                optimizer.update()
 
-                if args.with_visualization and plot.closed() is False:
-                    axis1.update(make_uint8(query_images[0]))
-                    axis2.update(make_uint8(mean_x.data[0]))
-
-                    with chainer.no_backprop_mode():
-                        generated_x = model.generate_image(
-                            query_viewpoints[None, 0], r[None, 0], xp)
-                        axis3.update(make_uint8(generated_x[0]))
-
-                printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
-                    format(iteration + 1,
-                           subset_index + 1, len(dataset), batch_index + 1,
-                           len(iterator), float(loss_nll.data),
-                           float(loss_kld.data), optimizer.learning_rate,
-                           sigma_t))
+                if comm.rank == 0:
+                    print(
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
+                        format(iteration + 1, subset_index + 1, len(dataset),
+                               batch_index + 1,
+                               len(images) // args.batch_size,
+                               float(loss_nll.data), float(loss_kld.data),
+                               optimizer.alpha, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -222,26 +225,29 @@ def main():
                 pixel_var[...] = sigma_t**2
                 pixel_ln_var[...] = math.log(sigma_t**2)
 
-                total_batch += 1
-                current_training_step += 1
+                total_batch += args.num_gpus
+                current_training_step += args.num_gpus
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
-            model.serialize(args.snapshot_path)
+            if comm.rank == 0:
+                model.serialize(args.snapshot_path)
 
-        print(
-            "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
-            format(iteration + 1, mean_nll / total_batch,
-                   mean_kld / total_batch, optimizer.learning_rate, sigma_t,
-                   current_training_step))
+        if comm.rank == 0:
+            print(
+                "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
+                format(iteration + 1, mean_nll / total_batch,
+                       mean_kld / total_batch, optimizer.alpha, sigma_t,
+                       current_training_step))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-path", type=str, default="rooms_dataset")
+    parser.add_argument("--subset-size", type=int, default=200)
     parser.add_argument("--snapshot-path", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
-    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
+    parser.add_argument("--num-gpus", "-gpu", type=int, required=True)
     parser.add_argument(
         "--with-visualization",
         "-visualize",
