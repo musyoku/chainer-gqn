@@ -43,7 +43,6 @@ def main():
             object_names=["cube", "sphere", "cone", "cylinder", "icosahedron"],
             num_objects=random.choice([x for x in range(1, 6)]))
         renderer.set_scene(scene)
-
         scene_data = gqn.data.archiver.SceneData(screen_size,
                                                  args.num_views_per_scene)
 
@@ -101,6 +100,6 @@ if __name__ == "__main__":
         "--num-observations-per-file", "-per-file", type=int, default=2000)
     parser.add_argument("--num-views-per-scene", "-k", type=int, default=5)
     parser.add_argument("--image-size", type=int, default=64)
-    parser.add_argument("--path", type=str, default="rooms_dataset")
+    parser.add_argument("--path", type=str, default="dataset")
     args = parser.parse_args()
     main()
