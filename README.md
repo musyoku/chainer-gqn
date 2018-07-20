@@ -15,6 +15,7 @@
 :thinking:
 
 [https://gfycat.com/gifs/detail/WanAnimatedGull](https://gfycat.com/gifs/detail/WanAnimatedGull)
+
 [https://gfycat.com/gifs/detail/RecklessNeighboringFinwhale](https://gfycat.com/gifs/detail/RecklessNeighboringFinwhale)
 
 # Requirements
