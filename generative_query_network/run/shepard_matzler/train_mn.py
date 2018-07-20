@@ -17,6 +17,7 @@ import gqn
 
 from hyper_parameters import HyperParameters
 from model import Model
+from optimizer import Optimizer
 
 
 def printr(string):
@@ -50,9 +51,7 @@ def main():
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     model.to_gpu()
 
-    optimizer = chainermn.create_multi_node_optimizer(
-        chainer.optimizers.Adam(alpha=5.0 * 1e-4), comm)
-    optimizer.setup(model.parameters)
+    optimizer = Optimizer(model.parameters, communicator=comm)
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -97,7 +96,7 @@ def main():
                 query_index = random.choice(range(total_views))
 
                 if current_training_step == 0 and num_views == 0:
-                    num_views = 1   # avoid OpenMPI error
+                    num_views = 1  # avoid OpenMPI error
 
                 if num_views > 0:
                     observed_images = images[:, :num_views]
@@ -192,7 +191,7 @@ def main():
                 loss = loss_nll + loss_kld
                 model.cleargrads()
                 loss.backward()
-                optimizer.update()
+                optimizer.update(current_training_step)
 
                 if comm.rank == 0:
                     printr(
@@ -201,7 +200,7 @@ def main():
                                len(dataset), batch_index + 1,
                                len(subset) // args.batch_size,
                                float(loss_nll.data), float(loss_kld.data),
-                               optimizer.alpha, sigma_t))
+                               optimizer.learning_rate, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -225,8 +224,9 @@ def main():
             print(
                 "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
                 format(iteration + 1, mean_nll / total_batch,
-                       mean_kld / total_batch, optimizer.alpha, sigma_t,
+                       mean_kld / total_batch, optimizer.learning_rate, sigma_t,
                        current_training_step, elapsed_time / 60))
+            model.serialize(args.snapshot_path)
 
 
 if __name__ == "__main__":

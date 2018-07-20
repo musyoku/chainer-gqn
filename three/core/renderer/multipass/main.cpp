@@ -26,7 +26,8 @@ out vec4 frag_object_color;
 out vec3 frag_smooth_normal_vector;
 out vec3 frag_face_normal_vector;
 out vec3 frag_light_direction;
-out vec4 frag_position;
+out vec4 frag_position_view;
+out vec4 frag_position_model;
 out float frag_w;
 flat out float frag_screen_width;
 flat out float frag_screen_height;
@@ -40,7 +41,8 @@ void main(void)
     frag_smooth_normal_vector = smoothness * vertex_normal_vector 
         + (1.0 - smoothness) * face_normal_vector;
     frag_face_normal_vector = (view_mat * vec4(face_normal_vector, 1.0)).xyz;
-    frag_position = view_mat * model_position;
+    frag_position_model = model_position;
+    frag_position_view = view_mat * model_position;
     frag_w = gl_Position.w;
     frag_screen_width = screen_width;
     frag_screen_height = screen_height;
@@ -54,7 +56,8 @@ in vec4 frag_object_color;
 in vec3 frag_light_direction;
 in vec3 frag_smooth_normal_vector;
 in vec3 frag_face_normal_vector;
-in vec4 frag_position;
+in vec4 frag_position_view;
+in vec4 frag_position_model;
 in float frag_w;
 flat in float frag_screen_width;
 flat in float frag_screen_height;
@@ -63,9 +66,17 @@ out vec4 frag_color;
 void main(){
     vec3 face_normal = normalize(frag_face_normal_vector);
 
+    // vec3 checkerboard = step(0.5, fract(2.0 * frag_position_model.xyz - 0.01));
+    // bool bbb = (checkerboard.x > 0.0) ^^ (checkerboard.y > 0.0);
+    // bool ccc = (checkerboard.y > 0.0) ^^ (checkerboard.z > 0.0);
+    // float ddd = (bbb && ccc) ? 1.0 : 0.0;
+    // frag_color = vec4(vec3(ddd), 1.0);
+    // return;
+
+
     vec3 unit_smooth_normal_vector = normalize(frag_smooth_normal_vector);
     vec3 unit_light_direction = normalize(frag_light_direction);
-    vec3 unit_eye_direction = normalize(-frag_position.xyz);
+    vec3 unit_eye_direction = normalize(-frag_position_view.xyz);
     vec3 unit_reflection = normalize(2.0 * (dot(unit_light_direction, unit_smooth_normal_vector)) * unit_smooth_normal_vector - unit_light_direction);
 
     frag_color = vec4((unit_smooth_normal_vector + 1.0) * 0.5, 1.0);
@@ -87,7 +98,7 @@ void main(){
     float is_frontface = step(0.0, dot(unit_reflection, unit_smooth_normal_vector));
     float light_distance = length(frag_light_direction);
     float attenuation = clamp(1.0 / (1.0 + 0.1 * light_distance + 0.2 * light_distance * light_distance), 0.0f, 1.0f);
-    vec3 eye_direction = -frag_position.xyz;
+    vec3 eye_direction = -frag_position_view.xyz;
     float diffuse = dot(unit_smooth_normal_vector, unit_light_direction);
     // frag_color = vec4((attenuation) * object_color.xyz, 1.0);
     vec3 attenuation_color = attenuation * frag_object_color.rgb;
