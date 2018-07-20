@@ -12,7 +12,7 @@
 - [ ] Hyperparameter search (It takes 2 weeks to run a training)
 - [ ] Debug
 
-:thinking:
+:thinking::thinking::thinking:
 
 [https://gfycat.com/gifs/detail/WanAnimatedGull](https://gfycat.com/gifs/detail/WanAnimatedGull)
 
