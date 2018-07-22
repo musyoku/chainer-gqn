@@ -8,6 +8,6 @@ class HyperParameters():
         self.generator_generation_steps = 12
         self.generator_u_channels = 128
         self.pixel_sigma_i = 2.0
-        self.pixel_sigma_f = 0.7
+        self.pixel_sigma_f = 0.5
         self.pixel_n = 2 * 1e5
         self.representation_architecture = "tower"

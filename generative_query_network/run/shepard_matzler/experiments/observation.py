@@ -116,7 +116,7 @@ def main():
                 exit()
 
             scene, _ = gqn.environment.shepard_metzler.build_scene(
-                num_blocks=random.choice([x for x in range(4, 8)]))
+                num_blocks=random.choice([x for x in range(7, 8)]))
             renderer.set_scene(scene)
 
             # Generate images without observations
