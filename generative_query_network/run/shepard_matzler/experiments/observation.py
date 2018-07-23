@@ -39,7 +39,7 @@ def to_cpu(array):
 
 
 def generate_random_query_viewpoint(ratio, xp):
-    rad = random.uniform(0, math.pi * 2 * ratio)
+    rad = math.pi * 2 * ratio
     eye = (3.0 * math.cos(rad), 0, 3.0 * math.sin(rad))
     center = (0, 0, 0)
     yaw = gqn.math.yaw(eye, center)
@@ -146,7 +146,8 @@ def main():
                 if window.closed():
                     exit()
                 rad = random.uniform(0, math.pi * 2)
-                eye = (3.0 * math.cos(rad), 3.0 * math.sin(rad), 3.0 * math.sin(rad))
+                eye = (3.0 * math.cos(rad), 3.0 * math.sin(rad),
+                       3.0 * math.sin(rad))
                 center = (0, 0, 0)
                 yaw = gqn.math.yaw(eye, center)
                 pitch = gqn.math.pitch(eye, center)
@@ -204,7 +205,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-views-per-scene", "-k", type=int, default=9)
     parser.add_argument("--num-generation", "-g", type=int, default=4)
-    parser.add_argument("--snapshot-path", "-snapshot", type=str, required=True)
+    parser.add_argument(
+        "--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     args = parser.parse_args()
     main()
