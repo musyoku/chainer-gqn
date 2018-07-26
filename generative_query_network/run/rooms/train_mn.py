@@ -225,7 +225,7 @@ def main():
                 pixel_ln_var[...] = math.log(sigma_t**2)
 
                 total_batch += 1
-                current_training_step += 1
+                current_training_step += comm.size
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
