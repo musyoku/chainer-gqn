@@ -84,6 +84,14 @@ def main():
     dataset = gqn.data.Dataset(args.dataset_path)
 
     hyperparams = HyperParameters()
+    hyperparams.generator_share_core = args.generator_share_core
+    hyperparams.generator_share_prior = args.generator_share_prior
+    hyperparams.inference_share_core = args.inference_share_core
+    hyperparams.inference_share_posterior = args.inference_share_posterior
+    if comm.rank == 0:
+        hyperparams.save(args.snapshot_path)
+        hyperparams.print()
+
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     model.to_gpu()
 
@@ -237,8 +245,8 @@ def main():
             print(
                 "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
                 format(iteration + 1, mean_nll / total_batch,
-                       mean_kld / total_batch, optimizer.learning_rate, sigma_t,
-                       current_training_step, elapsed_time / 60))
+                       mean_kld / total_batch, optimizer.learning_rate,
+                       sigma_t, current_training_step, elapsed_time / 60))
             model.serialize(args.snapshot_path)
 
 

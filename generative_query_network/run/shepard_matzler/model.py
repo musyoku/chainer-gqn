@@ -36,7 +36,7 @@ class Model():
                 filepath = os.path.join(hdf5_path, self.filename)
                 if os.path.exists(filepath) and os.path.isfile(filepath):
                     print("loading {}".format(filepath))
-                    load_hdf5(filepath, self)
+                    load_hdf5(filepath, self.parameters)
             except Exception as error:
                 print(error)
 

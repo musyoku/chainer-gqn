@@ -15,7 +15,7 @@ sys.path.append(os.path.join("..", "..", ".."))
 import gqn
 
 sys.path.append(os.path.join(".."))
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 from model import Model
 
 
@@ -60,7 +60,9 @@ def main():
         cuda.get_device(args.gpu_device).use()
         xp = cupy
 
-    hyperparams = HyperParameters()
+    hyperparams = HyperParameters(args.snapshot_path)
+    hyperparams.print()
+    
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     if using_gpu:
         model.to_gpu()

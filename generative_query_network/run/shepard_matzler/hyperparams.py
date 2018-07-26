@@ -31,6 +31,8 @@ class HyperParameters():
                         if isinstance(value, list):
                             value = tuple(value)
                         setattr(self, key, value)
+            else:
+                raise Exception
 
     @property
     def filename(self):

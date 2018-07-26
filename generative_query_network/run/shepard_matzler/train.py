@@ -86,7 +86,7 @@ def main():
 
     dataset = gqn.data.Dataset(args.dataset_path)
 
-    hyperparams = HyperParameters(args.snapshot_path)
+    hyperparams = HyperParameters()
     hyperparams.generator_share_core = args.generator_share_core
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.inference_share_core = args.inference_share_core

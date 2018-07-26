@@ -15,7 +15,7 @@ sys.path.append(os.path.join("..", "..", ".."))
 import gqn
 
 sys.path.append(os.path.join(".."))
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 from model import Model
 
 
@@ -175,10 +175,6 @@ def main():
                 # sum element-wise across views
                 r = cf.sum(r, axis=1)
                 r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
-
-                print(
-                    xp.linalg.norm(
-                        r.data.reshape(args.num_generation, -1), axis=(1, )))
 
                 axis = axes_observations[n]
                 axis.update(np.uint8(raw_observed_images))

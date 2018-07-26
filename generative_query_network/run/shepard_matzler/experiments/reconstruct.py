@@ -14,7 +14,7 @@ sys.path.append(os.path.join("..", "..", ".."))
 import gqn
 
 sys.path.append(os.path.join(".."))
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 from model import Model
 
 
