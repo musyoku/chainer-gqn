@@ -30,15 +30,46 @@ def printr(string):
 
 
 def to_gpu(array):
-    if args.gpu_device >= 0:
+    if isinstance(array, np.ndarray):
         return cuda.to_gpu(array)
     return array
 
 
 def to_cpu(array):
-    if args.gpu_device >= 0:
+    if isinstance(array, cupy.ndarray):
         return cuda.to_cpu(array)
     return array
+
+
+def generate_observation_representation(images, viewpoints, num_views, model):
+    observed_images = images[:, :num_views]
+    observed_viewpoints = viewpoints[:, :num_views]
+
+    batch_size = images.shape[0]
+
+    # (batch, views, height, width, channels) -> (batch * views, height, width, channels)
+    observed_images = observed_images.reshape((batch_size * num_views, ) +
+                                              observed_images.shape[2:])
+    observed_viewpoints = observed_viewpoints.reshape(
+        (batch_size * num_views, ) + observed_viewpoints.shape[2:])
+
+    # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
+    observed_images = observed_images.transpose((0, 3, 1, 2))
+
+    # transfer to gpu
+    observed_images = to_gpu(observed_images)
+    observed_viewpoints = to_gpu(observed_viewpoints)
+
+    r = model.representation_network.compute_r(observed_images,
+                                               observed_viewpoints)
+
+    # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
+    r = r.reshape((batch_size, num_views) + r.shape[1:])
+
+    # sum element-wise across views
+    r = cf.sum(r, axis=1)
+
+    return r
 
 
 def main():
@@ -93,10 +124,11 @@ def main():
         dtype="float32")
 
     current_training_step = 0
-    for iteration in range(args.training_steps):
+    for iteration in range(args.training_iterations):
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
+
         for subset_index, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
@@ -105,7 +137,6 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
-                image_size = images.shape[2:4]
                 total_views = images.shape[1]
 
                 # sample number of views
@@ -113,32 +144,8 @@ def main():
                 query_index = random.choice(range(total_views))
 
                 if num_views > 0:
-                    observed_images = images[:, :num_views]
-                    observed_viewpoints = viewpoints[:, :num_views]
-
-                    # (batch, views, height, width, channels) -> (batch * views, height, width, channels)
-                    observed_images = observed_images.reshape(
-                        (args.batch_size * num_views, ) +
-                        observed_images.shape[2:])
-                    observed_viewpoints = observed_viewpoints.reshape(
-                        (args.batch_size * num_views, ) +
-                        observed_viewpoints.shape[2:])
-
-                    # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
-                    observed_images = observed_images.transpose((0, 3, 1, 2))
-
-                    # transfer to gpu
-                    observed_images = to_gpu(observed_images)
-                    observed_viewpoints = to_gpu(observed_viewpoints)
-
-                    r = model.representation_network.compute_r(
-                        observed_images, observed_viewpoints)
-
-                    # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
-                    r = r.reshape((args.batch_size, num_views) + r.shape[1:])
-
-                    # sum element-wise across views
-                    r = cf.sum(r, axis=1)
+                    r = generate_observation_representation(
+                        images, viewpoints, num_views, model)
                 else:
                     r = xp.zeros(
                         (args.batch_size, hyperparams.channels_r) +
@@ -160,6 +167,7 @@ def main():
                     args.batch_size, xp)
 
                 loss_kld = 0
+
                 hl_enc = h0_enc
                 cl_enc = c0_enc
                 hl_gen = h0_gen
@@ -206,6 +214,7 @@ def main():
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
+
                 model.cleargrads()
                 loss.backward()
                 optimizer.update(current_training_step)
@@ -262,8 +271,7 @@ if __name__ == "__main__":
         action="store_true",
         default=False)
     parser.add_argument(
-        "--training-steps", "-smax", type=int, default=2 * 10**6)
-
+        "--training-iterations", "-iter", type=int, default=2 * 10**6)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(
@@ -274,6 +282,5 @@ if __name__ == "__main__":
         "--inference-share-posterior",
         "-i-share-posterior",
         action="store_true")
-
     args = parser.parse_args()
     main()

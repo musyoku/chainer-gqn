@@ -1,4 +1,5 @@
 import math
+import chainermn
 from chainer import optimizers
 from chainer.optimizer_hooks import GradientClipping
 
@@ -15,7 +16,8 @@ class Optimizer:
             beta_1=0.9,
             beta_2=0.99,
             # Adam regularisation parameter
-            eps=1e-8):
+            eps=1e-8,
+            communicator=None):
         self.mu_i = mu_i
         self.mu_f = mu_f
         self.n = n
@@ -27,6 +29,11 @@ class Optimizer:
         self.optimizer = optimizers.Adam(
             lr, beta1=beta_1, beta2=beta_2, eps=eps)
         self.optimizer.setup(model_parameters)
+
+        self.multi_node_optimizer = None
+        if communicator:
+            self.multi_node_optimizer = chainermn.create_multi_node_optimizer(
+                self.optimizer, communicator)
 
     @property
     def learning_rate(self):
@@ -42,5 +49,8 @@ class Optimizer:
         self.optimizer.hyperparam.alpha = self.mu_s(training_step)
 
     def update(self, training_step):
-        self.optimizer.update()
+        if self.multi_node_optimizer:
+            self.multi_node_optimizer.update()
+        else:
+            self.optimizer.update()
         self.anneal_learning_rate(training_step)
