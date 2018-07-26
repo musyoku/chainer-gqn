@@ -33,11 +33,12 @@ class Model():
 
         if hdf5_path:
             try:
-                print("loading", hdf5_path)
-                load_hdf5(
-                    os.path.join(hdf5_path, "model.hdf5"), self.parameters)
-            except:
-                pass
+                filepath = os.path.join(hdf5_path, self.filename)
+                if os.path.exists(filepath) and os.path.isfile(filepath):
+                    print("loading {}".format(filepath))
+                    load_hdf5(filepath, self)
+            except Exception as error:
+                print(error)
 
     def build_generation_network(self, generation_steps, channels_chz,
                                  channels_u):
@@ -109,8 +110,12 @@ class Model():
     def cleargrads(self):
         self.parameters.cleargrads()
 
+    @property
+    def filename(self):
+        return "model.hdf5"
+
     def serialize(self, path):
-        self.serialize_parameter(path, "model.hdf5", self.parameters)
+        self.serialize_parameter(path, self.filename, self.parameters)
 
     def serialize_parameter(self, path, filename, params):
         tmp_filename = str(uuid.uuid4())
