@@ -6,7 +6,7 @@ class HyperParameters():
         self.channels_chz = 64
         self.inference_channels_map_x = 32
         self.generator_generation_steps = 12
-        self.generator_u_channels = 128
+        self.generator_channels_u = 128
         self.pixel_sigma_i = 2.0
         self.pixel_sigma_f = 0.5
         self.pixel_n = 2 * 1e5

@@ -7,7 +7,7 @@ from chainer.serializers import load_hdf5, save_hdf5
 sys.path.append(os.path.join("..", ".."))
 import gqn
 
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 
 
 class Model():
@@ -18,12 +18,12 @@ class Model():
         self.parameters = chainer.ChainList()
 
         self.generation_cores, self.generation_priors, self.generation_observation = self.build_generation_network(
-            num_cores=self.generation_steps,
+            generation_steps=self.generation_steps,
             channels_chz=hyperparams.channels_chz,
-            channels_u=hyperparams.generator_u_channels)
+            channels_u=hyperparams.generator_channels_u)
 
         self.inference_cores, self.inference_posteriors, self.inference_downsampler = self.build_inference_network(
-            num_cores=self.generation_steps,
+            generation_steps=self.generation_steps,
             channels_chz=hyperparams.channels_chz,
             channels_map_x=hyperparams.inference_channels_map_x)
 
@@ -33,16 +33,19 @@ class Model():
 
         if hdf5_path:
             try:
+                print("loading", hdf5_path)
                 load_hdf5(
                     os.path.join(hdf5_path, "model.hdf5"), self.parameters)
             except:
                 pass
 
-    def build_generation_network(self, num_cores, channels_chz, channels_u):
+    def build_generation_network(self, generation_steps, channels_chz,
+                                 channels_u):
         cores = []
         priors = []
         with self.parameters.init_scope():
             # LSTM core
+            num_cores = 1 if self.hyperparams.generator_share_core else generation_steps
             for _ in range(num_cores):
                 core = gqn.nn.chainer.generator.Core(
                     channels_chz=channels_chz, channels_u=channels_u)
@@ -50,7 +53,8 @@ class Model():
                 self.parameters.append(core)
 
             # z prior sampler
-            for t in range(num_cores):
+            num_priors = 1 if self.hyperparams.generator_share_prior else generation_steps
+            for t in range(num_priors):
                 prior = gqn.nn.chainer.generator.Prior(channels_z=channels_chz)
                 priors.append(prior)
                 self.parameters.append(prior)
@@ -62,10 +66,12 @@ class Model():
 
         return cores, priors, observation_distribution
 
-    def build_inference_network(self, num_cores, channels_chz, channels_map_x):
+    def build_inference_network(self, generation_steps, channels_chz,
+                                channels_map_x):
         cores = []
         posteriors = []
         with self.parameters.init_scope():
+            num_cores = 1 if self.hyperparams.inference_share_core else generation_steps
             for t in range(num_cores):
                 # LSTM core
                 core = gqn.nn.chainer.inference.Core(channels_chz=channels_chz)
@@ -73,7 +79,8 @@ class Model():
                 self.parameters.append(core)
 
             # z posterior sampler
-            for t in range(num_cores):
+            num_posteriors = 1 if self.hyperparams.inference_share_posterior else generation_steps
+            for t in range(num_posteriors):
                 posterior = gqn.nn.chainer.inference.Posterior(
                     channels_z=channels_chz)
                 posteriors.append(posterior)
@@ -127,7 +134,7 @@ class Model():
         u0 = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.generator_u_channels,
+                self.hyperparams.generator_channels_u,
             ) + self.hyperparams.image_size,
             dtype="float32")
         h0_e = xp.zeros(
@@ -145,15 +152,23 @@ class Model():
         return h0_g, c0_g, u0, h0_e, c0_e
 
     def get_generation_core(self, l):
+        if self.hyperparams.generator_share_core:
+            return self.generation_cores[0]
         return self.generation_cores[l]
 
     def get_generation_prior(self, l):
+        if self.hyperparams.generator_share_prior:
+            return self.generation_priors[0]
         return self.generation_priors[l]
 
     def get_inference_core(self, l):
+        if self.hyperparams.inference_share_core:
+            return self.inference_cores[0]
         return self.inference_cores[l]
 
     def get_inference_posterior(self, l):
+        if self.hyperparams.inference_share_posterior:
+            return self.inference_posteriors[0]
         return self.inference_posteriors[l]
 
     def generate_image(self, query_viewpoints, r, xp):

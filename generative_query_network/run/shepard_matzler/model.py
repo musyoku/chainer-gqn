@@ -20,7 +20,7 @@ class Model():
         self.generation_cores, self.generation_priors, self.generation_observation = self.build_generation_network(
             generation_steps=self.generation_steps,
             channels_chz=hyperparams.channels_chz,
-            channels_u=hyperparams.generator_u_channels)
+            channels_u=hyperparams.generator_channels_u)
 
         self.inference_cores, self.inference_posteriors, self.inference_downsampler = self.build_inference_network(
             generation_steps=self.generation_steps,
@@ -128,7 +128,7 @@ class Model():
         u0 = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.generator_u_channels,
+                self.hyperparams.generator_channels_u,
             ) + self.hyperparams.image_size,
             dtype="float32")
         h0_e = xp.zeros(

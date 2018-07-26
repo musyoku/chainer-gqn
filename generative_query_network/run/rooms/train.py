@@ -14,7 +14,7 @@ sys.path.append("generative_query_network")
 sys.path.append(os.path.join("..", ".."))
 import gqn
 
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 from model import Model
 from optimizer import Optimizer
 
@@ -55,7 +55,14 @@ def main():
 
     dataset = gqn.data.Dataset(args.dataset_path)
 
-    hyperparams = HyperParameters()
+    hyperparams = HyperParameters(args.snapshot_path)
+    hyperparams.generator_share_core = args.generator_share_core
+    hyperparams.generator_share_prior = args.generator_share_prior
+    hyperparams.inference_share_core = args.inference_share_core
+    hyperparams.inference_share_posterior = args.inference_share_posterior
+    hyperparams.save(args.snapshot_path)
+    hyperparams.print()
+
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
@@ -256,5 +263,17 @@ if __name__ == "__main__":
         default=False)
     parser.add_argument(
         "--training-steps", "-smax", type=int, default=2 * 10**6)
+
+    parser.add_argument(
+        "--generator-share-core", "-g-share-core", action="store_true")
+    parser.add_argument(
+        "--generator-share-prior", "-g-share-prior", action="store_true")
+    parser.add_argument(
+        "--inference-share-core", "-i-share-core", action="store_true")
+    parser.add_argument(
+        "--inference-share-posterior",
+        "-i-share-posterior",
+        action="store_true")
+
     args = parser.parse_args()
     main()
