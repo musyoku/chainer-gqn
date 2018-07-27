@@ -145,9 +145,10 @@ def main():
             for n in range(args.num_views_per_scene):
                 if window.closed():
                     exit()
-                rad = random.uniform(0, math.pi * 2)
-                eye = (3.0 * math.cos(rad), 3.0 * math.sin(rad),
-                       3.0 * math.sin(rad))
+                rad_xz = random.uniform(0, math.pi * 2)
+                rad_y = random.uniform(0, math.pi * 2)
+                eye = (3.0 * math.cos(rad_xz), 3.0 * math.sin(rad_y),
+                       3.0 * math.sin(rad_xz))
                 center = (0, 0, 0)
                 yaw = gqn.math.yaw(eye, center)
                 pitch = gqn.math.pitch(eye, center)

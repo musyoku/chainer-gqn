@@ -28,7 +28,6 @@ def main():
         window = gqn.imgplot.window(figure, (800, 800), "Dataset")
         window.show()
 
-
     image = np.zeros(screen_size + (3, ), dtype="uint32")
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
     dataset = gqn.data.Archiver(
@@ -48,8 +47,10 @@ def main():
 
         total_frames = 5
         for _ in range(total_frames):
-            rad = random.uniform(0, math.pi * 2)
-            eye = (3.0 * math.cos(rad), 3.0 * math.sin(rad), 3.0 * math.sin(rad))
+            rad_xz = random.uniform(0, math.pi * 2)
+            rad_y = random.uniform(0, math.pi * 2)
+            eye = (3.0 * math.cos(rad_xz), 3.0 * math.sin(rad_y),
+                   3.0 * math.sin(rad_xz))
             center = (0, 0, 0)
             yaw = gqn.math.yaw(eye, center)
             pitch = gqn.math.pitch(eye, center)
@@ -80,6 +81,7 @@ def main():
 
         if tick >= args.total_observations:
             return
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
