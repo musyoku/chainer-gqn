@@ -197,8 +197,7 @@ def main():
                         axis.update(image)
 
             raw_observed_images[...] = 0
-            for n in range(args.num_views_per_scene):
-                axis = axes_observations[n]
+            for axis in axes_observations:
                 axis.update(np.uint8(raw_observed_images))
 
 
