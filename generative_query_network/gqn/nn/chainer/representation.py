@@ -80,5 +80,5 @@ class TowerNetwork(chainer.Chain):
         residual = cf.relu(self.conv2_res(resnet_in))
         out = cf.relu(self.conv2_1(resnet_in))
         out = cf.relu(self.conv2_2(out)) + residual
-        out = cf.relu(self.conv2_3(out))
+        out = self.conv2_3(out)
         return out
