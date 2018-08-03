@@ -167,14 +167,11 @@ def main():
                     (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
                      math.cos(pitch), math.sin(pitch)),
                     dtype="float32")
-                r = model.representation_network.compute_r(
-                    observed_images[:n + 1], observed_viewpoints[:n + 1])
 
-                # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
-                r = r.reshape((1, n + 1) + r.shape[1:])
-
-                # sum element-wise across views
-                r = cf.sum(r, axis=1)
+                r = model.compute_observation_representation(
+                    observed_images[None, :n + 1],
+                    observed_viewpoints[None, :n + 1])
+                    
                 r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
 
                 axis = axes_observations[n]

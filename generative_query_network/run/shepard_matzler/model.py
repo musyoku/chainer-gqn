@@ -2,7 +2,10 @@ import os
 import sys
 import chainer
 import uuid
+import cupy
+import chainer.functions as cf
 from chainer.serializers import load_hdf5, save_hdf5
+from chainer.backends import cuda
 
 sys.path.append(os.path.join("..", ".."))
 import gqn
@@ -175,6 +178,75 @@ class Model():
         if self.hyperparams.inference_share_posterior:
             return self.inference_posteriors[0]
         return self.inference_posteriors[l]
+
+    def compute_information_gain(self, x, r):
+        xp = cuda
+        h0_gen, c0_gen, u_0, h0_enc, c0_enc = self.generate_initial_state(
+            1, xp)
+        loss_kld = 0
+
+        hl_enc = h0_enc
+        cl_enc = c0_enc
+        hl_gen = h0_gen
+        cl_gen = c0_gen
+        ul_enc = u_0
+
+        xq = self.inference_downsampler.downsample(query_images)
+
+        for l in range(self.generation_steps):
+            inference_core = self.get_inference_core(l)
+            inference_posterior = self.get_inference_posterior(l)
+            generation_core = self.get_generation_core(l)
+            generation_piror = self.get_generation_prior(l)
+
+            h_next_enc, c_next_enc = inference_core.forward_onestep(
+                hl_gen, hl_enc, cl_enc, xq, query_viewpoints, r)
+
+            mean_z_q = inference_posterior.compute_mean_z(hl_enc)
+            ln_var_z_q = inference_posterior.compute_ln_var_z(hl_enc)
+            ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
+
+            mean_z_p = generation_piror.compute_mean_z(hl_gen)
+            ln_var_z_p = generation_piror.compute_ln_var_z(hl_gen)
+
+            h_next_gen, c_next_gen, u_next_enc = generation_core.forward_onestep(
+                hl_gen, cl_gen, ul_enc, ze_l, query_viewpoints, r)
+
+            kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
+
+            loss_kld += cf.sum(kld)
+
+            hl_gen = h_next_gen
+            cl_gen = c_next_gen
+            ul_enc = u_next_enc
+            hl_enc = h_next_enc
+            cl_enc = c_next_enc
+
+    def compute_observation_representation(self, images, viewpoints):
+        batch_size = images.shape[0]
+        num_views = images.shape[1]
+
+        # (batch, views, channels, height, width) -> (batch * views, channels, height, width)
+        images = images.reshape((batch_size * num_views, ) + images.shape[2:])
+        viewpoints = viewpoints.reshape((batch_size * num_views, ) +
+                                        viewpoints.shape[2:])
+
+        # transfer to gpu
+        xp = self.parameters.xp
+        if xp is cupy:
+            images = cuda.to_gpu(images)
+            viewpoints = cuda.to_gpu(viewpoints)
+
+        r = self.representation_network.compute_r(images, viewpoints)
+
+        # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
+        r = r.reshape((batch_size, num_views) + r.shape[1:])
+
+        # sum element-wise across views
+        r = cf.sum(r, axis=1)
+
+        return r
 
     def generate_image(self, query_viewpoints, r, xp):
         batch_size = query_viewpoints.shape[0]

@@ -38,37 +38,6 @@ def to_cpu(array):
     return array
 
 
-def generate_observation_representation(images, viewpoints, num_views, model):
-    observed_images = images[:, :num_views]
-    observed_viewpoints = viewpoints[:, :num_views]
-
-    batch_size = images.shape[0]
-
-    # (batch, views, height, width, channels) -> (batch * views, height, width, channels)
-    observed_images = observed_images.reshape((batch_size * num_views, ) +
-                                              observed_images.shape[2:])
-    observed_viewpoints = observed_viewpoints.reshape(
-        (batch_size * num_views, ) + observed_viewpoints.shape[2:])
-
-    # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
-    observed_images = observed_images.transpose((0, 3, 1, 2))
-
-    # transfer to gpu
-    observed_images = to_gpu(observed_images)
-    observed_viewpoints = to_gpu(observed_viewpoints)
-
-    r = model.representation_network.compute_r(observed_images,
-                                               observed_viewpoints)
-
-    # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
-    r = r.reshape((batch_size, num_views) + r.shape[1:])
-
-    # sum element-wise across views
-    r = cf.sum(r, axis=1)
-
-    return r
-
-
 def main():
     try:
         os.mkdir(args.snapshot_path)
@@ -84,6 +53,14 @@ def main():
     dataset = gqn.data.Dataset(args.dataset_path)
 
     hyperparams = HyperParameters()
+    hyperparams.generator_share_core = args.generator_share_core
+    hyperparams.generator_share_prior = args.generator_share_prior
+    hyperparams.inference_share_core = args.inference_share_core
+    hyperparams.inference_share_posterior = args.inference_share_posterior
+    if comm.rank == 0:
+        hyperparams.save(args.snapshot_path)
+        hyperparams.print()
+
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     model.to_gpu()
 
@@ -121,6 +98,9 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
+                # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
+                images = images.transpose((0, 1, 4, 2, 3))
+
                 total_views = images.shape[1]
 
                 # sample number of views
@@ -131,8 +111,8 @@ def main():
                     num_views = 1  # avoid OpenMPI error
 
                 if num_views > 0:
-                    r = generate_observation_representation(
-                        images, viewpoints, num_views, model)
+                    r = model.compute_observation_representation(
+                        images[:, :num_views], viewpoints[:, :num_views])
                 else:
                     r = xp.zeros(
                         (args.batch_size, hyperparams.channels_r) +
@@ -142,10 +122,6 @@ def main():
 
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
-
-                # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
-                query_images = query_images.transpose((0, 3, 1, 2))
-
                 # transfer to gpu
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
@@ -226,6 +202,7 @@ def main():
 
                 total_batch += 1
                 current_training_step += comm.size
+                # current_training_step += 1
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
@@ -237,8 +214,8 @@ def main():
             print(
                 "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
                 format(iteration + 1, mean_nll / total_batch,
-                       mean_kld / total_batch, optimizer.learning_rate, sigma_t,
-                       current_training_step, elapsed_time / 60))
+                       mean_kld / total_batch, optimizer.learning_rate,
+                       sigma_t, current_training_step, elapsed_time / 60))
             model.serialize(args.snapshot_path)
 
 

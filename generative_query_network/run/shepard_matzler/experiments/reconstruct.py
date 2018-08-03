@@ -5,7 +5,7 @@ import random
 import math
 import time
 import numpy as np
-import cupy as xp
+import cupy
 import chainer
 import chainer.functions as cf
 from chainer.backends import cuda
@@ -38,13 +38,20 @@ def to_cpu(array):
 
 
 def main():
+    xp = np
+    using_gpu = args.gpu_device >= 0
+    if using_gpu:
+        cuda.get_device(args.gpu_device).use()
+        xp = cupy
+
     dataset = gqn.data.Dataset(args.dataset_path)
     sampler = gqn.data.Sampler(dataset)
     iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
 
     hyperparams = HyperParameters()
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
-    model.to_gpu()
+    if using_gpu:
+        model.to_gpu()
 
     figure = gqn.imgplot.figure()
     axes = []
@@ -60,7 +67,7 @@ def main():
     window.show()
 
     with chainer.no_backprop_mode():
-        for subset_index, subset in enumerate(dataset):
+        for _, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for data_indices in iterator:
@@ -68,7 +75,6 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
-                image_size = images.shape[2:4]
                 total_views = images.shape[1]
 
                 # sample number of views
@@ -76,32 +82,8 @@ def main():
                 query_index = random.choice(range(total_views))
 
                 if num_views > 0:
-                    observed_images = images[:, :num_views]
-                    observed_viewpoints = viewpoints[:, :num_views]
-
-                    # (batch, views, height, width, channels) -> (batch * views, height, width, channels)
-                    observed_images = observed_images.reshape(
-                        (args.batch_size * num_views, ) +
-                        observed_images.shape[2:])
-                    observed_viewpoints = observed_viewpoints.reshape(
-                        (args.batch_size * num_views, ) +
-                        observed_viewpoints.shape[2:])
-
-                    # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
-                    observed_images = observed_images.transpose((0, 3, 1, 2))
-
-                    # transfer to gpu
-                    observed_images = to_gpu(observed_images)
-                    observed_viewpoints = to_gpu(observed_viewpoints)
-
-                    r = model.representation_network.compute_r(
-                        observed_images, observed_viewpoints)
-
-                    # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
-                    r = r.reshape((args.batch_size, num_views) + r.shape[1:])
-
-                    # sum element-wise across views
-                    r = cf.sum(r, axis=1)
+                    r = model.generate_observation_representation(
+                        images[:, :num_views], viewpoints[:, :num_views])
                 else:
                     r = np.zeros(
                         (args.batch_size, hyperparams.channels_r) +
@@ -140,7 +122,8 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-path", "-dataset", type=str, required=True)
-    parser.add_argument("--snapshot-path", "-snapshot", type=str, required=True)
+    parser.add_argument(
+        "--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--batch-size", "-b", type=int, default=16)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     args = parser.parse_args()

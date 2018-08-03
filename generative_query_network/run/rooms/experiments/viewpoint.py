@@ -15,7 +15,7 @@ sys.path.append(os.path.join("..", "..", ".."))
 import gqn
 
 sys.path.append(os.path.join(".."))
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 from model import Model
 
 
@@ -40,7 +40,7 @@ def to_cpu(array):
 
 def generate_random_query_viewpoint(xp):
     rad = math.pi * 2 * np.random.uniform(0, 1, size=1)[0]
-    eye = (3.0 * math.cos(rad), 1, 3.0 * math.sin(rad))
+    eye = (3.0 * math.cos(rad), 0, 3.0 * math.sin(rad))
     center = (0.0, 0.5, 0.0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
@@ -60,7 +60,9 @@ def main():
         cuda.get_device(args.gpu_device).use()
         xp = cupy
 
-    hyperparams = HyperParameters()
+    hyperparams = HyperParameters(args.snapshot_path)
+    hyperparams.print()
+    
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
@@ -70,7 +72,7 @@ def main():
         eye=(3, 1, 0),
         center=(0, 0, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 4.0,
+        fov_rad=math.pi / 2.0,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
         z_far=10)
@@ -95,16 +97,13 @@ def main():
             if window.closed():
                 exit()
 
-            scene, _, _ = gqn.environment.room.build_scene(
-                object_names=[
-                    "cube", "sphere", "cone", "cylinder", "icosahedron"
-                ],
-                num_objects=random.choice([x for x in range(1, 6)]))
+            scene, _ = gqn.environment.shepard_metzler.build_scene(
+                num_blocks=random.choice([x for x in range(7, 8)]))
             renderer.set_scene(scene)
 
-            eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
-            center = (random.uniform(-3, 3), random.uniform(0, 1),
-                      random.uniform(-3, 3))
+            rad = random.uniform(0, math.pi * 2)
+            eye = (3.0 * math.cos(rad), 0, 3.0 * math.sin(rad))
+            center = (0, 0, 0)
             yaw = gqn.math.yaw(eye, center)
             pitch = gqn.math.pitch(eye, center)
             camera.look_at(
@@ -131,8 +130,8 @@ def main():
                 if window.closed():
                     exit()
 
-                yaw += np.random.normal(0, 0.02, size=1)[0]
-                pitch += np.random.normal(0, 0.02, size=1)[0]
+                yaw += np.random.normal(0, 0.05, size=1)[0]
+                pitch += np.random.normal(0, 0.05, size=1)[0]
                 query_viewpoint[0] = xp.array(
                     (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
                      math.cos(pitch), math.sin(pitch)),

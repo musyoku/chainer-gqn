@@ -15,7 +15,7 @@ sys.path.append(os.path.join("..", "..", ".."))
 import gqn
 
 sys.path.append(os.path.join(".."))
-from hyper_parameters import HyperParameters
+from hyperparams import HyperParameters
 from model import Model
 
 
@@ -40,8 +40,8 @@ def to_cpu(array):
 
 def generate_random_query_viewpoint(ratio, xp):
     rad = math.pi * 2 * ratio
-    eye = (3.0 * math.cos(rad), 1, 3.0 * math.sin(rad))
-    center = (0.0, 0.5, 0.0)
+    eye = (3.0 * math.cos(rad), 3.0 * math.sin(rad), 3.0 * math.sin(rad))
+    center = (0, 0, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
     query_viewpoints = xp.array(
@@ -70,7 +70,7 @@ def main():
         eye=(3, 1, 0),
         center=(0, 0, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 4.0,
+        fov_rad=math.pi / 2.0,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
         z_far=10)
@@ -115,11 +115,8 @@ def main():
             if window.closed():
                 exit()
 
-            scene, _, _ = gqn.environment.room.build_scene(
-                object_names=[
-                    "cube", "sphere", "cone", "cylinder", "icosahedron"
-                ],
-                num_objects=random.choice([x for x in range(1, 6)]))
+            scene, _ = gqn.environment.shepard_metzler.build_scene(
+                num_blocks=random.choice([x for x in range(7, 8)]))
             renderer.set_scene(scene)
 
             # Generate images without observations
@@ -148,9 +145,11 @@ def main():
             for n in range(args.num_views_per_scene):
                 if window.closed():
                     exit()
-                eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
-                center = (random.uniform(-3, 3), random.uniform(0, 1),
-                          random.uniform(-3, 3))
+                rad_xz = random.uniform(0, math.pi * 2)
+                rad_y = random.uniform(0, math.pi * 2)
+                eye = (3.0 * math.cos(rad_xz), 3.0 * math.sin(rad_y),
+                       3.0 * math.sin(rad_xz))
+                center = (0, 0, 0)
                 yaw = gqn.math.yaw(eye, center)
                 pitch = gqn.math.pitch(eye, center)
                 camera.look_at(
@@ -168,14 +167,11 @@ def main():
                     (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
                      math.cos(pitch), math.sin(pitch)),
                     dtype="float32")
-                r = model.representation_network.compute_r(
-                    observed_images[:n + 1], observed_viewpoints[:n + 1])
 
-                # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
-                r = r.reshape((1, n + 1) + r.shape[1:])
-
-                # sum element-wise across views
-                r = cf.sum(r, axis=1)
+                r = model.compute_observation_representation(
+                    observed_images[None, :n + 1],
+                    observed_viewpoints[None, :n + 1])
+                    
                 r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
 
                 axis = axes_observations[n]
@@ -198,8 +194,7 @@ def main():
                         axis.update(image)
 
             raw_observed_images[...] = 0
-            for n in range(args.num_views_per_scene):
-                axis = axes_observations[n]
+            for axis in axes_observations:
                 axis.update(np.uint8(raw_observed_images))
 
 
@@ -207,7 +202,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-views-per-scene", "-k", type=int, default=9)
     parser.add_argument("--num-generation", "-g", type=int, default=4)
-    parser.add_argument("--snapshot-path", "-snapshot", type=str, required=True)
+    parser.add_argument(
+        "--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     args = parser.parse_args()
     main()
