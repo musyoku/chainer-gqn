@@ -60,6 +60,9 @@ def main():
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
+    hyperparams.pixel_n = args.pixel_n
+    hyperparams.pixel_sigma_i = args.initial_pixel_sigma
+    hyperparams.pixel_sigma_f = args.final_pixel_sigma
     hyperparams.save(args.snapshot_path)
     hyperparams.print()
 
@@ -67,7 +70,9 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    optimizer = Optimizer(model.parameters)
+    optimizer = Optimizer(
+        model.parameters, mu_i=args.initial_lr, mu_f=args.final_lr)
+    optimizer.print()
 
     if args.with_visualization:
         figure = gqn.imgplot.figure()
@@ -241,6 +246,13 @@ if __name__ == "__main__":
         default=False)
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
+    parser.add_argument("--initial-lr", "-mu-i", type=int, default=5.0 * 1e-4)
+    parser.add_argument("--final-lr", "-mu-f", type=int, default=5.0 * 1e-5)
+    parser.add_argument(
+        "--initial-pixel-sigma", "-ps-i", type=int, default=2.0)
+    parser.add_argument(
+        "--final-pixel-sigma", "-ps-f", type=int, default=0.7)
+    parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(

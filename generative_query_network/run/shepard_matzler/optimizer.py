@@ -1,7 +1,9 @@
 import math
+
 import chainermn
 from chainer import optimizers
 from chainer.optimizer_hooks import GradientClipping
+from tabulate import tabulate
 
 
 class Optimizer:
@@ -54,3 +56,9 @@ class Optimizer:
         else:
             self.optimizer.update()
         self.anneal_learning_rate(training_step)
+
+    def print(self):
+        rows = []
+        for key, value in self.__dict__.items():
+            rows.append([key, value])
+        print(tabulate(rows))
