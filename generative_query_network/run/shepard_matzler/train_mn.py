@@ -57,6 +57,9 @@ def main():
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
+    hyperparams.pixel_n = args.pixel_n
+    hyperparams.pixel_sigma_i = args.initial_pixel_sigma
+    hyperparams.pixel_sigma_f = args.final_pixel_sigma
     if comm.rank == 0:
         hyperparams.save(args.snapshot_path)
         hyperparams.print()
@@ -64,7 +67,13 @@ def main():
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     model.to_gpu()
 
-    optimizer = Optimizer(model.parameters, communicator=comm)
+    optimizer = Optimizer(
+        model.parameters,
+        communicator=comm,
+        mu_i=args.initial_lr,
+        mu_f=args.final_lr)
+    if comm.rank == 0:
+        optimizer.print()
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -231,8 +240,7 @@ if __name__ == "__main__":
     parser.add_argument("--final-lr", "-mu-f", type=int, default=5.0 * 1e-5)
     parser.add_argument(
         "--initial-pixel-sigma", "-ps-i", type=int, default=2.0)
-    parser.add_argument(
-        "--final-pixel-sigma", "-ps-f", type=int, default=0.7)
+    parser.add_argument("--final-pixel-sigma", "-ps-f", type=int, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
