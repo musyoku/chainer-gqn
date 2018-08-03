@@ -75,6 +75,9 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
+                # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
+                images = images.transpose((0, 1, 4, 2, 3))
+
                 total_views = images.shape[1]
 
                 # sample number of views
@@ -82,7 +85,7 @@ def main():
                 query_index = random.choice(range(total_views))
 
                 if num_views > 0:
-                    r = model.generate_observation_representation(
+                    r = model.compute_observation_representation(
                         images[:, :num_views], viewpoints[:, :num_views])
                 else:
                     r = np.zeros(
@@ -93,9 +96,6 @@ def main():
 
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
-
-                # (batch * views, height, width, channels) -> (batch * views, channels, height, width)
-                query_images = query_images.transpose((0, 3, 1, 2))
 
                 # transfer to gpu
                 query_images = to_gpu(query_images)

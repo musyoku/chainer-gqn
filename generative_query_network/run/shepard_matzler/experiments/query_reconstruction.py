@@ -101,8 +101,8 @@ def main():
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
-                reconstructed_images = model.reconstruct_image(
-                    query_images, query_viewpoints, r, xp)
+                reconstructed_images = model.generate_image(
+                    query_viewpoints, r, xp)
 
                 if window.closed():
                     exit()

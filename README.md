@@ -9,6 +9,7 @@
 - [x] OpenGL Renderer
     - [ ] Shading
     - [ ] Texture
+    - [ ] Headless rendering
 - [x] Implement GQN
 - [x] Implement training loop
 - [ ] Hyperparameter search (It takes 2 weeks to run a training)
