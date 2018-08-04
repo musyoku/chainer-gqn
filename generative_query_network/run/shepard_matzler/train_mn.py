@@ -236,11 +236,11 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
-    parser.add_argument("--initial-lr", "-mu-i", type=int, default=5.0 * 1e-4)
-    parser.add_argument("--final-lr", "-mu-f", type=int, default=5.0 * 1e-5)
+    parser.add_argument("--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
+    parser.add_argument("--final-lr", "-mu-f", type=float, default=5.0 * 1e-5)
     parser.add_argument(
-        "--initial-pixel-sigma", "-ps-i", type=int, default=2.0)
-    parser.add_argument("--final-pixel-sigma", "-ps-f", type=int, default=0.7)
+        "--initial-pixel-sigma", "-ps-i", type=float, default=2.0)
+    parser.add_argument("--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
