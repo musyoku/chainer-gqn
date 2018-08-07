@@ -17,9 +17,7 @@
 
 :thinking::thinking::thinking:
 
-[https://gfycat.com/gifs/detail/WanAnimatedGull](https://gfycat.com/gifs/detail/WanAnimatedGull)
-
-[https://gfycat.com/gifs/detail/EnergeticMammothEmu](https://gfycat.com/gifs/detail/EnergeticMammothEmu)
+![https://thumbs.gfycat.com/SandyWanGoosefish-size_restricted.gif](https://thumbs.gfycat.com/SandyWanGoosefish-size_restricted.gif)
 
 # Requirements
 
