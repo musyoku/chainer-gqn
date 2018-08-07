@@ -60,7 +60,7 @@ def main():
         cuda.get_device(args.gpu_device).use()
         xp = cupy
 
-    hyperparams = HyperParameters()
+    hyperparams = HyperParameters(path=args.snapshot_path)
     model = Model(hyperparams, hdf5_path=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
@@ -171,7 +171,7 @@ def main():
                 r = model.compute_observation_representation(
                     observed_images[None, :n + 1],
                     observed_viewpoints[None, :n + 1])
-                    
+
                 r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
 
                 axis = axes_observations[n]

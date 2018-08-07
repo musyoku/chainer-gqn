@@ -59,6 +59,7 @@ def main():
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.channels_chz = args.channels_chz
     hyperparams.generator_channels_u = args.channels_u
+    hyperparams.inference_channels_map_x = args.channels_map_x
     hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
@@ -246,6 +247,7 @@ if __name__ == "__main__":
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument("--channels-chz", "-cz", type=int, default=64)
     parser.add_argument("--channels-u", "-cu", type=int, default=128)
+    parser.add_argument("--channels-map-x", "-cx", type=int, default=64)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(
