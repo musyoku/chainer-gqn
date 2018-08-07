@@ -10,7 +10,7 @@ class HyperParameters():
         self.chrz_size = (16, 16)  # needs to be 1/4 of image_size
         self.channels_r = 256
         self.channels_chz = 64
-        self.inference_channels_map_x = 32
+        self.inference_channels_map_x = 64
         self.inference_share_core = False
         self.inference_share_posterior = False
         self.generator_generation_steps = 12
