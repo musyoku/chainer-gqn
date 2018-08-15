@@ -58,6 +58,7 @@ def main():
     hyperparams = HyperParameters()
     hyperparams.generator_share_core = args.generator_share_core
     hyperparams.generator_share_prior = args.generator_share_prior
+    hyperparams.generator_generation_steps = args.generation_steps
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.pixel_n = args.pixel_n
@@ -246,6 +247,7 @@ if __name__ == "__main__":
         default=False)
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
+    parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
     parser.add_argument("--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
     parser.add_argument("--final-lr", "-mu-f", type=float, default=5.0 * 1e-5)
     parser.add_argument(
