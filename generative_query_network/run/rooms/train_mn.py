@@ -79,9 +79,15 @@ def main():
     if comm.rank == 0:
         optimizer.print()
 
-
     dataset_mean, dataset_std = dataset.calculate_mean_and_std(
-        args.snapshot_path)
+        args.dataset_path)
+
+    if comm.rank == 0:
+        np.save(os.path.join(args.snapshot_path, "mean.npy"), dataset_mean)
+        np.save(os.path.join(args.snapshot_path, "std.npy"), dataset_std)
+
+    # avoid division by zero
+    dataset_std += 1e-12
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -248,11 +254,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
     parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
-    parser.add_argument("--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
+    parser.add_argument(
+        "--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
     parser.add_argument("--final-lr", "-mu-f", type=float, default=5.0 * 1e-5)
     parser.add_argument(
         "--initial-pixel-sigma", "-ps-i", type=float, default=2.0)
-    parser.add_argument("--final-pixel-sigma", "-ps-f", type=float, default=0.7)
+    parser.add_argument(
+        "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument("--channels-chz", "-cz", type=int, default=64)
     parser.add_argument("--channels-u", "-cu", type=int, default=128)

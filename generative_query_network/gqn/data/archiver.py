@@ -103,10 +103,14 @@ class Archiver:
 
         subset_mean = cp.mean(images, axis=(0, 1))
         subset_var = cp.var(images, axis=(0, 1))
+
         new_dataset_mean = subset_mean if self.dataset_mean is None else co1 * self.dataset_mean + co2 * subset_mean
         new_dataset_var = subset_var if self.dataset_var is None else co1 * (
             self.dataset_var + self.dataset_mean**2) + co2 * (
                 subset_var + subset_mean**2) - new_dataset_mean**2
+
+        # avoid negative value
+        new_dataset_var[new_dataset_var < 0] = 0
 
         self.dataset_var = new_dataset_var
         self.dataset_mean = new_dataset_mean

@@ -100,8 +100,13 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
-    dataset_mean, dataset_std = dataset.calculate_mean_and_std(
-        args.snapshot_path)
+    dataset_mean, dataset_std = dataset.load_mean_and_std()
+
+    np.save(os.path.join(args.snapshot_path, "mean.npy"), dataset_mean)
+    np.save(os.path.join(args.snapshot_path, "std.npy"), dataset_std)
+
+    # avoid division by zero
+    dataset_std += 1e-12
 
     current_training_step = 0
     for iteration in range(args.training_iterations):

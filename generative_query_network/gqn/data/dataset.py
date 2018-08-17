@@ -6,11 +6,11 @@ from .subset import Subset
 
 
 class Dataset():
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, directory):
+        self.directory = directory
         self.current_subset_index = 0
         self.subset_filenames = []
-        files = os.listdir(os.path.join(self.path, "images"))
+        files = os.listdir(os.path.join(self.directory, "images"))
         for filename in files:
             if filename.endswith(".npy"):
                 self.subset_filenames.append(filename)
@@ -30,14 +30,14 @@ class Dataset():
 
     def read(self, subset_index):
         filename = self.subset_filenames[self.current_subset_index]
-        images_npy_path = os.path.join(self.path, "images", filename)
-        viewpoints_npy_path = os.path.join(self.path, "viewpoints", filename)
+        images_npy_path = os.path.join(self.directory, "images", filename)
+        viewpoints_npy_path = os.path.join(self.directory, "viewpoints", filename)
         subset = Subset(images_npy_path, viewpoints_npy_path)
         return subset
 
-    def calculate_mean_and_std(self, directory):
-        dataset_mean = np.load(os.path.join(directory, "mean.npy"))
-        dataset_std = np.load(os.path.join(directory, "std.npy"))
+    def load_mean_and_std(self):
+        dataset_mean = np.load(os.path.join(self.directory, "mean.npy"))
+        dataset_std = np.load(os.path.join(self.directory, "std.npy"))
         return dataset_mean, dataset_std
         
         # try:
