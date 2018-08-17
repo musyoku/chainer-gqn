@@ -1,5 +1,6 @@
-import numpy as np
 import os
+import numpy as np
+import cupy as cp
 
 
 class SceneData:
@@ -61,6 +62,10 @@ class Archiver:
         self.image_size = image_size
         self.num_views = num_views
 
+        self.total_images = 0
+        self.dataset_mean = None
+        self.dataset_var = None
+
         try:
             os.mkdir(path)
         except:
@@ -79,17 +84,42 @@ class Archiver:
 
         self.images[self.current_pool_index] = scene.images
         self.viewpoints[self.current_pool_index] = scene.viewpoints
-        
+
         self.current_pool_index += 1
         if self.current_pool_index >= self.num_observations_per_file:
-            self.save()
+            self.save_subset()
+            self.save_mean_and_variance()
             self.current_pool_index = 0
             self.current_file_number += 1
+            self.total_images += self.num_observations_per_file
 
-    def save(self):
+    def save_mean_and_variance(self):
+        subset_size = self.num_observations_per_file
+        new_total_size = self.total_images + subset_size
+        co1 = self.total_images / new_total_size
+        co2 = subset_size / new_total_size
+
+        images = cp.asarray(self.images)
+
+        subset_mean = cp.mean(images, axis=(0, 1))
+        subset_var = cp.var(images, axis=(0, 1))
+        new_dataset_mean = subset_mean if self.dataset_mean is None else co1 * self.dataset_mean + co2 * subset_mean
+        new_dataset_var = subset_var if self.dataset_var is None else co1 * (
+            self.dataset_var + self.dataset_mean**2) + co2 * (
+                subset_var + subset_mean**2) - new_dataset_mean**2
+
+        self.dataset_var = new_dataset_var
+        self.dataset_mean = new_dataset_mean
+        self.dataset_std = cp.sqrt(self.dataset_var)
+
+        cp.save(os.path.join(self.path, "mean.npy"), self.dataset_mean)
+        cp.save(os.path.join(self.path, "std.npy"), self.dataset_std)
+
+    def save_subset(self):
         filename = "{:03d}-of-{}.npy".format(self.current_file_number,
                                              self.num_observations_per_file)
         np.save(os.path.join(self.path, "images", filename), self.images)
+
         filename = "{:03d}-of-{}.npy".format(self.current_file_number,
                                              self.num_observations_per_file)
         np.save(

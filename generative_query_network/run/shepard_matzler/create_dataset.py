@@ -16,7 +16,7 @@ def main():
         eye=(0, 0, 0),
         center=(0, 0, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 2.0,
+        fov_rad=math.pi / 3.0,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
         z_far=10)
@@ -47,10 +47,8 @@ def main():
 
         total_frames = 5
         for _ in range(total_frames):
-            rad_xz = random.uniform(0, math.pi * 2)
-            rad_y = random.uniform(0, math.pi * 2)
-            eye = (3.0 * math.cos(rad_xz), 3.0 * math.sin(rad_y),
-                   3.0 * math.sin(rad_xz))
+            eye = np.random.normal(size=3)
+            eye = tuple(6.0 * (eye / np.linalg.norm(eye)))
             center = (0, 0, 0)
             yaw = gqn.math.yaw(eye, center)
             pitch = gqn.math.pitch(eye, center)
