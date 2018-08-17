@@ -40,11 +40,13 @@ class Dataset():
             dataset_std = np.load(os.path.join(directory, "std.npy"))
             return dataset_mean, dataset_std
         except:
-            print("calculating the mean and variance of the dataset ...")
             total_size, subset_size = 0, 0
             dataset_mean = None
             dataset_var = None
-            for subset in self:
+            for subset_index, subset in enumerate(self):
+                print(
+                    "calculating the mean and variance of the dataset ... ({}/{})".
+                    format(subset_index, len(self)))
                 subset_size = len(subset)
                 new_total_size = total_size + subset_size
                 co1 = total_size / new_total_size
