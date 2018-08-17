@@ -14,7 +14,7 @@ from hyperparams import HyperParameters
 
 
 class Model():
-    def __init__(self, hyperparams: HyperParameters, hdf5_path=None):
+    def __init__(self, hyperparams: HyperParameters, snapshot_directory=None):
         assert isinstance(hyperparams, HyperParameters)
         self.generation_steps = hyperparams.generator_generation_steps
         self.hyperparams = hyperparams
@@ -34,9 +34,9 @@ class Model():
             architecture=hyperparams.representation_architecture,
             channels_r=hyperparams.channels_r)
 
-        if hdf5_path:
+        if snapshot_directory:
             try:
-                filepath = os.path.join(hdf5_path, self.filename)
+                filepath = os.path.join(snapshot_directory, self.filename)
                 if os.path.exists(filepath) and os.path.isfile(filepath):
                     print("loading {}".format(filepath))
                     load_hdf5(filepath, self.parameters)

@@ -19,9 +19,11 @@ from model import Model
 from optimizer import Optimizer
 
 
-def make_uint8(array):
-    return np.uint8(
-        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+def make_uint8(array, mean, std):
+    image = to_cpu(array.transpose(1, 2, 0))
+    image = image * std + mean
+    image = (image + 1) * 0.5
+    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def printr(string):
@@ -67,7 +69,7 @@ def main():
     hyperparams.save(args.snapshot_path)
     hyperparams.print()
 
-    model = Model(hyperparams, hdf5_path=args.snapshot_path)
+    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
 
@@ -98,6 +100,9 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
+    dataset_mean, dataset_std = dataset.calculate_mean_and_std(
+        args.snapshot_path)
+
     current_training_step = 0
     for iteration in range(args.training_iterations):
         mean_kld = 0
@@ -111,6 +116,9 @@ def main():
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
+
+                # preprocessing
+                images = (images - dataset_mean) / dataset_std
 
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
@@ -195,13 +203,17 @@ def main():
                 optimizer.update(current_training_step)
 
                 if args.with_visualization and plot.closed() is False:
-                    axis1.update(make_uint8(query_images[0]))
-                    axis2.update(make_uint8(mean_x.data[0]))
+                    axis1.update(
+                        make_uint8(query_images[0], dataset_mean, dataset_std))
+                    axis2.update(
+                        make_uint8(mean_x.data[0], dataset_mean, dataset_std))
 
                     with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
                             query_viewpoints[None, 0], r[None, 0], xp)
-                        axis3.update(make_uint8(generated_x[0]))
+                        axis3.update(
+                            make_uint8(generated_x[0], dataset_mean,
+                                       dataset_std))
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
@@ -248,7 +260,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
     parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
-    parser.add_argument("--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
+    parser.add_argument(
+        "--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
     parser.add_argument("--final-lr", "-mu-f", type=float, default=5.0 * 1e-5)
     parser.add_argument(
         "--initial-pixel-sigma", "-ps-i", type=float, default=2.0)

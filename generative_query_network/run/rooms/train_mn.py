@@ -68,7 +68,7 @@ def main():
         hyperparams.save(args.snapshot_path)
         hyperparams.print()
 
-    model = Model(hyperparams, hdf5_path=args.snapshot_path)
+    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     model.to_gpu()
 
     optimizer = Optimizer(
@@ -78,6 +78,10 @@ def main():
         mu_f=args.final_lr)
     if comm.rank == 0:
         optimizer.print()
+
+
+    dataset_mean, dataset_std = dataset.calculate_mean_and_std(
+        args.snapshot_path)
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -110,6 +114,9 @@ def main():
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
+
+                # preprocessing
+                images = (images - dataset_mean) / dataset_std
 
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))

@@ -5,7 +5,7 @@ from tabulate import tabulate
 
 
 class HyperParameters():
-    def __init__(self, path=None):
+    def __init__(self, snapshot_directory=None):
         self.image_size = (64, 64)
         self.chrz_size = (16, 16)  # needs to be 1/4 of image_size
         self.channels_r = 256
@@ -22,10 +22,11 @@ class HyperParameters():
         self.pixel_n = 2 * 1e5
         self.representation_architecture = "tower"
 
-        if path is not None:
-            json_path = os.path.join(path, self.filename)
+        if snapshot_directory is not None:
+            json_path = os.path.join(snapshot_directory, self.filename)
             if os.path.exists(json_path) and os.path.isfile(json_path):
                 with open(json_path, "r") as f:
+                    print("loading", json_path)
                     obj = json.load(f)
                     for (key, value) in obj.items():
                         if isinstance(value, list):
@@ -38,8 +39,8 @@ class HyperParameters():
     def filename(self):
         return "hyperparams.json"
 
-    def save(self, path):
-        with open(os.path.join(path, self.filename), "w") as f:
+    def save(self, snapshot_directory):
+        with open(os.path.join(snapshot_directory, self.filename), "w") as f:
             json.dump(self.__dict__, f, indent=4, sort_keys=True)
 
     def print(self):
