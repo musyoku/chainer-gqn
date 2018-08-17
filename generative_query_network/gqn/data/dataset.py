@@ -1,4 +1,5 @@
 import os
+import sys
 import random
 import numpy as np
 from .subset import Subset
@@ -44,8 +45,8 @@ class Dataset():
             dataset_mean = None
             dataset_var = None
             for subset_index, subset in enumerate(self):
-                print(
-                    "calculating the mean and variance of the dataset ... ({}/{})".
+                sys.stdout.write(
+                    "calculating the mean and variance of the dataset ... ({}/{})\r".
                     format(subset_index, len(self)))
                 subset_size = len(subset)
                 new_total_size = total_size + subset_size
@@ -55,13 +56,17 @@ class Dataset():
                 subset_mean = np.mean(subset.images, axis=(0, 1))
                 subset_var = np.var(subset.images, axis=(0, 1))
                 new_dataset_mean = subset_mean if dataset_mean is None else co1 * dataset_mean + co2 * subset_mean
-                dataset_var = subset_var if dataset_var is None else co1 * (
+                new_dataset_var = subset_var if dataset_var is None else co1 * (
                     dataset_var + dataset_mean**2) + co2 * (
                         subset_var + subset_mean**2) - new_dataset_mean**2
+
+                dataset_var = new_dataset_var
                 dataset_mean = new_dataset_mean
 
                 total_size += len(subset)
             dataset_std = np.sqrt(dataset_var) + 1e-12  # avoid division by zero
+
+            print("\033[2K")
 
             np.save(os.path.join(directory, "mean.npy"), dataset_mean)
             np.save(os.path.join(directory, "std.npy"), dataset_std)
