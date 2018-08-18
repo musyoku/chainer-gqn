@@ -19,11 +19,13 @@ from hyperparams import HyperParameters
 from model import Model
 
 
-def make_uint8(array):
-    if (array.shape[2] == 3):
-        return np.uint8(np.clip((to_cpu(array) + 1) * 0.5 * 255, 0, 255))
-    return np.uint8(
-        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+def make_uint8(image, mean, std):
+    if (image.shape[0] == 3):
+        image = image.transpose(1, 2, 0)
+    image = to_cpu(image)
+    image = image * std + mean
+    image = (image + 1) * 0.5
+    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def to_gpu(array):
@@ -60,17 +62,23 @@ def main():
         cuda.get_device(args.gpu_device).use()
         xp = cupy
 
-    hyperparams = HyperParameters(path=args.snapshot_path)
-    model = Model(hyperparams, hdf5_path=args.snapshot_path)
+    hyperparams = HyperParameters(snapshot_directory=args.snapshot_path)
+    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
+
+    dataset_mean = np.load(os.path.join(args.snapshot_path, "mean.npy"))
+    dataset_std = np.load(os.path.join(args.snapshot_path, "std.npy"))
+
+    # avoid division by zero
+    dataset_std += 1e-12
 
     screen_size = hyperparams.image_size
     camera = gqn.three.PerspectiveCamera(
         eye=(3, 1, 0),
         center=(0, 0, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 2.0,
+        fov_rad=math.pi / 3.0,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
         z_far=10)
@@ -102,7 +110,7 @@ def main():
     window = gqn.imgplot.window(figure, (1600, 800), "Dataset")
     window.show()
 
-    raw_observed_images = np.zeros(screen_size + (3, ), dtype="uint32")
+    raw_observed_image = np.zeros(screen_size + (3, ), dtype="uint32")
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
 
     observed_images = xp.zeros(
@@ -132,23 +140,22 @@ def main():
                     exit()
                 query_viewpoints = generate_random_query_viewpoint(
                     tick / total_frames, xp)
-                generated_images = to_cpu(
-                    model.generate_image(query_viewpoints, r, xp))
+                generated_images = model.generate_image(
+                    query_viewpoints, r, xp)
 
                 for m in range(args.num_generation):
                     if window.closed():
                         exit()
-                    image = make_uint8(generated_images[m])
+                    image = make_uint8(generated_images[m], dataset_mean,
+                                       dataset_std)
                     axis = axes_generations[m]
                     axis.update(image)
 
             for n in range(args.num_views_per_scene):
                 if window.closed():
                     exit()
-                rad_xz = random.uniform(0, math.pi * 2)
-                rad_y = random.uniform(0, math.pi * 2)
-                eye = (3.0 * math.cos(rad_xz), 3.0 * math.sin(rad_y),
-                       3.0 * math.sin(rad_xz))
+                eye = np.random.normal(size=3)
+                eye = tuple(6.0 * (eye / np.linalg.norm(eye)))
                 center = (0, 0, 0)
                 yaw = gqn.math.yaw(eye, center)
                 pitch = gqn.math.pitch(eye, center)
@@ -157,11 +164,15 @@ def main():
                     center=center,
                     up=(0.0, 1.0, 0.0),
                 )
-                renderer.render(camera, raw_observed_images)
+                renderer.render(camera, raw_observed_image)
 
                 # [0, 255] -> [-1, 1]
-                observed_images[n] = to_gpu((raw_observed_images.transpose(
-                    (2, 0, 1)) / 255 - 0.5) * 2.0)
+                observe_image = (raw_observed_image / 255.0 - 0.5) * 2.0
+
+                # preprocess
+                observe_image = (observe_image - dataset_mean) / dataset_std
+
+                observed_images[n] = to_gpu(observe_image.transpose((2, 0, 1)))
 
                 observed_viewpoints[n] = xp.array(
                     (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
@@ -175,7 +186,7 @@ def main():
                 r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
 
                 axis = axes_observations[n]
-                axis.update(np.uint8(raw_observed_images))
+                axis.update(np.uint8(raw_observed_image))
 
                 total_frames = 50
                 for tick in range(total_frames):
@@ -183,19 +194,20 @@ def main():
                         exit()
                     query_viewpoints = generate_random_query_viewpoint(
                         tick / total_frames, xp)
-                    generated_images = to_cpu(
-                        model.generate_image(query_viewpoints, r, xp))
+                    generated_images = model.generate_image(
+                        query_viewpoints, r, xp)
 
                     for m in range(args.num_generation):
                         if window.closed():
                             exit()
-                        image = make_uint8(generated_images[m])
+                        image = make_uint8(generated_images[m], dataset_mean,
+                                           dataset_std)
                         axis = axes_generations[m]
                         axis.update(image)
 
-            raw_observed_images[...] = 0
+            raw_observed_image[...] = 0
             for axis in axes_observations:
-                axis.update(np.uint8(raw_observed_images))
+                axis.update(np.uint8(raw_observed_image))
 
 
 if __name__ == "__main__":

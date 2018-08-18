@@ -18,11 +18,13 @@ from hyperparams import HyperParameters
 from model import Model
 
 
-def make_uint8(array):
-    if (array.shape[2] == 3):
-        return np.uint8(np.clip((to_cpu(array) + 1) * 0.5 * 255, 0, 255))
-    return np.uint8(
-        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+def make_uint8(image, mean, std):
+    if (image.shape[0] == 3):
+        image = image.transpose(1, 2, 0)
+    image = to_cpu(image)
+    image = image * std + mean
+    image = (image + 1) * 0.5
+    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def to_gpu(array):
@@ -48,10 +50,16 @@ def main():
     sampler = gqn.data.Sampler(dataset)
     iterator = gqn.data.Iterator(sampler, batch_size=args.batch_size)
 
-    hyperparams = HyperParameters()
-    model = Model(hyperparams, hdf5_path=args.snapshot_path)
+    hyperparams = HyperParameters(snapshot_directory=args.snapshot_path)
+    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
+
+    dataset_mean = np.load(os.path.join(args.snapshot_path, "mean.npy"))
+    dataset_std = np.load(os.path.join(args.snapshot_path, "std.npy"))
+
+    # avoid division by zero
+    dataset_std += 1e-12
 
     figure = gqn.imgplot.figure()
     axes = []
@@ -74,6 +82,9 @@ def main():
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
+
+                # preprocess
+                images = (images - dataset_mean) / dataset_std
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
@@ -110,11 +121,11 @@ def main():
                 for batch_index in range(args.batch_size):
                     axis = axes[batch_index * 2 + 0]
                     image = query_images[batch_index]
-                    axis.update(make_uint8(image))
+                    axis.update(make_uint8(image, dataset_mean, dataset_std))
 
                     axis = axes[batch_index * 2 + 1]
                     image = reconstructed_images[batch_index]
-                    axis.update(make_uint8(image))
+                    axis.update(make_uint8(image, dataset_mean, dataset_std))
 
                 time.sleep(1)
 

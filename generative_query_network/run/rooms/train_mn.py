@@ -79,8 +79,7 @@ def main():
     if comm.rank == 0:
         optimizer.print()
 
-    dataset_mean, dataset_std = dataset.calculate_mean_and_std(
-        args.dataset_path)
+    dataset_mean, dataset_std = dataset.load_mean_and_std()
 
     if comm.rank == 0:
         np.save(os.path.join(args.snapshot_path, "mean.npy"), dataset_mean)

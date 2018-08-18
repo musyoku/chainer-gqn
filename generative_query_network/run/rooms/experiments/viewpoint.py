@@ -19,11 +19,13 @@ from hyperparams import HyperParameters
 from model import Model
 
 
-def make_uint8(array):
-    if (array.shape[2] == 3):
-        return np.uint8(np.clip((to_cpu(array) + 1) * 0.5 * 255, 0, 255))
-    return np.uint8(
-        np.clip((to_cpu(array.transpose(1, 2, 0)) + 1) * 0.5 * 255, 0, 255))
+def make_uint8(image, mean, std):
+    if (image.shape[0] == 3):
+        image = image.transpose(1, 2, 0)
+    image = to_cpu(image)
+    image = image * std + mean
+    image = (image + 1) * 0.5
+    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def to_gpu(array):
@@ -60,12 +62,13 @@ def main():
         cuda.get_device(args.gpu_device).use()
         xp = cupy
 
-    hyperparams = HyperParameters(args.snapshot_path)
-    hyperparams.print()
-    
-    model = Model(hyperparams, hdf5_path=args.snapshot_path)
+    hyperparams = HyperParameters(snapshot_directory=args.snapshot_path)
+    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
+
+    dataset_mean = np.load(os.path.join(args.snapshot_path, "mean.npy"))
+    dataset_std = np.load(os.path.join(args.snapshot_path, "std.npy"))
 
     screen_size = hyperparams.image_size
     camera = gqn.three.PerspectiveCamera(
@@ -85,10 +88,10 @@ def main():
     window = gqn.imgplot.window(figure, (1600, 800), "Viewpoint")
     window.show()
 
-    raw_observed_images = np.zeros(screen_size + (3, ), dtype="uint32")
+    raw_observed_image = np.zeros(screen_size + (3, ), dtype="uint32")
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
 
-    observed_image = xp.zeros((1, 3) + screen_size, dtype="float32")
+    observed_images = xp.zeros((1, 3) + screen_size, dtype="float32")
     observed_viewpoint = xp.zeros((1, 7), dtype="float32")
     query_viewpoint = xp.zeros((1, 7), dtype="float32")
 
@@ -97,13 +100,14 @@ def main():
             if window.closed():
                 exit()
 
-            scene, _ = gqn.environment.shepard_metzler.build_scene(
-                num_blocks=random.choice([x for x in range(7, 8)]))
+            scene, _, _ = gqn.environment.room.build_scene(
+                object_names=["cube", "sphere", "cone", "cylinder", "icosahedron"],
+                num_objects=random.choice([x for x in range(1, 6)]))
             renderer.set_scene(scene)
 
-            rad = random.uniform(0, math.pi * 2)
-            eye = (3.0 * math.cos(rad), 0, 3.0 * math.sin(rad))
-            center = (0, 0, 0)
+            eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
+            center = (random.uniform(-3, 3), random.uniform(0, 1),
+                      random.uniform(-3, 3))
             yaw = gqn.math.yaw(eye, center)
             pitch = gqn.math.pitch(eye, center)
             camera.look_at(
@@ -111,19 +115,25 @@ def main():
                 center=center,
                 up=(0.0, 1.0, 0.0),
             )
-            renderer.render(camera, raw_observed_images)
+            renderer.render(camera, raw_observed_image)
 
             # [0, 255] -> [-1, 1]
-            observed_image[0] = to_gpu((raw_observed_images.transpose(
-                (2, 0, 1)) / 255 - 0.5) * 2.0)
-            axis_observation.update(make_uint8(observed_image[0]))
+            observed_image = (raw_observed_image / 255.0 - 0.5) * 2.0
+
+            # preprocess
+            observed_image = (observed_image - dataset_mean) / dataset_std
+
+            observed_images[0] = to_gpu(observed_image.transpose((2, 0, 1)))
+
+            axis_observation.update(
+                make_uint8(observed_images[0], dataset_mean, dataset_std))
 
             observed_viewpoint[0] = xp.array(
                 (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
                  math.cos(pitch), math.sin(pitch)),
                 dtype="float32")
 
-            r = model.representation_network.compute_r(observed_image,
+            r = model.representation_network.compute_r(observed_images,
                                                        observed_viewpoint)
             num_samples = 50
             for _ in range(num_samples):
@@ -137,7 +147,8 @@ def main():
                      math.cos(pitch), math.sin(pitch)),
                     dtype="float32")
                 generated_image = model.generate_image(query_viewpoint, r, xp)
-                axis_generation.update(make_uint8(generated_image[0]))
+                axis_generation.update(
+                    make_uint8(generated_image[0], dataset_mean, dataset_std))
 
 
 if __name__ == "__main__":

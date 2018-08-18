@@ -100,8 +100,7 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
-    dataset_mean, dataset_std = dataset.calculate_mean_and_std(
-        args.dataset_path)
+    dataset_mean, dataset_std = dataset.load_mean_and_std()
 
     np.save(os.path.join(args.snapshot_path, "mean.npy"), dataset_mean)
     np.save(os.path.join(args.snapshot_path, "std.npy"), dataset_std)
@@ -116,8 +115,7 @@ def main():
         total_batch = 0
 
         for subset_index, subset in enumerate(dataset):
-            iterator = gqn.data.Iterator(
-                subset, batch_size=args.batch_size)
+            iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for batch_index, data_indices in enumerate(iterator):
                 # shape: (batch, views, height, width, channels)
@@ -176,8 +174,7 @@ def main():
                         hl_gen, hl_enc, cl_enc, xq, query_viewpoints, r)
 
                     mean_z_q = inference_posterior.compute_mean_z(hl_enc)
-                    ln_var_z_q = inference_posterior.compute_ln_var_z(
-                        hl_enc)
+                    ln_var_z_q = inference_posterior.compute_ln_var_z(hl_enc)
                     ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
 
                     mean_z_p = generation_piror.compute_mean_z(hl_gen)
@@ -197,8 +194,7 @@ def main():
                     hl_enc = h_next_enc
                     cl_enc = c_next_enc
 
-                mean_x = model.generation_observation.compute_mean_x(
-                    ul_enc)
+                mean_x = model.generation_observation.compute_mean_x(ul_enc)
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
@@ -213,33 +209,30 @@ def main():
 
                 if args.with_visualization and plot.closed() is False:
                     axis1.update(
-                        make_uint8(query_images[0], dataset_mean,
-                                    dataset_std))
+                        make_uint8(query_images[0], dataset_mean, dataset_std))
                     axis2.update(
-                        make_uint8(mean_x.data[0], dataset_mean,
-                                    dataset_std))
+                        make_uint8(mean_x.data[0], dataset_mean, dataset_std))
 
                     with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
                             query_viewpoints[None, 0], r[None, 0], xp)
                         axis3.update(
                             make_uint8(generated_x[0], dataset_mean,
-                                        dataset_std))
+                                       dataset_std))
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
                     format(iteration + 1,
-                            subset_index + 1, len(dataset), batch_index + 1,
-                            len(iterator), float(loss_nll.data),
-                            float(loss_kld.data), optimizer.learning_rate,
-                            sigma_t))
+                           subset_index + 1, len(dataset), batch_index + 1,
+                           len(iterator), float(loss_nll.data),
+                           float(loss_kld.data), optimizer.learning_rate,
+                           sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
                 sigma_t = max(
                     sf + (si - sf) *
-                    (1.0 - current_training_step / hyperparams.pixel_n),
-                    sf)
+                    (1.0 - current_training_step / hyperparams.pixel_n), sf)
 
                 pixel_var[...] = sigma_t**2
                 pixel_ln_var[...] = math.log(sigma_t**2)
@@ -254,8 +247,8 @@ def main():
         print(
             "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
             format(iteration + 1, mean_nll / total_batch,
-                    mean_kld / total_batch, optimizer.learning_rate,
-                    sigma_t, current_training_step))
+                   mean_kld / total_batch, optimizer.learning_rate, sigma_t,
+                   current_training_step))
 
 
 if __name__ == "__main__":
