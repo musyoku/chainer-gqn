@@ -21,7 +21,11 @@ from optimizer import Optimizer
 
 def make_uint8(array, mean, std):
     image = to_cpu(array.transpose(1, 2, 0))
-    image = image * std + mean
+
+    # we do not divide by standard deviation
+    image = image + mean
+    # image = image * std + mean
+
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
@@ -123,7 +127,9 @@ def main():
                 images, viewpoints = subset[data_indices]
 
                 # preprocessing
-                images = (images - dataset_mean) / dataset_std
+                # we do not divide by standard deviation
+                images = images - dataset_mean
+                # images = (images - dataset_mean) / dataset_std
 
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))

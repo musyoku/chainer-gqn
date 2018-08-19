@@ -121,7 +121,8 @@ def main():
                 images, viewpoints = subset[data_indices]
 
                 # preprocessing
-                images = (images - dataset_mean) / dataset_std
+                # we do not divide by standard deviation
+                images = images - dataset_mean
 
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
@@ -147,6 +148,7 @@ def main():
 
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
+
                 # transfer to gpu
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)

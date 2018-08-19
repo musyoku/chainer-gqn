@@ -23,7 +23,8 @@ def make_uint8(image, mean, std):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
-    image = image * std + mean
+    image = image + mean
+    # image = image * std + mean
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 

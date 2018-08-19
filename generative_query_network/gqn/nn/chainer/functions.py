@@ -10,11 +10,11 @@ def gaussian_kl_divergence(mu_q, ln_var_q, mu_p, ln_var_p):
     ln_det_p = cf.sum(ln_var_p, axis=(1, 2, 3))
     var_p = cf.exp(ln_var_p)
     var_q = cf.exp(ln_var_q)
-    tr_qp = cf.sum(var_q / var_p, axis=(1, 2, 3))
+    trace_qp = cf.sum(var_q / var_p, axis=(1, 2, 3))
     k = mu_q.shape[1] * mu_q.shape[2] * mu_q.shape[3]
     diff = mu_p - mu_q
     term2 = cf.sum(diff * diff / var_p, axis=(1, 2, 3))
-    return 0.5 * (tr_qp + term2 - k + ln_det_p - ln_det_q)
+    return 0.5 * (trace_qp + term2 - k + ln_det_p - ln_det_q)
 
 
 def gaussian_negative_log_likelihood(x, mu, var, ln_var):
