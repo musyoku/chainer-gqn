@@ -65,9 +65,10 @@ pip3 install chainer cupy h5py
 
 # Dataset
 
-## Rooms with multiple objects
+There are two choices:
 
-## Shepard-Metzler objects
+- Run `create_dataset.py` to generate observations with your own scene settings.
+- Convert [the official dataset](https://github.com/deepmind/gqn-datasets) to NumPy array by [gqn-datasets-translator](https://github.com/musyoku/gqn-datasets-translator).
 
 
 # Training
