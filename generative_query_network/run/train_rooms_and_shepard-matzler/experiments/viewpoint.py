@@ -101,14 +101,13 @@ def main():
             if window.closed():
                 exit()
 
-            scene, _, _ = gqn.environment.room.build_scene(
-                object_names=["cube", "sphere", "cone", "cylinder", "icosahedron"],
-                num_objects=random.choice([x for x in range(1, 6)]))
+            scene, _ = gqn.environment.shepard_metzler.build_scene(
+                num_blocks=random.choice([x for x in range(7, 8)]))
             renderer.set_scene(scene)
 
-            eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
-            center = (random.uniform(-3, 3), random.uniform(0, 1),
-                      random.uniform(-3, 3))
+            rad = random.uniform(0, math.pi * 2)
+            eye = (3.0 * math.cos(rad), 0, 3.0 * math.sin(rad))
+            center = (0, 0, 0)
             yaw = gqn.math.yaw(eye, center)
             pitch = gqn.math.pitch(eye, center)
             camera.look_at(
@@ -119,12 +118,14 @@ def main():
             renderer.render(camera, raw_observed_image)
 
             # [0, 255] -> [-1, 1]
-            observed_image = (raw_observed_image / 255.0 - 0.5) * 2.0
+            observe_image = (raw_observed_image / 255.0 - 0.5) * 2.0
 
             # preprocess
-            observed_image = (observed_image - dataset_mean) / dataset_std
+            # we do not divide by standard deviation
+            observe_image = observe_image - dataset_mean
+            # observe_image = (observe_image - dataset_mean) / dataset_std
 
-            observed_images[0] = to_gpu(observed_image.transpose((2, 0, 1)))
+            observed_images[0] = to_gpu(observe_image.transpose((2, 0, 1)))
 
             axis_observation.update(
                 make_uint8(observed_images[0], dataset_mean, dataset_std))

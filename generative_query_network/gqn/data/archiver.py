@@ -42,23 +42,26 @@ class SceneData:
 
 class Archiver:
     def __init__(self,
-                 path,
+                 directory,
                  total_observations=2000000,
                  num_observations_per_file=2000,
                  image_size=(64, 64),
-                 num_views_per_scene=5):
-        assert path is not None
+                 num_views_per_scene=5,
+                 start_file_number=1):
+        assert directory is not None
         self.images = np.zeros(
-            (num_observations_per_file, num_views_per_scene) + image_size + (3, ),
+            (num_observations_per_file, num_views_per_scene) + image_size +
+            (3, ),
             dtype="float32")
         self.viewpoints = np.zeros(
-            (num_observations_per_file, num_views_per_scene, 7), dtype="float32")
+            (num_observations_per_file, num_views_per_scene, 7),
+            dtype="float32")
         self.current_num_observations = 0
         self.current_pool_index = 0
-        self.current_file_number = 1
+        self.current_file_number = start_file_number
         self.total_observations = total_observations
         self.num_observations_per_file = num_observations_per_file
-        self.path = path
+        self.directory = directory
         self.image_size = image_size
         self.num_views_per_scene = num_views_per_scene
 
@@ -67,15 +70,15 @@ class Archiver:
         self.dataset_var = None
 
         try:
-            os.mkdir(path)
+            os.mkdir(directory)
         except:
             pass
         try:
-            os.mkdir(os.path.join(path, "images"))
+            os.mkdir(os.path.join(directory, "images"))
         except:
             pass
         try:
-            os.mkdir(os.path.join(path, "viewpoints"))
+            os.mkdir(os.path.join(directory, "viewpoints"))
         except:
             pass
 
@@ -116,15 +119,14 @@ class Archiver:
         self.dataset_mean = new_dataset_mean
         self.dataset_std = cp.sqrt(self.dataset_var)
 
-        cp.save(os.path.join(self.path, "mean.npy"), self.dataset_mean)
-        cp.save(os.path.join(self.path, "std.npy"), self.dataset_std)
+        cp.save(os.path.join(self.directory, "mean.npy"), self.dataset_mean)
+        cp.save(os.path.join(self.directory, "std.npy"), self.dataset_std)
 
     def save_subset(self):
-        filename = "{:03d}-of-{}.npy".format(self.current_file_number,
-                                             self.num_observations_per_file)
-        np.save(os.path.join(self.path, "images", filename), self.images)
+        filename = "{:03d}.npy".format(self.current_file_number)
+        np.save(os.path.join(self.directory, "images", filename), self.images)
 
-        filename = "{:03d}-of-{}.npy".format(self.current_file_number,
-                                             self.num_observations_per_file)
+        filename = "{:03d}.npy".format(self.current_file_number)
         np.save(
-            os.path.join(self.path, "viewpoints", filename), self.viewpoints)
+            os.path.join(self.directory, "viewpoints", filename),
+            self.viewpoints)

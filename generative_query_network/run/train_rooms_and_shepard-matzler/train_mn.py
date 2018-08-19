@@ -3,11 +3,13 @@ import math
 import os
 import random
 import sys
+import time
 
 import chainer
+import chainermn
 import chainer.functions as cf
-import cupy
 import numpy as np
+import cupy
 from chainer.backends import cuda
 
 sys.path.append("generative_query_network")
@@ -17,17 +19,6 @@ import gqn
 from hyperparams import HyperParameters
 from model import Model
 from optimizer import Optimizer
-
-
-def make_uint8(array, mean, std):
-    image = to_cpu(array.transpose(1, 2, 0))
-
-    # we do not divide by standard deviation
-    image = image + mean
-    # image = image * std + mean
-
-    image = (image + 1) * 0.5
-    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def printr(string):
@@ -49,17 +40,17 @@ def to_cpu(array):
 
 def main():
     try:
-        os.mkdir(args.snapshot_path)
+        os.mkdir(args.snapshot_directory)
     except:
         pass
 
-    xp = np
-    using_gpu = args.gpu_device >= 0
-    if using_gpu:
-        cuda.get_device(args.gpu_device).use()
-        xp = cupy
+    comm = chainermn.create_communicator()
+    device = comm.intra_rank
+    print("device", device, "/", comm.size)
+    cuda.get_device(device).use()
+    xp = cupy
 
-    dataset = gqn.data.Dataset(args.dataset_path)
+    dataset = gqn.data.Dataset(args.dataset_directory)
 
     hyperparams = HyperParameters()
     hyperparams.generator_share_core = args.generator_share_core
@@ -67,32 +58,35 @@ def main():
     hyperparams.generator_generation_steps = args.generation_steps
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
+    hyperparams.channels_chz = args.channels_chz
+    hyperparams.generator_channels_u = args.channels_u
+    hyperparams.inference_channels_map_x = args.channels_map_x
     hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
-    hyperparams.save(args.snapshot_path)
-    hyperparams.print()
+    if comm.rank == 0:
+        hyperparams.save(args.snapshot_directory)
+        hyperparams.print()
 
-    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
-    if using_gpu:
-        model.to_gpu()
+    model = Model(hyperparams, snapshot_directory=args.snapshot_directory)
+    model.to_gpu()
 
     optimizer = Optimizer(
-        model.parameters, mu_i=args.initial_lr, mu_f=args.final_lr)
-    optimizer.print()
+        model.parameters,
+        communicator=comm,
+        mu_i=args.initial_lr,
+        mu_f=args.final_lr)
+    if comm.rank == 0:
+        optimizer.print()
 
-    if args.with_visualization:
-        figure = gqn.imgplot.figure()
-        axis1 = gqn.imgplot.image()
-        axis2 = gqn.imgplot.image()
-        axis3 = gqn.imgplot.image()
-        figure.add(axis1, 0, 0, 1 / 3, 1)
-        figure.add(axis2, 1 / 3, 0, 1 / 3, 1)
-        figure.add(axis3, 2 / 3, 0, 1 / 3, 1)
-        plot = gqn.imgplot.window(
-            figure, (500 * 3, 500),
-            "Query image / Reconstructed image / Generated image")
-        plot.show()
+    dataset_mean, dataset_std = dataset.load_mean_and_std()
+
+    if comm.rank == 0:
+        np.save(os.path.join(args.snapshot_directory, "mean.npy"), dataset_mean)
+        np.save(os.path.join(args.snapshot_directory, "std.npy"), dataset_std)
+
+    # avoid division by zero
+    dataset_std += 1e-12
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
@@ -104,21 +98,21 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
-    dataset_mean, dataset_std = dataset.load_mean_and_std()
-
-    np.save(os.path.join(args.snapshot_path, "mean.npy"), dataset_mean)
-    np.save(os.path.join(args.snapshot_path, "std.npy"), dataset_std)
-
-    # avoid division by zero
-    dataset_std += 1e-12
+    random.seed(0)
+    subset_indices = list(range(len(dataset.subset_filenames)))
 
     current_training_step = 0
     for iteration in range(args.training_iterations):
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
+        subset_size_per_gpu = len(subset_indices) // comm.size
+        start_time = time.time()
 
-        for subset_index, subset in enumerate(dataset):
+        for subset_loop in range(subset_size_per_gpu):
+            random.shuffle(subset_indices)
+            subset_index = subset_indices[comm.rank]
+            subset = dataset.read(subset_index)
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for batch_index, data_indices in enumerate(iterator):
@@ -129,7 +123,6 @@ def main():
                 # preprocessing
                 # we do not divide by standard deviation
                 images = images - dataset_mean
-                # images = (images - dataset_mean) / dataset_std
 
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
@@ -139,6 +132,9 @@ def main():
                 # sample number of views
                 num_views = random.choice(range(total_views))
                 query_index = random.choice(range(total_views))
+
+                if current_training_step == 0 and num_views == 0:
+                    num_views = 1  # avoid OpenMPI error
 
                 if num_views > 0:
                     r = model.compute_observation_representation(
@@ -213,26 +209,14 @@ def main():
                 loss.backward()
                 optimizer.update(current_training_step)
 
-                if args.with_visualization and plot.closed() is False:
-                    axis1.update(
-                        make_uint8(query_images[0], dataset_mean, dataset_std))
-                    axis2.update(
-                        make_uint8(mean_x.data[0], dataset_mean, dataset_std))
-
-                    with chainer.no_backprop_mode():
-                        generated_x = model.generate_image(
-                            query_viewpoints[None, 0], r[None, 0], xp)
-                        axis3.update(
-                            make_uint8(generated_x[0], dataset_mean,
-                                       dataset_std))
-
-                printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
-                    format(iteration + 1,
-                           subset_index + 1, len(dataset), batch_index + 1,
-                           len(iterator), float(loss_nll.data),
-                           float(loss_kld.data), optimizer.learning_rate,
-                           sigma_t))
+                if comm.rank == 0:
+                    printr(
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
+                        format(iteration + 1, subset_loop * comm.size + 1,
+                               len(dataset), batch_index + 1,
+                               len(subset) // args.batch_size,
+                               float(loss_nll.data), float(loss_kld.data),
+                               optimizer.learning_rate, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -244,30 +228,29 @@ def main():
                 pixel_ln_var[...] = math.log(sigma_t**2)
 
                 total_batch += 1
-                current_training_step += 1
+                current_training_step += comm.size
+                # current_training_step += 1
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
-            model.serialize(args.snapshot_path)
+            if comm.rank == 0:
+                model.serialize(args.snapshot_directory)
 
-        print(
-            "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
-            format(iteration + 1, mean_nll / total_batch,
-                   mean_kld / total_batch, optimizer.learning_rate, sigma_t,
-                   current_training_step))
+        if comm.rank == 0:
+            elapsed_time = time.time() - start_time
+            print(
+                "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
+                format(iteration + 1, mean_nll / total_batch,
+                       mean_kld / total_batch, optimizer.learning_rate,
+                       sigma_t, current_training_step, elapsed_time / 60))
+            model.serialize(args.snapshot_directory)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-path", type=str, default="dataset")
-    parser.add_argument("--snapshot-path", type=str, default="snapshot")
+    parser.add_argument("--dataset-directory", type=str, default="dataset_train")
+    parser.add_argument("--snapshot-directory", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
-    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
-    parser.add_argument(
-        "--with-visualization",
-        "-visualize",
-        action="store_true",
-        default=False)
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
     parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
@@ -279,6 +262,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
+    parser.add_argument("--channels-chz", "-cz", type=int, default=64)
+    parser.add_argument("--channels-u", "-cu", type=int, default=128)
+    parser.add_argument("--channels-map-x", "-cx", type=int, default=64)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(

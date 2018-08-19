@@ -43,7 +43,7 @@ def to_cpu(array):
 
 def generate_random_query_viewpoint(ratio, xp):
     rad = math.pi * 2 * ratio
-    eye = (3.0 * math.cos(rad), 3.0 * math.sin(rad), 3.0 * math.sin(rad))
+    eye = (3.0 * math.cos(rad), 2.0, 3.0 * math.sin(rad))
     center = (0, 0, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
@@ -79,7 +79,7 @@ def main():
         eye=(3, 1, 0),
         center=(0, 0, 0),
         up=(0, 1, 0),
-        fov_rad=math.pi / 2.0,
+        fov_rad=math.pi / 3.0,
         aspect_ratio=screen_size[0] / screen_size[1],
         z_near=0.1,
         z_far=10)
@@ -124,9 +124,8 @@ def main():
             if window.closed():
                 exit()
 
-            scene, _, _ = gqn.environment.room.build_scene(
-                object_names=["cube", "sphere", "cone", "cylinder", "icosahedron"],
-                num_objects=random.choice([x for x in range(1, 6)]))
+            scene, _ = gqn.environment.shepard_metzler.build_scene(
+                num_blocks=random.choice([x for x in range(7, 8)]))
             renderer.set_scene(scene)
 
             # Generate images without observations
@@ -142,8 +141,8 @@ def main():
                     exit()
                 query_viewpoints = generate_random_query_viewpoint(
                     tick / total_frames, xp)
-                generated_images = to_cpu(
-                    model.generate_image(query_viewpoints, r, xp))
+                generated_images = model.generate_image(
+                    query_viewpoints, r, xp)
 
                 for m in range(args.num_generation):
                     if window.closed():
@@ -156,9 +155,9 @@ def main():
             for n in range(args.num_views_per_scene):
                 if window.closed():
                     exit()
-                eye = (random.uniform(-3, 3), 1, random.uniform(-3, 3))
-                center = (random.uniform(-3, 3), random.uniform(0, 1),
-                        random.uniform(-3, 3))
+                eye = np.random.normal(size=3)
+                eye = tuple(6.0 * (eye / np.linalg.norm(eye)))
+                center = (0, 0, 0)
                 yaw = gqn.math.yaw(eye, center)
                 pitch = gqn.math.pitch(eye, center)
                 camera.look_at(
@@ -172,7 +171,9 @@ def main():
                 observe_image = (raw_observed_image / 255.0 - 0.5) * 2.0
 
                 # preprocess
-                observe_image = (observe_image - dataset_mean) / dataset_std
+                # we do not divide by standard deviation
+                observe_image = observe_image - dataset_mean
+                # observe_image = (observe_image - dataset_mean) / dataset_std
 
                 observed_images[n] = to_gpu(observe_image.transpose((2, 0, 1)))
 
@@ -196,8 +197,8 @@ def main():
                         exit()
                     query_viewpoints = generate_random_query_viewpoint(
                         tick / total_frames, xp)
-                    generated_images = to_cpu(
-                        model.generate_image(query_viewpoints, r, xp))
+                    generated_images = model.generate_image(
+                        query_viewpoints, r, xp)
 
                     for m in range(args.num_generation):
                         if window.closed():

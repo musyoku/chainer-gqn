@@ -22,8 +22,10 @@ def make_uint8(image, mean, std):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
+
     image = image + mean
     # image = image * std + mean
+
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
@@ -59,6 +61,9 @@ def main():
     dataset_mean = np.load(os.path.join(args.snapshot_path, "mean.npy"))
     dataset_std = np.load(os.path.join(args.snapshot_path, "std.npy"))
 
+    # avoid division by zero
+    dataset_std += 1e-12
+
     figure = gqn.imgplot.figure()
     axes = []
     sqrt_batch_size = int(math.sqrt(args.batch_size))
@@ -82,7 +87,9 @@ def main():
                 images, viewpoints = subset[data_indices]
 
                 # preprocess
-                images = (images - dataset_mean) / dataset_std
+                # we do not divide by standard deviation
+                images = images - dataset_mean
+                # images = (images - dataset_mean) / dataset_std
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
@@ -107,7 +114,6 @@ def main():
                 query_viewpoints = viewpoints[:, query_index]
 
                 # transfer to gpu
-                query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
                 reconstructed_images = model.generate_image(

@@ -31,11 +31,12 @@ def main():
     image = np.zeros(screen_size + (3, ), dtype="uint32")
     renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
     dataset = gqn.data.Archiver(
-        path=args.path,
+        directory=args.output_directory,
         total_observations=args.total_observations,
         num_observations_per_file=args.num_observations_per_file,
         image_size=(args.image_size, args.image_size),
-        num_views_per_scene=args.num_views_per_scene)
+        num_views_per_scene=args.num_views_per_scene,
+        start_file_number=args.start_file_number)
 
     tick = 0
     start = time.time()
@@ -46,8 +47,7 @@ def main():
         scene_data = gqn.data.archiver.SceneData(screen_size,
                                                  args.num_views_per_scene)
 
-        total_frames = 5
-        for _ in range(total_frames):
+        for _ in range(args.num_views_per_scene):
             eye = np.random.normal(size=3)
             eye = tuple(6.0 * (eye / np.linalg.norm(eye)))
             center = (0, 0, 0)
@@ -93,8 +93,13 @@ if __name__ == "__main__":
         "--total-observations", "-total", type=int, default=2000000)
     parser.add_argument(
         "--num-observations-per-file", "-per-file", type=int, default=2000)
+    parser.add_argument("--start-file-number", type=int, default=1)
     parser.add_argument("--num-views-per-scene", "-k", type=int, default=15)
     parser.add_argument("--image-size", type=int, default=64)
-    parser.add_argument("--path", type=str, default="dataset")
+    parser.add_argument(
+        "--output-directory",
+        "-out",
+        type=str,
+        default="dataset_shepard_matzler_train")
     args = parser.parse_args()
     main()
