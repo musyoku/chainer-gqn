@@ -82,7 +82,8 @@ def main():
     dataset_mean, dataset_std = dataset.load_mean_and_std()
 
     if comm.rank == 0:
-        np.save(os.path.join(args.snapshot_directory, "mean.npy"), dataset_mean)
+        np.save(
+            os.path.join(args.snapshot_directory, "mean.npy"), dataset_mean)
         np.save(os.path.join(args.snapshot_directory, "std.npy"), dataset_std)
 
     # avoid division by zero
@@ -248,7 +249,8 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-directory", type=str, default="dataset_train")
+    parser.add_argument(
+        "--dataset-directory", "-dataset", type=str, default="dataset_train")
     parser.add_argument("--snapshot-directory", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument(
