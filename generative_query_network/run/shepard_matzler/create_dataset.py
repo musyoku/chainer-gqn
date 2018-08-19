@@ -34,7 +34,8 @@ def main():
         path=args.path,
         total_observations=args.total_observations,
         num_observations_per_file=args.num_observations_per_file,
-        image_size=(args.image_size, args.image_size))
+        image_size=(args.image_size, args.image_size),
+        num_views_per_scene=args.num_views_per_scene)
 
     tick = 0
     start = time.time()
@@ -89,15 +90,10 @@ if __name__ == "__main__":
         action="store_true",
         default=False)
     parser.add_argument(
-        "--with-object-rotations",
-        "-rotate-object",
-        action="store_true",
-        default=False)
-    parser.add_argument(
         "--total-observations", "-total", type=int, default=2000000)
     parser.add_argument(
         "--num-observations-per-file", "-per-file", type=int, default=2000)
-    parser.add_argument("--num-views-per-scene", "-k", type=int, default=5)
+    parser.add_argument("--num-views-per-scene", "-k", type=int, default=15)
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--path", type=str, default="dataset")
     args = parser.parse_args()

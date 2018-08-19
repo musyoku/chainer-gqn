@@ -34,7 +34,8 @@ def main():
         path=args.path,
         total_observations=args.total_observations,
         num_observations_per_file=args.num_observations_per_file,
-        image_size=(args.image_size, args.image_size))
+        image_size=(args.image_size, args.image_size),
+        num_views_per_scene=args.num_views_per_scene)
 
     tick = 0
     start = time.time()

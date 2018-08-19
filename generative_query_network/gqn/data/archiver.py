@@ -4,12 +4,12 @@ import cupy as cp
 
 
 class SceneData:
-    def __init__(self, image_size, num_views):
+    def __init__(self, image_size, num_views_per_scene):
         self.images = np.zeros(
-            (num_views, ) + image_size + (3, ), dtype="float32")
-        self.viewpoints = np.zeros((num_views, 7), dtype="float32")
+            (num_views_per_scene, ) + image_size + (3, ), dtype="float32")
+        self.viewpoints = np.zeros((num_views_per_scene, 7), dtype="float32")
         self.view_index = 0
-        self.num_views = num_views
+        self.num_views_per_scene = num_views_per_scene
         self.image_size = image_size
 
     def add(self, image, camera_position, cos_camera_yaw_rad,
@@ -25,7 +25,7 @@ class SceneData:
         assert image.shape[1] == self.image_size[1]
         assert image.shape[2] == 3
         assert len(camera_position) == 3
-        assert self.view_index < self.num_views
+        assert self.view_index < self.num_views_per_scene
 
         self.images[self.view_index] = image
         self.viewpoints[self.view_index] = (
@@ -46,13 +46,13 @@ class Archiver:
                  total_observations=2000000,
                  num_observations_per_file=2000,
                  image_size=(64, 64),
-                 num_views=5):
+                 num_views_per_scene=5):
         assert path is not None
         self.images = np.zeros(
-            (num_observations_per_file, num_views) + image_size + (3, ),
+            (num_observations_per_file, num_views_per_scene) + image_size + (3, ),
             dtype="float32")
         self.viewpoints = np.zeros(
-            (num_observations_per_file, num_views, 7), dtype="float32")
+            (num_observations_per_file, num_views_per_scene, 7), dtype="float32")
         self.current_num_observations = 0
         self.current_pool_index = 0
         self.current_file_number = 1
@@ -60,7 +60,7 @@ class Archiver:
         self.num_observations_per_file = num_observations_per_file
         self.path = path
         self.image_size = image_size
-        self.num_views = num_views
+        self.num_views_per_scene = num_views_per_scene
 
         self.total_images = 0
         self.dataset_mean = None
