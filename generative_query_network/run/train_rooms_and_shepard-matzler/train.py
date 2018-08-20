@@ -19,13 +19,8 @@ from model import Model
 from optimizer import Optimizer
 
 
-def make_uint8(array, mean, std):
+def make_uint8(array):
     image = to_cpu(array.transpose(1, 2, 0))
-
-    # we do not divide by standard deviation
-    image = image + mean
-    # image = image * std + mean
-
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
@@ -68,6 +63,9 @@ def main():
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.pixel_n = args.pixel_n
+    hyperparams.channels_chz = args.channels_chz
+    hyperparams.generator_channels_u = args.channels_u
+    hyperparams.inference_channels_map_x = args.channels_map_x
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
     hyperparams.save(args.snapshot_directory)
@@ -104,14 +102,6 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
 
-    dataset_mean, dataset_std = dataset.load_mean_and_std()
-
-    np.save(os.path.join(args.snapshot_directory, "mean.npy"), dataset_mean)
-    np.save(os.path.join(args.snapshot_directory, "std.npy"), dataset_std)
-
-    # avoid division by zero
-    dataset_std += 1e-12
-
     current_training_step = 0
     for iteration in range(args.training_iterations):
         mean_kld = 0
@@ -126,19 +116,16 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
-                # preprocessing
-                # we do not divide by standard deviation
-                images = images - dataset_mean
-                # images = (images - dataset_mean) / dataset_std
-
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
 
                 total_views = images.shape[1]
 
                 # sample number of views
-                num_views = random.choice(range(total_views))
+                num_views = random.choice(range(total_views + 1))
                 query_index = random.choice(range(total_views))
+
+                query_index = 0
 
                 if num_views > 0:
                     r = model.compute_observation_representation(
@@ -201,9 +188,12 @@ def main():
                     cl_enc = c_next_enc
 
                 mean_x = model.generation_observation.compute_mean_x(ul_enc)
+
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
+
+                loss_nll = cf.mean_squared_error(mean_x, query_images)
 
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
@@ -214,17 +204,13 @@ def main():
                 optimizer.update(current_training_step)
 
                 if args.with_visualization and plot.closed() is False:
-                    axis1.update(
-                        make_uint8(query_images[0], dataset_mean, dataset_std))
-                    axis2.update(
-                        make_uint8(mean_x.data[0], dataset_mean, dataset_std))
+                    axis1.update(make_uint8(query_images[0]))
+                    axis2.update(make_uint8(mean_x.data[0]))
 
                     with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
                             query_viewpoints[None, 0], r[None, 0], xp)
-                        axis3.update(
-                            make_uint8(generated_x[0], dataset_mean,
-                                       dataset_std))
+                        axis3.update(make_uint8(generated_x[0]))
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
@@ -248,6 +234,9 @@ def main():
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
+                if batch_index > 0 and batch_index % 100 == 0:
+                    model.serialize(args.snapshot_directory)
+
             model.serialize(args.snapshot_directory)
 
         print(
@@ -261,7 +250,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dataset-directory", "-dataset", type=str, default="dataset_train")
-    parser.add_argument("--snapshot-directory", type=str, default="snapshot")
+    parser.add_argument(
+        "--snapshot-directory", "-snapshot", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     parser.add_argument(
@@ -280,6 +270,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
+    parser.add_argument("--channels-chz", "-cz", type=int, default=64)
+    parser.add_argument("--channels-u", "-cu", type=int, default=128)
+    parser.add_argument("--channels-map-x", "-cx", type=int, default=64)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(

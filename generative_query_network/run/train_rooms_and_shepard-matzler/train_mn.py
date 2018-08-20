@@ -79,16 +79,6 @@ def main():
     if comm.rank == 0:
         optimizer.print()
 
-    dataset_mean, dataset_std = dataset.load_mean_and_std()
-
-    if comm.rank == 0:
-        np.save(
-            os.path.join(args.snapshot_directory, "mean.npy"), dataset_mean)
-        np.save(os.path.join(args.snapshot_directory, "std.npy"), dataset_std)
-
-    # avoid division by zero
-    dataset_std += 1e-12
-
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
@@ -121,17 +111,13 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
-                # preprocessing
-                # we do not divide by standard deviation
-                images = images - dataset_mean
-
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
 
                 total_views = images.shape[1]
 
                 # sample number of views
-                num_views = random.choice(range(total_views))
+                num_views = random.choice(range(total_views + 1))
                 query_index = random.choice(range(total_views))
 
                 if current_training_step == 0 and num_views == 0:
