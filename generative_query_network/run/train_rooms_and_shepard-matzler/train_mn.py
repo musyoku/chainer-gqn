@@ -237,7 +237,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dataset-directory", "-dataset", type=str, default="dataset_train")
-    parser.add_argument("--snapshot-directory", type=str, default="snapshot")
+    parser.add_argument(
+        "--snapshot-directory", "-snapshot", type=str, default="snapshot")
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
