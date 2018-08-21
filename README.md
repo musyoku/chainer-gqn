@@ -15,9 +15,11 @@
 - [ ] Hyperparameter search (It takes 2 weeks to run a training)
 - [ ] Debug
 
+Current training progress:
+
 :thinking::thinking::thinking:
 
-![https://thumbs.gfycat.com/SandyWanGoosefish-size_restricted.gif](https://thumbs.gfycat.com/SandyWanGoosefish-size_restricted.gif)
+![https://thumbs.gfycat.com/ColossalWaryBarb-size_restricted.gif](https://thumbs.gfycat.com/ColossalWaryBarb-size_restricted.gif)
 
 # Requirements
 
