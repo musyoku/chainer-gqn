@@ -19,12 +19,10 @@ from hyperparams import HyperParameters
 from model import Model
 
 
-def make_uint8(image, mean, std):
+def make_uint8(image):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
-    image = image + mean
-    # image = image * std + mean
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
@@ -67,9 +65,6 @@ def main():
     model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
-
-    dataset_mean = np.load(os.path.join(args.snapshot_path, "mean.npy"))
-    dataset_std = np.load(os.path.join(args.snapshot_path, "std.npy"))
 
     screen_size = hyperparams.image_size
     camera = gqn.three.PerspectiveCamera(
@@ -120,15 +115,9 @@ def main():
             # [0, 255] -> [-1, 1]
             observe_image = (raw_observed_image / 255.0 - 0.5) * 2.0
 
-            # preprocess
-            # we do not divide by standard deviation
-            observe_image = observe_image - dataset_mean
-            # observe_image = (observe_image - dataset_mean) / dataset_std
-
             observed_images[0] = to_gpu(observe_image.transpose((2, 0, 1)))
 
-            axis_observation.update(
-                make_uint8(observed_images[0], dataset_mean, dataset_std))
+            axis_observation.update(make_uint8(observed_images[0]))
 
             observed_viewpoint[0] = xp.array(
                 (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
@@ -149,8 +138,7 @@ def main():
                      math.cos(pitch), math.sin(pitch)),
                     dtype="float32")
                 generated_image = model.generate_image(query_viewpoint, r, xp)
-                axis_generation.update(
-                    make_uint8(generated_image[0], dataset_mean, dataset_std))
+                axis_generation.update(make_uint8(generated_image[0]))
 
 
 if __name__ == "__main__":

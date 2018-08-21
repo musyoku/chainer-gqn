@@ -19,12 +19,10 @@ from hyperparams import HyperParameters
 from model import Model
 
 
-def make_uint8(image, mean, std):
+def make_uint8(image):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
-    image = image + mean
-    # image = image * std + mean
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
@@ -63,16 +61,12 @@ def main():
         cuda.get_device(args.gpu_device).use()
         xp = cupy
 
+    dataset = gqn.data.Dataset(args.dataset_path)
+
     hyperparams = HyperParameters(snapshot_directory=args.snapshot_path)
     model = Model(hyperparams, snapshot_directory=args.snapshot_path)
     if using_gpu:
         model.to_gpu()
-
-    dataset_mean = np.load(os.path.join(args.snapshot_path, "mean.npy"))
-    dataset_std = np.load(os.path.join(args.snapshot_path, "std.npy"))
-
-    # avoid division by zero
-    dataset_std += 1e-12
 
     screen_size = hyperparams.image_size
     camera = gqn.three.PerspectiveCamera(
@@ -111,86 +105,30 @@ def main():
     window = gqn.imgplot.window(figure, (1600, 800), "Dataset")
     window.show()
 
-    raw_observed_image = np.zeros(screen_size + (3, ), dtype="uint32")
-    renderer = gqn.three.Renderer(screen_size[0], screen_size[1])
-
     observed_images = xp.zeros(
         (args.num_views_per_scene, 3) + screen_size, dtype="float32")
     observed_viewpoints = xp.zeros(
         (args.num_views_per_scene, 7), dtype="float32")
 
     with chainer.no_backprop_mode():
-        while True:
-            if window.closed():
-                exit()
+        for _, subset in enumerate(dataset):
+            iterator = gqn.data.Iterator(subset, batch_size=1)
 
-            scene, _ = gqn.environment.shepard_metzler.build_scene(
-                num_blocks=random.choice([x for x in range(7, 8)]))
-            renderer.set_scene(scene)
+            for data_indices in iterator:
+                # shape: (batch, views, height, width, channels)
+                # range: [-1, 1]
+                images, viewpoints = subset[data_indices]
 
-            # Generate images without observations
-            r = xp.zeros(
-                (
-                    args.num_generation,
-                    hyperparams.channels_r,
-                ) + hyperparams.chrz_size,
-                dtype="float32")
-            total_frames = 50
-            for tick in range(total_frames):
-                if window.closed():
-                    exit()
-                query_viewpoints = generate_random_query_viewpoint(
-                    tick / total_frames, xp)
-                generated_images = model.generate_image(
-                    query_viewpoints, r, xp)
+                # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
+                images = images.transpose((0, 1, 4, 2, 3))
 
-                for m in range(args.num_generation):
-                    if window.closed():
-                        exit()
-                    image = make_uint8(generated_images[m], dataset_mean,
-                                       dataset_std)
-                    axis = axes_generations[m]
-                    axis.update(image)
-
-            for n in range(args.num_views_per_scene):
-                if window.closed():
-                    exit()
-                eye = np.random.normal(size=3)
-                eye = tuple(6.0 * (eye / np.linalg.norm(eye)))
-                center = (0, 0, 0)
-                yaw = gqn.math.yaw(eye, center)
-                pitch = gqn.math.pitch(eye, center)
-                camera.look_at(
-                    eye=eye,
-                    center=center,
-                    up=(0.0, 1.0, 0.0),
-                )
-                renderer.render(camera, raw_observed_image)
-
-                # [0, 255] -> [-1, 1]
-                observe_image = (raw_observed_image / 255.0 - 0.5) * 2.0
-
-                # preprocess
-                # we do not divide by standard deviation
-                observe_image = observe_image - dataset_mean
-                # observe_image = (observe_image - dataset_mean) / dataset_std
-
-                observed_images[n] = to_gpu(observe_image.transpose((2, 0, 1)))
-
-                observed_viewpoints[n] = xp.array(
-                    (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw),
-                     math.cos(pitch), math.sin(pitch)),
+                # generate images without observations
+                r = xp.zeros(
+                    (
+                        args.num_generation,
+                        hyperparams.channels_r,
+                    ) + hyperparams.chrz_size,
                     dtype="float32")
-
-                r = model.compute_observation_representation(
-                    observed_images[None, :n + 1],
-                    observed_viewpoints[None, :n + 1])
-
-                r = cf.broadcast_to(r, (args.num_generation, ) + r.shape[1:])
-
-                axis = axes_observations[n]
-                axis.update(np.uint8(raw_observed_image))
-
                 total_frames = 50
                 for tick in range(total_frames):
                     if window.closed():
@@ -203,18 +141,51 @@ def main():
                     for m in range(args.num_generation):
                         if window.closed():
                             exit()
-                        image = make_uint8(generated_images[m], dataset_mean,
-                                           dataset_std)
+                        image = make_uint8(generated_images[m])
                         axis = axes_generations[m]
                         axis.update(image)
 
-            raw_observed_image[...] = 0
-            for axis in axes_observations:
-                axis.update(np.uint8(raw_observed_image))
+                # generate images with observations
+                for n in range(args.num_views_per_scene):
+                    observed_image = images[0, n]
+                    observed_viewpoint = viewpoints[0, n]
+
+                    observed_images[n] = to_gpu(observed_image)
+                    observed_viewpoints[n] = to_gpu(observed_viewpoint)
+
+                    r = model.compute_observation_representation(
+                        observed_images[None, :n + 1],
+                        observed_viewpoints[None, :n + 1])
+
+                    r = cf.broadcast_to(r,
+                                        (args.num_generation, ) + r.shape[1:])
+
+                    axis = axes_observations[n]
+                    axis.update(make_uint8(observed_image))
+
+                    total_frames = 50
+                    for tick in range(total_frames):
+                        if window.closed():
+                            exit()
+                        query_viewpoints = generate_random_query_viewpoint(
+                            tick / total_frames, xp)
+                        generated_images = model.generate_image(
+                            query_viewpoints, r, xp)
+
+                        for m in range(args.num_generation):
+                            if window.closed():
+                                exit()
+                            axis = axes_generations[m]
+                            axis.update(make_uint8(generated_images[m]))
+
+                black_image = make_uint8(np.full_like(observed_image, -1))
+                for axis in axes_observations:
+                    axis.update(black_image)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset-path", "-dataset", type=str, required=True)
     parser.add_argument("--num-views-per-scene", "-k", type=int, default=9)
     parser.add_argument("--num-generation", "-g", type=int, default=4)
     parser.add_argument(

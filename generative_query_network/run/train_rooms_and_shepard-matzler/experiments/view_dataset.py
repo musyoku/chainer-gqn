@@ -18,14 +18,10 @@ from hyperparams import HyperParameters
 from model import Model
 
 
-def make_uint8(image, mean, std):
+def make_uint8(image):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
-
-    image = image + mean
-    # image = image * std + mean
-
     image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
@@ -44,12 +40,6 @@ def to_cpu(array):
 
 def main():
     dataset = gqn.data.Dataset(args.dataset_path)
-
-    dataset_mean = np.load(os.path.join(args.dataset_path, "mean.npy"))
-    dataset_std = np.load(os.path.join(args.dataset_path, "std.npy"))
-
-    # avoid division by zero
-    dataset_std += 1e-12
 
     figure = gqn.imgplot.figure()
     axis = gqn.imgplot.image()
