@@ -125,8 +125,6 @@ def main():
                 num_views = random.choice(range(total_views + 1))
                 query_index = random.choice(range(total_views))
 
-                query_index = 0
-
                 if num_views > 0:
                     r = model.compute_observation_representation(
                         images[:, :num_views], viewpoints[:, :num_views])
