@@ -232,9 +232,6 @@ def main():
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
 
-                if batch_index > 0 and batch_index % 100 == 0:
-                    model.serialize(args.snapshot_directory)
-
             model.serialize(args.snapshot_directory)
 
         print(
