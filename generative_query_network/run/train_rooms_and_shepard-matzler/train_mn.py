@@ -88,6 +88,7 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
+    num_pixels = hyperparams.image_size[0] * hyperparams.image_size[1] * 3
 
     random.seed(0)
     subset_indices = list(range(len(dataset.subset_filenames)))
@@ -198,12 +199,13 @@ def main():
 
                 if comm.rank == 0:
                     printr(
-                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
                         format(iteration + 1, subset_loop * comm.size + 1,
                                len(dataset), batch_index + 1,
                                len(subset) // args.batch_size,
-                               float(loss_nll.data), float(loss_kld.data),
-                               optimizer.learning_rate, sigma_t))
+                               float(loss_nll.data) / num_pixels,
+                               float(loss_kld.data), optimizer.learning_rate,
+                               sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -226,8 +228,8 @@ def main():
         if comm.rank == 0:
             elapsed_time = time.time() - start_time
             print(
-                "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
-                format(iteration + 1, mean_nll / total_batch,
+                "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
+                format(iteration + 1, mean_nll / total_batch / num_pixels,
                        mean_kld / total_batch, optimizer.learning_rate,
                        sigma_t, current_training_step, elapsed_time / 60))
             model.serialize(args.snapshot_directory)

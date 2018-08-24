@@ -1,6 +1,7 @@
 import argparse
 import math
 import os
+import time
 import random
 import sys
 
@@ -101,12 +102,14 @@ def main():
         (args.batch_size, 3) + hyperparams.image_size,
         math.log(sigma_t**2),
         dtype="float32")
+    num_pixels = hyperparams.image_size[0] * hyperparams.image_size[1] * 3
 
     current_training_step = 0
     for iteration in range(args.training_iterations):
         mean_kld = 0
         mean_nll = 0
         total_batch = 0
+        start_time = time.time()
 
         for subset_index, subset in enumerate(dataset):
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
@@ -191,8 +194,6 @@ def main():
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
 
-                loss_nll = cf.mean_squared_error(mean_x, query_images)
-
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
@@ -211,10 +212,10 @@ def main():
                         axis3.update(make_uint8(generated_x[0]))
 
                 printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f}".
-                    format(iteration + 1,
-                           subset_index + 1, len(dataset), batch_index + 1,
-                           len(iterator), float(loss_nll.data),
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
+                    format(iteration + 1, subset_index + 1, len(dataset),
+                           batch_index + 1, len(iterator),
+                           float(loss_nll.data) / num_pixels,
                            float(loss_kld.data), optimizer.learning_rate,
                            sigma_t))
 
@@ -234,11 +235,12 @@ def main():
 
             model.serialize(args.snapshot_directory)
 
+        elapsed_time = time.time() - start_time
         print(
-            "\033[2KIteration {} - loss: nll: {:.3f} kld: {:.3f} - lr: {:.4e} - sigma_t: {:.6f} - step: {}".
-            format(iteration + 1, mean_nll / total_batch,
+            "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
+            format(iteration + 1, mean_nll / total_batch / num_pixels,
                    mean_kld / total_batch, optimizer.learning_rate, sigma_t,
-                   current_training_step))
+                   current_training_step, elapsed_time / 60))
 
 
 if __name__ == "__main__":

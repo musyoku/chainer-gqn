@@ -68,16 +68,6 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    screen_size = hyperparams.image_size
-    camera = gqn.three.PerspectiveCamera(
-        eye=(3, 1, 0),
-        center=(0, 0, 0),
-        up=(0, 1, 0),
-        fov_rad=math.pi / 3.0,
-        aspect_ratio=screen_size[0] / screen_size[1],
-        z_near=0.1,
-        z_far=10)
-
     figure = gqn.imgplot.figure()
     axes_observations = []
     axes_generations = []
@@ -106,7 +96,7 @@ def main():
     window.show()
 
     observed_images = xp.zeros(
-        (args.num_views_per_scene, 3) + screen_size, dtype="float32")
+        (args.num_views_per_scene, 3) + hyperparams.image_size, dtype="float32")
     observed_viewpoints = xp.zeros(
         (args.num_views_per_scene, 7), dtype="float32")
 
