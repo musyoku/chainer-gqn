@@ -90,18 +90,25 @@ class Posterior(chainer.Chain):
         return cf.gaussian(mean, ln_var)
 
 
-class __Downsampler(chainer.Chain):
+class Downsampler(chainer.Chain):
     def __init__(self, channels):
         super().__init__()
         with self.init_scope():
-            self.conv_x_1 = L.Convolution2D(
+            self.conv_1 = L.Convolution2D(
                 None,
-                channels // 2,
+                channels,
                 ksize=2,
                 stride=2,
                 pad=0,
                 initialW=HeNormal(0.1))
-            self.conv_x_2 = L.Convolution2D(
+            self.conv_2 = L.Convolution2D(
+                None,
+                channels,
+                ksize=3,
+                pad=1,
+                stride=1,
+                initialW=HeNormal(0.1))
+            self.conv_3 = L.Convolution2D(
                 None,
                 channels,
                 ksize=2,
@@ -110,12 +117,13 @@ class __Downsampler(chainer.Chain):
                 initialW=HeNormal(0.1))
 
     def downsample(self, x):
-        x = cf.relu(self.conv_x_1(x))
-        x = self.conv_x_2(x)
+        x = cf.relu(self.conv_1(x))
+        x = cf.relu(self.conv_2(x))
+        x = self.conv_3(x)
         return x
 
 
-class Downsampler(chainer.Chain):
+class _Downsampler(chainer.Chain):
     def __init__(self, channels):
         super().__init__()
         with self.init_scope():
