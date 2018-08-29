@@ -97,6 +97,7 @@ def main():
     for iteration in range(args.training_iterations):
         mean_kld = 0
         mean_nll = 0
+        mean_mse = 0
         total_batch = 0
         subset_size_per_gpu = len(subset_indices) // comm.size
         start_time = time.time()
@@ -188,6 +189,7 @@ def main():
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                     query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
+                loss_mse = cf.mean_squared_error(mean_x, query_images)
 
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size
@@ -199,13 +201,13 @@ def main():
 
                 if comm.rank == 0:
                     printr(
-                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
                         format(iteration + 1, subset_loop * comm.size + 1,
                                len(dataset), batch_index + 1,
                                len(subset) // args.batch_size,
                                float(loss_nll.data) / num_pixels,
-                               float(loss_kld.data), optimizer.learning_rate,
-                               sigma_t))
+                               float(loss_mse.data), float(loss_kld.data),
+                               optimizer.learning_rate, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -221,6 +223,7 @@ def main():
                 # current_training_step += 1
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
+                mean_mse += float(loss_mse.data)
 
             if comm.rank == 0:
                 model.serialize(args.snapshot_directory)
@@ -228,10 +231,11 @@ def main():
         if comm.rank == 0:
             elapsed_time = time.time() - start_time
             print(
-                "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
+                "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
                 format(iteration + 1, mean_nll / total_batch / num_pixels,
-                       mean_kld / total_batch, optimizer.learning_rate,
-                       sigma_t, current_training_step, elapsed_time / 60))
+                       mean_mse / total_batch, mean_kld / total_batch,
+                       optimizer.learning_rate, sigma_t, current_training_step,
+                       elapsed_time / 60))
             model.serialize(args.snapshot_directory)
 
 

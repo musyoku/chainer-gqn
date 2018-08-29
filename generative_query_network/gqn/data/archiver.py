@@ -92,7 +92,7 @@ class Archiver:
         if self.current_pool_index >= self.num_observations_per_file:
             self.save_subset()
 
-            # I found that preprocessing had no effect
+            # We found that preprocessing had no effect
             # self.save_mean_and_variance()
 
             self.current_pool_index = 0
