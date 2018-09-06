@@ -4,6 +4,7 @@ import os
 import random
 import sys
 import time
+import multiprocessing
 
 import chainer
 import chainermn
@@ -49,6 +50,12 @@ def main():
     print("device", device, "/", comm.size)
     cuda.get_device(device).use()
     xp = cupy
+
+    # To avoid OpenMPI bug
+    multiprocessing.set_start_method("forkserver")
+    p = multiprocessing.Process(target=print, args=("",))
+    p.start()
+    p.join()
 
     dataset = gqn.data.Dataset(args.dataset_directory)
 
