@@ -106,7 +106,7 @@ def main():
         mean_nll = 0
         mean_mse = 0
         total_batch = 0
-        subset_size_per_gpu = len(subset_indices) // comm.size
+        subset_size_per_gpu = len(subset_indices) // comm.size + 1
         start_time = time.time()
 
         for subset_loop in range(subset_size_per_gpu):
