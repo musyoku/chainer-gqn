@@ -41,7 +41,7 @@ def to_cpu(array):
 
 def generate_random_query_viewpoint(ratio, xp):
     rad = math.pi * 2 * ratio
-    eye = (3.0 * math.cos(rad), 2.0, 3.0 * math.sin(rad))
+    eye = (6.0 * math.cos(rad), 6.0 * math.sin(math.pi / 4), 6.0 * math.sin(rad))
     center = (0, 0, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
