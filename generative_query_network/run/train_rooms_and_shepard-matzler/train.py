@@ -193,8 +193,9 @@ def main():
 
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                     query_images, mean_x, pixel_var, pixel_ln_var)
-                loss_nll = cf.sum(negative_log_likelihood)
                 loss_mse = cf.mean_squared_error(mean_x, query_images)
+                loss_nll = cf.sum(negative_log_likelihood)
+                # loss_nll = loss_mse * mean_x.size / sigma_t
 
                 loss_nll /= args.batch_size
                 loss_kld /= args.batch_size

@@ -41,8 +41,7 @@ def main():
     tick = 0
     start = time.time()
     while True:
-        scene, _ = gqn.environment.shepard_metzler.build_scene(
-            num_blocks=random.choice([x for x in range(7, 8)]))
+        scene, _ = gqn.environment.shepard_metzler.build_scene(num_blocks=7)
         renderer.set_scene(scene)
         scene_data = gqn.data.archiver.SceneData(screen_size,
                                                  args.num_views_per_scene)

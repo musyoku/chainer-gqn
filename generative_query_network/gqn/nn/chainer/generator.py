@@ -40,11 +40,18 @@ class Core(chainer.Chain):
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
-            self.deconv_h = L.Deconvolution2D(
+            # self.deconv_h = L.Deconvolution2D(
+            #     None,
+            #     channels_u,
+            #     ksize=4,
+            #     stride=4,
+            #     pad=0,
+            #     initialW=HeNormal(0.1))
+            self.conv_pixel_shuffle = L.Convolution2D(
                 None,
-                channels_u,
-                ksize=4,
-                stride=4,
+                channels_u * 4 * 4,
+                ksize=1,
+                stride=1,
                 pad=0,
                 initialW=HeNormal(0.1))
 
@@ -63,7 +70,8 @@ class Core(chainer.Chain):
         next_c = forget_gate * prev_cg + input_gate * cf.tanh(
             self.lstm_tanh(lstm_in))
         next_h = cf.sigmoid(self.lstm_o(lstm_in)) * cf.tanh(next_c)
-        next_u = self.deconv_h(next_h) + prev_u
+        # next_u = self.deconv_h(next_h) + prev_u
+        next_u = cf.depth2space(self.conv_pixel_shuffle(next_h), r=4) + prev_u
 
         return next_h, next_c, next_u
 
