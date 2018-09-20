@@ -38,6 +38,13 @@ def to_cpu(array):
         return cuda.to_cpu(array)
     return array
 
+def preprocess(image, num_bits_x):
+    image = (image + 1.0) / 2.0 * 255
+    num_bins_x = 2**num_bits_x
+    if num_bits_x < 8:
+        image = np.floor(image / (2**(8 - num_bits_x)))
+    image = image / num_bins_x
+    return image
 
 def main():
     try:
@@ -96,6 +103,7 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
     num_pixels = hyperparams.image_size[0] * hyperparams.image_size[1] * 3
+    num_bins_x = 2**args.num_bits_x
 
     random.seed(0)
     subset_indices = list(range(len(dataset.subset_filenames)))
@@ -122,6 +130,9 @@ def main():
 
                 # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
+                images = preprocess(images, args.num_bits_x)
+                images += np.random.uniform(
+                    0, 1.0 / num_bins_x, size=images.shape)
 
                 total_views = images.shape[1]
 
@@ -278,5 +289,6 @@ if __name__ == "__main__":
         "--inference-share-posterior",
         "-i-share-posterior",
         action="store_true")
+    parser.add_argument("--num-bits-x", "-bits", type=int, default=8)
     args = parser.parse_args()
     main()

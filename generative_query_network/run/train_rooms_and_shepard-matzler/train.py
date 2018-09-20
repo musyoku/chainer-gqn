@@ -19,11 +19,16 @@ from hyperparams import HyperParameters
 from model import Model
 from optimizer import Optimizer
 
+# def make_uint8(array):
+#     image = to_cpu(array.transpose(1, 2, 0))
+#     image = (image + 1) * 0.5
+#     return np.uint8(np.clip(image * 255, 0, 255))
 
-def make_uint8(array):
-    image = to_cpu(array.transpose(1, 2, 0))
-    image = (image + 1) * 0.5
-    return np.uint8(np.clip(image * 255, 0, 255))
+
+def make_uint8(array, bins):
+    return np.uint8(
+        np.clip(
+            np.floor((to_cpu(array.transpose(1, 2, 0))) * 255), 0, 255))
 
 
 def printr(string):
@@ -41,6 +46,15 @@ def to_cpu(array):
     if isinstance(array, cupy.ndarray):
         return cuda.to_cpu(array)
     return array
+
+
+def preprocess(image, num_bits_x):
+    image = (image + 1.0) / 2.0 * 255
+    num_bins_x = 2**num_bits_x
+    if num_bits_x < 8:
+        image = np.floor(image / (2**(8 - num_bits_x)))
+    image = image / num_bins_x
+    return image
 
 
 def main():
@@ -103,6 +117,7 @@ def main():
         math.log(sigma_t**2),
         dtype="float32")
     num_pixels = hyperparams.image_size[0] * hyperparams.image_size[1] * 3
+    num_bins_x = 2**args.num_bits_x
 
     current_training_step = 0
     for iteration in range(args.training_iterations):
@@ -120,8 +135,11 @@ def main():
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
-                # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
+                # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
+                images = preprocess(images, args.num_bits_x)
+                images += np.random.uniform(
+                    0, 1.0 / num_bins_x, size=images.shape)
 
                 total_views = images.shape[1]
 
@@ -206,13 +224,13 @@ def main():
                 optimizer.update(current_training_step)
 
                 if args.with_visualization and plot.closed() is False:
-                    axis1.update(make_uint8(query_images[0]))
-                    axis2.update(make_uint8(mean_x.data[0]))
+                    axis1.update(make_uint8(query_images[0], num_bins_x))
+                    axis2.update(make_uint8(mean_x.data[0], num_bins_x))
 
                     with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
                             query_viewpoints[None, 0], r[None, 0], xp)
-                        axis3.update(make_uint8(generated_x[0]))
+                        axis3.update(make_uint8(generated_x[0], num_bins_x))
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
@@ -285,5 +303,6 @@ if __name__ == "__main__":
         "--inference-share-posterior",
         "-i-share-posterior",
         action="store_true")
+    parser.add_argument("--num-bits-x", "-bits", type=int, default=8)
     args = parser.parse_args()
     main()
