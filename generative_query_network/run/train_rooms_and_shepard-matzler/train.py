@@ -27,8 +27,7 @@ from optimizer import Optimizer
 
 def make_uint8(array, bins):
     return np.uint8(
-        np.clip(
-            np.floor((to_cpu(array.transpose(1, 2, 0))) * 255), 0, 255))
+        np.clip(np.floor((to_cpu(array.transpose(1, 2, 0))) * 255), 0, 255))
 
 
 def printr(string):
@@ -75,12 +74,13 @@ def main():
     hyperparams.generator_share_core = args.generator_share_core
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.generator_generation_steps = args.generation_steps
+    hyperparams.generator_downsampler_channels = args.generator_downsampler_channels
+    hyperparams.generator_share_upsampler = args.generator_share_upsampler
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
-    hyperparams.pixel_n = args.pixel_n
+    hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
     hyperparams.chz_channels = args.chz_channels
-    hyperparams.generatorepresentation_channels_u = args.channels_u
-    hyperparams.inference_channels_map_x = args.channels_map_x
+    hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
     hyperparams.save(args.snapshot_directory)
@@ -148,14 +148,14 @@ def main():
                 query_index = random.choice(range(total_views))
 
                 if num_views > 0:
-                    r = model.compute_observation_representation(
+                    representation = model.compute_observation_representation(
                         images[:, :num_views], viewpoints[:, :num_views])
                 else:
-                    r = xp.zeros(
-                        (args.batch_size, hyperparams.representation_channels) +
-                        hyperparams.chrz_size,
+                    representation = xp.zeros(
+                        (args.batch_size, hyperparams.representation_channels)
+                        + hyperparams.chrz_size,
                         dtype="float32")
-                    r = chainer.Variable(r)
+                    representation = chainer.Variable(representation)
 
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
@@ -164,58 +164,22 @@ def main():
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
-                h0_gen, c0_gen, u_0, h0_enc, c0_enc = model.generate_initial_state(
-                    args.batch_size, xp)
-
                 loss_kld = 0
+                z_t_param_array, u_final = model.sample_z_and_x_params_from_posterior(
+                    query_images, query_viewpoints, representation)
 
-                hl_enc = h0_enc
-                cl_enc = c0_enc
-                hl_gen = h0_gen
-                cl_gen = c0_gen
-                ul_enc = u_0
-
-                xq = model.inference_downsampler.downsample(query_images)
-
-                for l in range(model.generation_steps):
-                    inference_core = model.get_inference_core(l)
-                    inference_posterior = model.get_inference_posterior(l)
-                    generation_core = model.get_generation_core(l)
-                    generation_piror = model.get_generation_prior(l)
-
-                    h_next_enc, c_next_enc = inference_core.forward_onestep(
-                        hl_gen, hl_enc, cl_enc, xq, query_viewpoints, r)
-
-                    mean_z_q = inference_posterior.compute_mean_z(hl_enc)
-                    ln_var_z_q = inference_posterior.compute_ln_var_z(hl_enc)
-                    ze_l = cf.gaussian(mean_z_q, ln_var_z_q)
-
-                    mean_z_p = generation_piror.compute_mean_z(hl_gen)
-                    ln_var_z_p = generation_piror.compute_ln_var_z(hl_gen)
-
-                    h_next_gen, c_next_gen, u_next_enc = generation_core.forward_onestep(
-                        hl_gen, cl_gen, ul_enc, ze_l, query_viewpoints, r)
-
+                for params in z_t_param_array:
+                    mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
-
                     loss_kld += cf.sum(kld)
 
-                    hl_gen = h_next_gen
-                    cl_gen = c_next_gen
-                    ul_enc = u_next_enc
-                    hl_enc = h_next_enc
-                    cl_enc = c_next_enc
-
-                mean_x = model.generation_observation.compute_mean_x(ul_enc)
-
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mean_x, pixel_var, pixel_ln_var)
-                loss_mse = cf.mean_squared_error(mean_x, query_images)
+                    query_images, u_final, pixel_var, pixel_ln_var)
+                loss_mse = cf.mean_squared_error(u_final, query_images)
                 loss_nll = cf.sum(negative_log_likelihood)
-                # loss_nll = loss_mse * mean_x.size / sigma_t
 
-                loss_nll /= args.batch_size
+                loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
                 loss_kld /= args.batch_size
                 loss = loss_nll + loss_kld
 
@@ -225,11 +189,12 @@ def main():
 
                 if args.with_visualization and plot.closed() is False:
                     axis1.update(make_uint8(query_images[0], num_bins_x))
-                    axis2.update(make_uint8(mean_x.data[0], num_bins_x))
+                    axis2.update(make_uint8(u_final.data[0], num_bins_x))
 
                     with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
-                            query_viewpoints[None, 0], r[None, 0], xp)
+                            query_viewpoints[None, 0], representation[None, 0],
+                            xp)
                         axis3.update(make_uint8(generated_x[0], num_bins_x))
 
                 printr(
@@ -275,11 +240,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     parser.add_argument(
-        "--with-visualization",
-        "-visualize",
-        action="store_true",
-        default=False)
-    parser.add_argument(
         "--training-iterations", "-iter", type=int, default=2 * 10**6)
     parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
     parser.add_argument(
@@ -290,13 +250,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
-    parser.add_argument("--channels-chz", "-cz", type=int, default=64)
-    parser.add_argument("--channels-u", "-cu", type=int, default=128)
-    parser.add_argument("--channels-map-x", "-cx", type=int, default=64)
+    parser.add_argument("--chz-channels", "-cz", type=int, default=64)
+    parser.add_argument(
+        "--inference-downsampler-channels", "-cix", type=int, default=12)
+    parser.add_argument(
+        "--generator-downsampler-channels", "-cgx", type=int, default=12)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(
         "--generator-share-prior", "-g-share-prior", action="store_true")
+    parser.add_argument(
+        "--generator-share-upsampler",
+        "-g-share-upsampler",
+        action="store_true")
     parser.add_argument(
         "--inference-share-core", "-i-share-core", action="store_true")
     parser.add_argument(
@@ -304,5 +270,10 @@ if __name__ == "__main__":
         "-i-share-posterior",
         action="store_true")
     parser.add_argument("--num-bits-x", "-bits", type=int, default=8)
+    parser.add_argument(
+        "--with-visualization",
+        "-visualize",
+        action="store_true",
+        default=False)
     args = parser.parse_args()
     main()

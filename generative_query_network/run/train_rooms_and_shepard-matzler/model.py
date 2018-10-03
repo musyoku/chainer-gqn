@@ -310,28 +310,31 @@ class Model():
 
         return z_t_params_array, u_t
 
-    def generate_image(self, query_viewpoints, r, xp):
-        batch_size = query_viewpoints.shape[0]
-        h0_g, c0_g, u0, _, _ = self.generate_initial_state(batch_size, xp)
-        hl_g = h0_g
-        cl_g = c0_g
-        ul_g = u0
-        for l in range(self.generation_steps):
-            core = self.get_generation_core(l)
-            prior = self.get_generation_prior(l)
-            zg_l = prior.sample_z(hl_g)
-            next_h_g, next_c_g, next_u_g = core.forward_onestep(
-                hl_g, cl_g, ul_g, zg_l, query_viewpoints, r)
+    def generate_image(self, v, r, xp):
+        batch_size = v.shape[0]
+        h_t_gen, c_t_gen, u_t, _, _ = self.generate_initial_state(
+            batch_size, xp)
 
-            hl_g = next_h_g
-            cl_g = next_c_g
-            ul_g = next_u_g
+        for t in range(self.generation_steps):
+            generation_core = self.get_generation_core(t)
+            generation_piror = self.get_generation_prior(t)
+            generation_upsampler = self.get_generation_upsampler(t)
 
-        x = self.generation_observation.compute_mean_x(ul_g)
-        return x.data
+            mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
+            z_t = cf.gaussian(mean_z_p, ln_var_z_p)
 
-    def reconstruct_image(self, query_images, query_viewpoints, r, xp):
-        batch_size = query_viewpoints.shape[0]
+            downsampled_u = self.generation_downsampler(u_t)
+            h_next_gen, c_next_gen = generation_core.forward_onestep(
+                h_t_gen, c_t_gen, z_t, v, r, downsampled_u)
+
+            u_t = u_t + generation_upsampler(h_next_gen)
+            h_t_gen = h_next_gen
+            c_t_gen = c_next_gen
+
+        return u_t.data
+
+    def reconstruct_image(self, query_images, v, r, xp):
+        batch_size = v.shape[0]
         h0_g, c0_g, u0, h0_e, c0_e = self.generate_initial_state(
             batch_size, xp)
 
@@ -349,12 +352,12 @@ class Model():
             generation_core = self.get_generation_core(l)
 
             he_next, ce_next = inference_core.forward_onestep(
-                hl_g, hl_e, cl_e, xq, query_viewpoints, r)
+                hl_g, hl_e, cl_e, xq, v, r)
 
             ze_l = inference_posterior.sample_z(hl_e)
 
             hg_next, cg_next, ue_next = generation_core.forward_onestep(
-                hl_g, cl_g, ul_e, ze_l, query_viewpoints, r)
+                hl_g, cl_g, ul_e, ze_l, v, r)
 
             hl_g = hg_next
             cl_g = cg_next
