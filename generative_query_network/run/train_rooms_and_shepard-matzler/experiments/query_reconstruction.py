@@ -88,7 +88,7 @@ def main():
                         images[:, :num_views], viewpoints[:, :num_views])
                 else:
                     r = np.zeros(
-                        (args.batch_size, hyperparams.channels_r) +
+                        (args.batch_size, hyperparams.representation_channels) +
                         hyperparams.chrz_size,
                         dtype="float32")
                     r = to_gpu(r)

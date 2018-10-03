@@ -78,8 +78,8 @@ def main():
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.pixel_n = args.pixel_n
-    hyperparams.channels_chz = args.channels_chz
-    hyperparams.generator_channels_u = args.channels_u
+    hyperparams.chz_channels = args.chz_channels
+    hyperparams.generatorepresentation_channels_u = args.channels_u
     hyperparams.inference_channels_map_x = args.channels_map_x
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
@@ -152,7 +152,7 @@ def main():
                         images[:, :num_views], viewpoints[:, :num_views])
                 else:
                     r = xp.zeros(
-                        (args.batch_size, hyperparams.channels_r) +
+                        (args.batch_size, hyperparams.representation_channels) +
                         hyperparams.chrz_size,
                         dtype="float32")
                     r = chainer.Variable(r)

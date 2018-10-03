@@ -8,19 +8,21 @@ class HyperParameters():
     def __init__(self, snapshot_directory=None):
         self.image_size = (64, 64)
         self.chrz_size = (16, 16)  # needs to be 1/4 of image_size
-        self.channels_r = 256
-        self.channels_chz = 64
-        self.inference_channels_map_x = 64
+        self.chz_channels = 64
         self.inference_share_core = False
         self.inference_share_posterior = False
+        self.inference_downsampler_channels = 12
         self.generator_generation_steps = 12
         self.generator_channels_u = 128
         self.generator_share_core = False
         self.generator_share_prior = False
+        self.generator_share_upsampler = False
+        self.generator_downsampler_channels = 12
         self.pixel_sigma_i = 2.0
         self.pixel_sigma_f = 0.7
         self.pixel_n = 2 * 1e5
         self.representation_architecture = "tower"
+        self.representation_channels = 256
 
         if snapshot_directory is not None:
             json_path = os.path.join(snapshot_directory, self.filename)

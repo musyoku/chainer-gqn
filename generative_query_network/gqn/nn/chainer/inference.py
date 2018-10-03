@@ -9,39 +9,40 @@ from chainer.initializers import HeNormal
 
 
 class Core(chainer.Chain):
-    def __init__(self, channels_chz):
+    def __init__(self, chz_channels):
         super().__init__()
         with self.init_scope():
             self.lstm_tanh = nn.Convolution2D(
                 None,
-                channels_chz,
+                chz_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
             self.lstm_i = nn.Convolution2D(
                 None,
-                channels_chz,
+                chz_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
             self.lstm_f = nn.Convolution2D(
                 None,
-                channels_chz,
+                chz_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
             self.lstm_o = nn.Convolution2D(
                 None,
-                channels_chz,
+                chz_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
 
-    def forward_onestep(self, prev_hg, prev_he, prev_ce, x, v, r):
+    def forward_onestep(self, prev_hg, prev_he, prev_ce, downsampled_x,
+                        downsampled_diff_xu, v, r):
         xp = cuda.get_array_module(v)
         broadcast_shape = (
             prev_he.shape[0],
@@ -50,147 +51,39 @@ class Core(chainer.Chain):
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        lstm_in = cf.concat((prev_he, prev_hg, x, v, r), axis=1)
-        forget_gate = cf.sigmoid(self.lstm_f(lstm_in))
-        input_gate = cf.sigmoid(self.lstm_i(lstm_in))
+        lstm_in = cf.concat(
+            (prev_he, prev_hg, downsampled_x, downsampled_diff_xu, v, r),
+            axis=1)
+        lstm_in_peephole = cf.concat((lstm_in, prev_ce), axis=1)
+        forget_gate = cf.sigmoid(self.lstm_f(lstm_in_peephole))
+        input_gate = cf.sigmoid(self.lstm_i(lstm_in_peephole))
         next_c = forget_gate * prev_ce + input_gate * cf.tanh(
             self.lstm_tanh(lstm_in))
-        next_h = cf.sigmoid(self.lstm_o(lstm_in)) * cf.tanh(next_c)
+        lstm_in_peephole = cf.concat((lstm_in, next_c), axis=1)
+        output_gate = cf.sigmoid(self.lstm_o(lstm_in_peephole))
+        next_h = output_gate * cf.tanh(next_c)
         return next_h, next_c
 
 
 class Posterior(chainer.Chain):
     def __init__(self, channels_z):
         super().__init__()
+        self.channels_z = channels_z
         with self.init_scope():
-            self.mean_z = nn.Convolution2D(
+            self.conv = nn.Convolution2D(
                 None,
-                channels_z,
-                ksize=5,
-                stride=1,
-                pad=2,
-                initialW=HeNormal(0.1))
-            self.ln_var_z = nn.Convolution2D(
-                None,
-                channels_z,
+                channels_z * 2,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
 
-    def compute_mean_z(self, h):
-        return self.mean_z(h)
-
-    def compute_ln_var_z(self, h):
-        return self.ln_var_z(h)
+    def compute_parameter(self, h):
+        param = self.conv(h)
+        mean = param[:, :self.channels_z]
+        ln_var = param[:, self.channels_z:]
+        return mean, ln_var
 
     def sample_z(self, h):
-        mean = self.compute_mean_z(h)
-        ln_var = self.compute_ln_var_z(h)
+        mean, ln_var = self.compute_parameter(h)
         return cf.gaussian(mean, ln_var)
-
-
-class _Downsampler(chainer.Chain):
-    def __init__(self, channels):
-        super().__init__()
-        with self.init_scope():
-            self.conv_1 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=2,
-                stride=2,
-                pad=0,
-                initialW=HeNormal(0.1))
-            self.conv_2 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=3,
-                pad=1,
-                stride=1,
-                initialW=HeNormal(0.1))
-            self.conv_3 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=2,
-                stride=2,
-                pad=0,
-                initialW=HeNormal(0.1))
-
-    def downsample(self, x):
-        x = cf.relu(self.conv_1(x))
-        x = cf.relu(self.conv_2(x))
-        x = self.conv_3(x)
-        return x
-
-
-class Downsampler(chainer.Chain):
-    def __init__(self, channels):
-        super().__init__()
-        with self.init_scope():
-            self.conv1_1 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=2,
-                pad=0,
-                stride=2,
-                initialW=HeNormal(0.1))
-            self.conv1_2 = nn.Convolution2D(
-                None,
-                channels // 2,
-                ksize=3,
-                pad=1,
-                stride=1,
-                initialW=HeNormal(0.1))
-            self.conv1_res = nn.Convolution2D(
-                None,
-                channels,
-                ksize=2,
-                pad=0,
-                stride=2,
-                initialW=HeNormal(0.1))
-            self.conv1_3 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=2,
-                pad=0,
-                stride=2,
-                initialW=HeNormal(0.1))
-            self.conv2_1 = nn.Convolution2D(
-                None,
-                channels // 2,
-                ksize=3,
-                pad=1,
-                stride=1,
-                initialW=HeNormal(0.1))
-            self.conv2_2 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=3,
-                pad=1,
-                stride=1,
-                initialW=HeNormal(0.1))
-            self.conv2_res = nn.Convolution2D(
-                None,
-                channels,
-                ksize=3,
-                pad=1,
-                stride=1,
-                initialW=HeNormal(0.1))
-            self.conv2_3 = nn.Convolution2D(
-                None,
-                channels,
-                ksize=1,
-                pad=0,
-                stride=1,
-                initialW=HeNormal(0.1))
-
-    def downsample(self, x):
-        resnet_in = cf.relu(self.conv1_1(x))
-        residual = cf.relu(self.conv1_res(resnet_in))
-        out = cf.relu(self.conv1_2(resnet_in))
-        resnet_in = cf.relu(self.conv1_3(out)) + residual
-        residual = cf.relu(self.conv2_res(resnet_in))
-        out = cf.relu(self.conv2_1(resnet_in))
-        out = cf.relu(self.conv2_2(out)) + residual
-        out = self.conv2_3(out)
-        return out

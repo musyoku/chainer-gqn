@@ -116,7 +116,7 @@ def main():
                 r = xp.zeros(
                     (
                         args.num_generation,
-                        hyperparams.channels_r,
+                        hyperparams.representation_channels,
                     ) + hyperparams.chrz_size,
                     dtype="float32")
                 total_frames = 50

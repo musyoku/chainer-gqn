@@ -20,19 +20,19 @@ class Model():
         self.hyperparams = hyperparams
         self.parameters = chainer.ChainList()
 
-        self.generation_cores, self.generation_priors, self.generation_observation = self.build_generation_network(
+        self.generation_cores, self.generation_priors, self.generation_downsampler, self.generation_upsamplers = self.build_generation_network(
             generation_steps=self.generation_steps,
-            channels_chz=hyperparams.channels_chz,
-            channels_u=hyperparams.generator_channels_u)
+            chz_channels=hyperparams.chz_channels,
+            downsampler_channels=hyperparams.generator_downsampler_channels)
 
-        self.inference_cores, self.inference_posteriors, self.inference_downsampler = self.build_inference_network(
+        self.inference_cores, self.inference_posteriors, self.inference_downsampler_x, self.inference_downsampler_diff_xu = self.build_inference_network(
             generation_steps=self.generation_steps,
-            channels_chz=hyperparams.channels_chz,
-            channels_map_x=hyperparams.inference_channels_map_x)
+            chz_channels=hyperparams.chz_channels,
+            downsampler_channels=hyperparams.inference_downsampler_channels)
 
         self.representation_network = self.build_representation_network(
             architecture=hyperparams.representation_architecture,
-            channels_r=hyperparams.channels_r)
+            r_channels=hyperparams.representation_channels)
 
         if snapshot_directory:
             try:
@@ -43,64 +43,76 @@ class Model():
             except Exception as error:
                 print(error)
 
-    def build_generation_network(self, generation_steps, channels_chz,
-                                 channels_u):
-        cores = []
-        priors = []
+    def build_generation_network(self, generation_steps, chz_channels,
+                                 downsampler_channels):
+        core_array = []
+        prior_array = []
+        upsampler_h_u_array = []
         with self.parameters.init_scope():
             # LSTM core
             num_cores = 1 if self.hyperparams.generator_share_core else generation_steps
             for _ in range(num_cores):
-                core = gqn.nn.chainer.generator.Core(
-                    channels_chz=channels_chz, channels_u=channels_u)
-                cores.append(core)
+                core = gqn.nn.chainer.generator.Core(chz_channels=chz_channels)
+                core_array.append(core)
                 self.parameters.append(core)
 
             # z prior sampler
             num_priors = 1 if self.hyperparams.generator_share_prior else generation_steps
-            for t in range(num_priors):
-                prior = gqn.nn.chainer.generator.Prior(channels_z=channels_chz)
-                priors.append(prior)
+            for _ in range(num_priors):
+                prior = gqn.nn.chainer.generator.Prior(channels_z=chz_channels)
+                prior_array.append(prior)
                 self.parameters.append(prior)
 
-            # observation sampler
-            observation_distribution = gqn.nn.chainer.generator.ObservationDistribution(
-            )
-            self.parameters.append(observation_distribution)
+            # x downsampler
+            downsampler_x_h = gqn.nn.chainer.downsampler.SingleConvDownsampler(
+                channels=downsampler_channels)
+            self.parameters.append(downsampler_x_h)
 
-        return cores, priors, observation_distribution
+            # upsampler (h -> u)
+            num_upsamplers = 1 if self.hyperparams.generator_share_upsampler else generation_steps
+            scale = 8
+            for _ in range(num_upsamplers):
+                upsampler = gqn.nn.chainer.upsampler.SubPixelConvolutionUpsampler(
+                    channels=3 * scale**2, scale=scale)
+                upsampler_h_u_array.append(upsampler)
+                self.parameters.append(upsampler)
 
-    def build_inference_network(self, generation_steps, channels_chz,
-                                channels_map_x):
-        cores = []
-        posteriors = []
+        return core_array, prior_array, downsampler_x_h, upsampler_h_u_array
+
+    def build_inference_network(self, generation_steps, chz_channels,
+                                downsampler_channels):
+        core_array = []
+        posterior_array = []
         with self.parameters.init_scope():
             num_cores = 1 if self.hyperparams.inference_share_core else generation_steps
             for t in range(num_cores):
                 # LSTM core
-                core = gqn.nn.chainer.inference.Core(channels_chz=channels_chz)
-                cores.append(core)
+                core = gqn.nn.chainer.inference.Core(chz_channels=chz_channels)
+                core_array.append(core)
                 self.parameters.append(core)
 
             # z posterior sampler
             num_posteriors = 1 if self.hyperparams.inference_share_posterior else generation_steps
             for t in range(num_posteriors):
                 posterior = gqn.nn.chainer.inference.Posterior(
-                    channels_z=channels_chz)
-                posteriors.append(posterior)
+                    channels_z=chz_channels)
+                posterior_array.append(posterior)
                 self.parameters.append(posterior)
 
             # x downsampler
-            downsampler = gqn.nn.chainer.inference.Downsampler(
-                channels=channels_map_x)
-            self.parameters.append(downsampler)
+            downsampler_x_h = gqn.nn.chainer.downsampler.SingleConvDownsampler(
+                channels=downsampler_channels)
+            downsampler_diff_xu_h = gqn.nn.chainer.downsampler.SingleConvDownsampler(
+                channels=downsampler_channels)
+            self.parameters.append(downsampler_x_h)
+            self.parameters.append(downsampler_diff_xu_h)
 
-        return cores, posteriors, downsampler
+        return core_array, posterior_array, downsampler_x_h, downsampler_diff_xu_h
 
-    def build_representation_network(self, architecture, channels_r):
+    def build_representation_network(self, architecture, r_channels):
         if architecture == "tower":
             layer = gqn.nn.chainer.representation.TowerNetwork(
-                channels_r=channels_r)
+                r_channels=r_channels)
             with self.parameters.init_scope():
                 self.parameters.append(layer)
             return layer
@@ -127,37 +139,36 @@ class Model():
             os.path.join(path, tmp_filename), os.path.join(path, filename))
 
     def generate_initial_state(self, batch_size, xp):
-        h0_g = xp.zeros(
+        initial_h_gen = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.channels_chz,
+                self.hyperparams.chz_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
-        c0_g = xp.zeros(
+        initial_c_gen = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.channels_chz,
+                self.hyperparams.chz_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
-        u0 = xp.zeros(
+        initial_u = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.generator_channels_u,
-            ) + self.hyperparams.image_size,
-            dtype="float32")
-        h0_e = xp.zeros(
+                3,
+            ) + self.hyperparams.image_size, dtype="float32")
+        initial_h_enc = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.channels_chz,
+                self.hyperparams.chz_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
-        c0_e = xp.zeros(
+        initial_c_enc = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.channels_chz,
+                self.hyperparams.chz_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
-        return h0_g, c0_g, u0, h0_e, c0_e
+        return initial_h_gen, initial_c_gen, initial_u, initial_h_enc, initial_c_enc
 
     def get_generation_core(self, l):
         if self.hyperparams.generator_share_core:
@@ -168,6 +179,11 @@ class Model():
         if self.hyperparams.generator_share_prior:
             return self.generation_priors[0]
         return self.generation_priors[l]
+
+    def get_generation_upsampler(self, t):
+        if self.hyperparams.generator_share_upsampler:
+            return self.generation_upsamplers[0]
+        return self.generation_upsamplers[t]
 
     def get_inference_core(self, l):
         if self.hyperparams.inference_share_core:
@@ -191,7 +207,7 @@ class Model():
         cl_gen = c0_gen
         ul_enc = u_0
 
-        xq = self.inference_downsampler.downsample(query_images)
+        xq = self.inference_downsampler(x)
 
         for l in range(self.generation_steps):
             inference_core = self.get_inference_core(l)
@@ -200,7 +216,7 @@ class Model():
             generation_piror = self.get_generation_prior(l)
 
             h_next_enc, c_next_enc = inference_core.forward_onestep(
-                hl_gen, hl_enc, cl_enc, xq, query_viewpoints, r)
+                hl_gen, hl_enc, cl_enc, xq, v, r)
 
             mean_z_q = inference_posterior.compute_mean_z(hl_enc)
             ln_var_z_q = inference_posterior.compute_ln_var_z(hl_enc)
@@ -210,7 +226,7 @@ class Model():
             ln_var_z_p = generation_piror.compute_ln_var_z(hl_gen)
 
             h_next_gen, c_next_gen, u_next_enc = generation_core.forward_onestep(
-                hl_gen, cl_gen, ul_enc, ze_l, query_viewpoints, r)
+                hl_gen, cl_gen, ul_enc, ze_l, v, r)
 
             kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                 mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
@@ -248,6 +264,52 @@ class Model():
 
         return r
 
+    def sample_z_and_x_params_from_posterior(self, x, v, r):
+        batch_size = x.shape[0]
+        xp = cuda.get_array_module(x)
+
+        h_t_gen, c_t_gen, initial_u, h_t_enc, c_t_enc = self.generate_initial_state(
+            batch_size, xp)
+        u_t = chainer.Variable(initial_u)
+        downsampled_x = self.inference_downsampler_x(x)
+
+        z_t_params_array = []
+
+        for t in range(self.generation_steps):
+            inference_core = self.get_inference_core(t)
+            inference_posterior = self.get_inference_posterior(t)
+            generation_core = self.get_generation_core(t)
+            generation_piror = self.get_generation_prior(t)
+            generation_upsampler = self.get_generation_upsampler(t)
+
+            diff_xu = x - u_t
+            downsampled_diff_xr = self.inference_downsampler_diff_xu(diff_xu)
+
+            h_next_enc, c_next_enc = inference_core.forward_onestep(
+                h_t_gen, h_t_enc, c_t_enc, downsampled_x, downsampled_diff_xr,
+                v, r)
+
+            mean_z_q, ln_var_z_q = inference_posterior.compute_parameter(
+                h_t_enc)
+            z_t = cf.gaussian(mean_z_q, ln_var_z_q)
+
+            mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
+
+            downsampled_u = self.generation_downsampler(u_t)
+            h_next_gen, c_next_gen = generation_core.forward_onestep(
+                h_t_gen, c_t_gen, z_t, v, r, downsampled_u)
+
+            z_t_params_array.append((mean_z_q, ln_var_z_q, mean_z_p,
+                                     ln_var_z_p))
+
+            u_t = u_t + generation_upsampler(h_next_gen)
+            h_t_gen = h_next_gen
+            c_t_gen = c_next_gen
+            h_t_enc = h_next_enc
+            c_t_enc = c_next_enc
+
+        return z_t_params_array, u_t
+
     def generate_image(self, query_viewpoints, r, xp):
         batch_size = query_viewpoints.shape[0]
         h0_g, c0_g, u0, _, _ = self.generate_initial_state(batch_size, xp)
@@ -279,7 +341,7 @@ class Model():
         cl_g = c0_g
         ul_e = u0
 
-        xq = self.inference_downsampler.downsample(query_images)
+        xq = self.inference_downsampler(query_images)
 
         for l in range(self.generation_steps):
             inference_core = self.get_inference_core(l)
