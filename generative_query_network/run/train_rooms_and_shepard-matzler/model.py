@@ -302,6 +302,7 @@ class Model():
             z_t_params_array.append((mean_z_q, ln_var_z_q, mean_z_p,
                                      ln_var_z_p))
 
+
             u_t = u_t + generation_upsampler(h_next_gen)
             h_t_gen = h_next_gen
             c_t_gen = c_next_gen

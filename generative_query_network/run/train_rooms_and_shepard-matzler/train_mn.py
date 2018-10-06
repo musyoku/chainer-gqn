@@ -78,6 +78,7 @@ def main():
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
     hyperparams.chz_channels = args.chz_channels
+    hyperparams.representation_channels = args.representation_channels
     hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
@@ -245,6 +246,8 @@ if __name__ == "__main__":
         "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument("--chz-channels", "-cz", type=int, default=64)
+    parser.add_argument(
+        "--representation-channels", "-cr", type=int, default=256)
     parser.add_argument(
         "--inference-downsampler-channels", "-cix", type=int, default=12)
     parser.add_argument(

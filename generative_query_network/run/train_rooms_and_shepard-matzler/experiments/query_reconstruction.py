@@ -22,7 +22,6 @@ def make_uint8(image):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
-    image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
 
@@ -36,6 +35,15 @@ def to_cpu(array):
     if args.gpu_device >= 0:
         return cuda.to_cpu(array)
     return array
+
+
+def preprocess(image, num_bits_x):
+    image = (image + 1.0) / 2.0 * 255
+    num_bins_x = 2**num_bits_x
+    if num_bits_x < 8:
+        image = np.floor(image / (2**(8 - num_bits_x)))
+    image = image / num_bins_x
+    return image
 
 
 def main():
@@ -76,6 +84,9 @@ def main():
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
+                images = preprocess(images, 8)
+                images += np.random.uniform(
+                    0, 1.0 / 256, size=images.shape)
 
                 total_views = images.shape[1]
 
@@ -88,8 +99,8 @@ def main():
                         images[:, :num_views], viewpoints[:, :num_views])
                 else:
                     r = np.zeros(
-                        (args.batch_size, hyperparams.representation_channels) +
-                        hyperparams.chrz_size,
+                        (args.batch_size, hyperparams.representation_channels)
+                        + hyperparams.chrz_size,
                         dtype="float32")
                     r = to_gpu(r)
 

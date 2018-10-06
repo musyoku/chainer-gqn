@@ -108,6 +108,8 @@ def main():
         plot.show()
 
     sigma_t = hyperparams.pixel_sigma_i
+    noise_mean = xp.zeros(
+        (args.batch_size, 3) + hyperparams.image_size, dtype="float32")
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
         sigma_t**2,
@@ -174,8 +176,10 @@ def main():
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
                     loss_kld += cf.sum(kld)
 
+                u_noise = u_final + cf.gaussian(noise_mean, pixel_ln_var)
+
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, u_final, pixel_var, pixel_ln_var)
+                    query_images, u_noise, pixel_var, pixel_ln_var)
                 loss_mse = cf.mean_squared_error(u_final, query_images)
                 loss_nll = cf.sum(negative_log_likelihood)
 

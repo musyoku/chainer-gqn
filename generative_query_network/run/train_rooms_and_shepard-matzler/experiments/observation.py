@@ -23,7 +23,6 @@ def make_uint8(image):
     if (image.shape[0] == 3):
         image = image.transpose(1, 2, 0)
     image = to_cpu(image)
-    image = (image + 1) * 0.5
     return np.uint8(np.clip(image * 255, 0, 255))
 
 
@@ -39,9 +38,19 @@ def to_cpu(array):
     return array
 
 
+def preprocess(image, num_bits_x):
+    image = (image + 1.0) / 2.0 * 255
+    num_bins_x = 2**num_bits_x
+    if num_bits_x < 8:
+        image = np.floor(image / (2**(8 - num_bits_x)))
+    image = image / num_bins_x
+    return image
+
+
 def generate_random_query_viewpoint(ratio, xp):
     rad = math.pi * 2 * ratio
-    eye = (6.0 * math.cos(rad), 6.0 * math.sin(math.pi / 4), 6.0 * math.sin(rad))
+    eye = (6.0 * math.cos(rad), 6.0 * math.sin(math.pi / 4),
+           6.0 * math.sin(rad))
     center = (0, 0, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
@@ -96,7 +105,8 @@ def main():
     window.show()
 
     observed_images = xp.zeros(
-        (args.num_views_per_scene, 3) + hyperparams.image_size, dtype="float32")
+        (args.num_views_per_scene, 3) + hyperparams.image_size,
+        dtype="float32")
     observed_viewpoints = xp.zeros(
         (args.num_views_per_scene, 7), dtype="float32")
 
@@ -111,6 +121,8 @@ def main():
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3))
+                images = preprocess(images, 8)
+                images += np.random.uniform(0, 1.0 / 256, size=images.shape)
 
                 # generate images without observations
                 r = xp.zeros(
