@@ -41,8 +41,7 @@ class Core(chainer.Chain):
                 pad=2,
                 initialW=HeNormal(0.1))
 
-    def __call__(self, prev_hg, prev_cg, prev_z, v, r,
-                 downsampled_prev_reconstrution):
+    def __call__(self, prev_hg, prev_cg, prev_z, v, r):
         xp = cuda.get_array_module(v)
         broadcast_shape = (
             prev_hg.shape[0],
@@ -51,8 +50,7 @@ class Core(chainer.Chain):
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        lstm_in = cf.concat(
-            (prev_hg, v, r, prev_z, downsampled_prev_reconstrution), axis=1)
+        lstm_in = cf.concat((prev_hg, v, r, prev_z), axis=1)
         lstm_in_peephole = cf.concat((lstm_in, prev_cg), axis=1)
         forget_gate = cf.sigmoid(self.lstm_f(lstm_in_peephole))
         input_gate = cf.sigmoid(self.lstm_i(lstm_in_peephole))

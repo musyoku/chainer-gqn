@@ -303,10 +303,8 @@ class Model():
 
             mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
 
-            downsampled_reconstrution_t = self.generation_downsampler(
-                reconstruction_t)
-            h_next_gen, c_next_gen = generation_core(
-                h_t_gen, c_t_gen, z_t, v, r, downsampled_reconstrution_t)
+            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
+                                                     r)
 
             z_t_params_array.append((mean_z_q, ln_var_z_q, mean_z_p,
                                      ln_var_z_p))
@@ -341,10 +339,8 @@ class Model():
             mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
             z_t = cf.gaussian(mean_z_p, ln_var_z_p)
 
-            downsampled_reconstrution_t = self.generation_downsampler(
-                reconstruction_t)
-            h_next_gen, c_next_gen = generation_core(
-                h_t_gen, c_t_gen, z_t, v, r, downsampled_reconstrution_t)
+            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
+                                                     r)
 
             u_t = u_t + generation_upsampler(h_next_gen)
             h_t_gen = h_next_gen
