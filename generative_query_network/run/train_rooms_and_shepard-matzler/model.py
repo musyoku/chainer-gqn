@@ -22,7 +22,7 @@ class Model():
         self.hyperparams = hyperparams
         self.parameters = chainer.ChainList()
 
-        self.generation_cores, self.generation_priors, self.generation_downsampler, self.generation_upsamplers, self.generation_map_u_x = self.build_generation_network(
+        self.generation_cores, self.generation_priors, self.generation_upsamplers, self.generation_map_u_x = self.build_generation_network(
             generation_steps=self.generation_steps,
             chz_channels=hyperparams.chz_channels,
             downsampler_channels=hyperparams.generator_downsampler_channels,
@@ -66,11 +66,6 @@ class Model():
                 prior_array.append(prior)
                 self.parameters.append(prior)
 
-            # x downsampler
-            downsampler_x_h = gqn.nn.chainer.downsampler.SingleConvDownsampler(
-                channels=downsampler_channels)
-            self.parameters.append(downsampler_x_h)
-
             # upsampler (h -> u)
             num_upsamplers = 1 if self.hyperparams.generator_share_upsampler else generation_steps
             scale = 4
@@ -90,7 +85,7 @@ class Model():
                 initialW=HeNormal(0.1))
             self.parameters.append(map_u_x)
 
-        return core_array, prior_array, downsampler_x_h, upsampler_h_u_array, map_u_x
+        return core_array, prior_array, upsampler_h_u_array, map_u_x
 
     def build_inference_network(self, generation_steps, chz_channels,
                                 downsampler_channels):
