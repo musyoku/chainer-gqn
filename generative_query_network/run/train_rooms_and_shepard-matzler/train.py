@@ -75,6 +75,7 @@ def main():
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.generator_generation_steps = args.generation_steps
     hyperparams.generator_downsampler_channels = args.generator_downsampler_channels
+    hyperparams.generator_u_channels = args.u_channels
     hyperparams.generator_share_upsampler = args.generator_share_upsampler
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
@@ -145,7 +146,7 @@ def main():
 
                 total_views = images.shape[1]
 
-                # sample number of views
+                # Sample number of views
                 num_views = random.choice(range(total_views + 1))
                 query_index = random.choice(range(total_views))
 
@@ -162,38 +163,47 @@ def main():
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
 
-                # transfer to gpu
+                # Transfer to gpu
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
-                loss_kld = 0
-                z_t_param_array, u_final = model.sample_z_and_x_params_from_posterior(
+                z_t_param_array, mean_x, reconstrution_t_array = model.sample_z_and_x_params_from_posterior(
                     query_images, query_viewpoints, representation)
 
+                # Compute loss
+                ## KL Divergence
+                loss_kld = 0
                 for params in z_t_param_array:
                     mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
                     kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
                     loss_kld += cf.sum(kld)
 
-                u_noise = u_final + cf.gaussian(noise_mean, pixel_ln_var)
+                # Optional
+                loss_sse = 0
+                for reconstrution_t in reconstrution_t_array:
+                    loss_sse += cf.sum(
+                        cf.squared_error(reconstrution_t, query_images))
 
+                # Negative log-likelihood of generated image
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, u_noise, pixel_var, pixel_ln_var)
-                loss_mse = cf.mean_squared_error(u_final, query_images)
+                    query_images, mean_x, pixel_var, pixel_ln_var)
                 loss_nll = cf.sum(negative_log_likelihood)
 
+                # Calculate the average loss value
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
                 loss_kld /= args.batch_size
-                loss = loss_nll + loss_kld
+                loss_sse /= args.batch_size
+                loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
 
                 model.cleargrads()
                 loss.backward()
                 optimizer.update(current_training_step)
 
+                # Visualize
                 if args.with_visualization and plot.closed() is False:
                     axis1.update(make_uint8(query_images[0], num_bins_x))
-                    axis2.update(make_uint8(u_final.data[0], num_bins_x))
+                    axis2.update(make_uint8(mean_x.data[0], num_bins_x))
 
                     with chainer.no_backprop_mode():
                         generated_x = model.generate_image(
@@ -203,11 +213,14 @@ def main():
 
                 printr(
                     "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
-                    format(iteration + 1, subset_index + 1, len(dataset),
-                           batch_index + 1, len(iterator),
-                           float(loss_nll.data) / num_pixels,
-                           float(loss_mse.data), float(loss_kld.data),
-                           optimizer.learning_rate, sigma_t))
+                    format(
+                        iteration + 1, subset_index + 1, len(dataset),
+                        batch_index + 1, len(iterator),
+                        float(loss_nll.data) / num_pixels,
+                        float(loss_sse.data) / num_pixels /
+                        (hyperparams.generator_generation_steps - 1),
+                        float(
+                            loss_kld.data), optimizer.learning_rate, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -222,7 +235,8 @@ def main():
                 current_training_step += 1
                 mean_kld += float(loss_kld.data)
                 mean_nll += float(loss_nll.data)
-                mean_mse += float(loss_mse.data)
+                mean_mse += float(loss_sse.data) / num_pixels / (
+                    hyperparams.generator_generation_steps - 1)
 
             model.serialize(args.snapshot_directory)
 
@@ -254,11 +268,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
+    parser.add_argument("--loss-alpha", "-lalpha", type=float, default=1.0)
     parser.add_argument("--chz-channels", "-cz", type=int, default=64)
+    parser.add_argument("--u-channels", "-cu", type=int, default=64)
     parser.add_argument(
-        "--inference-downsampler-channels", "-cix", type=int, default=12)
+        "--inference-downsampler-channels", "-cix", type=int, default=32)
     parser.add_argument(
-        "--generator-downsampler-channels", "-cgx", type=int, default=12)
+        "--generator-downsampler-channels", "-cgx", type=int, default=32)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(

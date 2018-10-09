@@ -65,7 +65,7 @@ class TowerNetwork(chainer.Chain):
                 stride=1,
                 initialW=HeNormal(0.1))
 
-    def compute_r(self, x, v):
+    def __call__(self, x, v):
         resnet_in = cf.relu(self.conv1_1(x))
         residual = cf.relu(self.conv1_res(resnet_in))
         out = cf.relu(self.conv1_2(resnet_in))

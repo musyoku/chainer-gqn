@@ -13,7 +13,7 @@ class HyperParameters():
         self.inference_share_posterior = False
         self.inference_downsampler_channels = 12
         self.generator_generation_steps = 12
-        self.generator_channels_u = 128
+        self.generator_u_channels = 64
         self.generator_share_core = False
         self.generator_share_prior = False
         self.generator_share_upsampler = False

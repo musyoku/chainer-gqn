@@ -41,8 +41,7 @@ class Core(chainer.Chain):
                 pad=2,
                 initialW=HeNormal(0.1))
 
-    def forward_onestep(self, prev_hg, prev_he, prev_ce, downsampled_x,
-                        downsampled_diff_xu, v, r):
+    def __call__(self, prev_hg, prev_he, prev_ce, downsampled_x, v, r):
         xp = cuda.get_array_module(v)
         broadcast_shape = (
             prev_he.shape[0],
@@ -51,9 +50,7 @@ class Core(chainer.Chain):
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        lstm_in = cf.concat(
-            (prev_he, prev_hg, downsampled_x, downsampled_diff_xu, v, r),
-            axis=1)
+        lstm_in = cf.concat((prev_he, prev_hg, downsampled_x, v, r), axis=1)
         lstm_in_peephole = cf.concat((lstm_in, prev_ce), axis=1)
         forget_gate = cf.sigmoid(self.lstm_f(lstm_in_peephole))
         input_gate = cf.sigmoid(self.lstm_i(lstm_in_peephole))
