@@ -79,6 +79,7 @@ def main():
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
     hyperparams.chz_channels = args.chz_channels
+    hyperparams.representation_channels = args.representation_channels
     hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
