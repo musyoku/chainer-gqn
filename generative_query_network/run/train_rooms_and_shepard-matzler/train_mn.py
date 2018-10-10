@@ -178,8 +178,8 @@ def main():
                     loss_kld += cf.sum(kld)
 
                 # Optional
+                loss_sse = chainer.Variable(xp.array(0, dtype=xp.float32))
                 if args.loss_alpha > 0:
-                    loss_sse = 0
                     for reconstrution_t in reconstrution_t_array:
                         loss_sse += cf.sum(
                             cf.squared_error(reconstrution_t, query_images))
