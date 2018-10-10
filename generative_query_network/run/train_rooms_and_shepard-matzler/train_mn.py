@@ -197,6 +197,7 @@ def main():
                 else:
                     loss_sse /= args.batch_size
                     loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
+                    
 
                 model.cleargrads()
                 loss.backward()
