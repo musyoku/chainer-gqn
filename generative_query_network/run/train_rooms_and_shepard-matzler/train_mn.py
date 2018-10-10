@@ -121,7 +121,9 @@ def main():
         mean_nll = 0
         mean_mse = 0
         total_batch = 0
-        subset_size_per_gpu = len(subset_indices) // comm.size + 1
+        subset_size_per_gpu = len(subset_indices) // comm.size
+        if len(subset_indices) % comm.size != 0:
+            subset_size_per_gpu += 1
         start_time = time.time()
 
         for subset_loop in range(subset_size_per_gpu):
@@ -208,8 +210,9 @@ def main():
                     printr(
                         "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
                         format(
-                            iteration + 1, subset_index + 1, len(dataset),
-                            batch_index + 1, len(iterator),
+                            iteration + 1, subset_loop + 1,
+                            subset_size_per_gpu, batch_index + 1,
+                            len(iterator),
                             float(loss_nll.data) / num_pixels,
                             float(loss_sse.data) / num_pixels /
                             (hyperparams.generator_generation_steps - 1),
