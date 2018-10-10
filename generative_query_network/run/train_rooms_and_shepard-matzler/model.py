@@ -108,7 +108,7 @@ class Model():
                 self.parameters.append(posterior)
 
             # x downsampler
-            downsampler_x_h = gqn.nn.chainer.downsampler.SingleConvDownsampler(
+            downsampler_x_h = gqn.nn.chainer.downsampler.Downsampler(
                 channels=downsampler_channels)
             self.parameters.append(downsampler_x_h)
 
