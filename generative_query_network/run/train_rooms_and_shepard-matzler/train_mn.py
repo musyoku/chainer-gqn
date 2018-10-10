@@ -192,7 +192,10 @@ def main():
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
                 loss_kld /= args.batch_size
                 loss_sse /= args.batch_size
-                loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
+                if args.loss_alpha <= 0:
+                    loss = loss_nll + loss_kld
+                else:
+                    loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
 
                 model.cleargrads()
                 loss.backward()
