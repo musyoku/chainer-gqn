@@ -178,10 +178,11 @@ def main():
                     loss_kld += cf.sum(kld)
 
                 # Optional
-                loss_sse = 0
-                for reconstrution_t in reconstrution_t_array:
-                    loss_sse += cf.sum(
-                        cf.squared_error(reconstrution_t, query_images))
+                if args.loss_alpha > 0:
+                    loss_sse = 0
+                    for reconstrution_t in reconstrution_t_array:
+                        loss_sse += cf.sum(
+                            cf.squared_error(reconstrution_t, query_images))
 
                 # Negative log-likelihood of generated image
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
@@ -191,10 +192,10 @@ def main():
                 # Calculate the average loss value
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
                 loss_kld /= args.batch_size
-                loss_sse /= args.batch_size
                 if args.loss_alpha <= 0:
                     loss = loss_nll + loss_kld
                 else:
+                    loss_sse /= args.batch_size
                     loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
 
                 model.cleargrads()
