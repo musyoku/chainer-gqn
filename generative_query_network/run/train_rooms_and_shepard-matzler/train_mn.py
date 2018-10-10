@@ -61,10 +61,10 @@ def main():
     xp = cupy
 
     # To avoid OpenMPI bug
-    multiprocessing.set_start_method("forkserver")
-    p = multiprocessing.Process(target=print, args=("", ))
-    p.start()
-    p.join()
+    # multiprocessing.set_start_method("forkserver")
+    # p = multiprocessing.Process(target=print, args=("", ))
+    # p.start()
+    # p.join()
 
     dataset = gqn.data.Dataset(args.dataset_directory)
 
@@ -197,7 +197,7 @@ def main():
                 else:
                     loss_sse /= args.batch_size
                     loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
-                    
+
 
                 model.cleargrads()
                 loss.backward()
