@@ -49,6 +49,13 @@ def preprocess(image, num_bits_x):
 
 
 def main():
+    # To avoid OpenMPI bug
+    multiprocessing.set_start_method("forkserver")
+    p = multiprocessing.Process(target=print, args=("", ))
+    p.start()
+    p.join()
+
+    
     try:
         os.mkdir(args.snapshot_directory)
     except:
@@ -60,11 +67,6 @@ def main():
     cuda.get_device(device).use()
     xp = cupy
 
-    # To avoid OpenMPI bug
-    # multiprocessing.set_start_method("forkserver")
-    # p = multiprocessing.Process(target=print, args=("", ))
-    # p.start()
-    # p.join()
 
     dataset = gqn.data.Dataset(args.dataset_directory)
 
