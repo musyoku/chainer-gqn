@@ -75,9 +75,11 @@ def main():
     hyperparams.generator_downsampler_channels = args.generator_downsampler_channels
     hyperparams.generator_u_channels = args.u_channels
     hyperparams.generator_share_upsampler = args.generator_share_upsampler
+    hyperparams.generator_lstm_peephole_enabled = args.generator_lstm_peephole_enabled
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
+    hyperparams.inference_lstm_peephole_enabled = args.inference_lstm_peephole_enabled
     hyperparams.chz_channels = args.chz_channels
     hyperparams.representation_channels = args.representation_channels
     hyperparams.pixel_n = args.pixel_n
@@ -198,7 +200,6 @@ def main():
                     loss_sse /= args.batch_size
                     loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
 
-
                 model.cleargrads()
                 loss.backward()
                 optimizer.update(current_training_step)
@@ -286,6 +287,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--inference-share-posterior",
         "-i-share-posterior",
+        action="store_true")
+    parser.add_argument(
+        "--inference-lstm-peephole-enabled",
+        "-i-peephole",
+        action="store_true")
+    parser.add_argument(
+        "--generator-lstm-peephole-enabled",
+        "-g-peephole",
         action="store_true")
     parser.add_argument("--num-bits-x", "-bits", type=int, default=8)
     args = parser.parse_args()

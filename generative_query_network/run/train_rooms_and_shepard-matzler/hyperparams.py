@@ -12,12 +12,14 @@ class HyperParameters():
         self.inference_share_core = False
         self.inference_share_posterior = False
         self.inference_downsampler_channels = 12
+        self.inference_lstm_peephole_enabled = False
         self.generator_generation_steps = 12
         self.generator_u_channels = 64
         self.generator_share_core = False
         self.generator_share_prior = False
         self.generator_share_upsampler = False
         self.generator_downsampler_channels = 12
+        self.generator_lstm_peephole_enabled = False
         self.pixel_sigma_i = 2.0
         self.pixel_sigma_f = 0.7
         self.pixel_n = 2 * 1e5

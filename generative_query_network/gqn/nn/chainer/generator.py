@@ -9,8 +9,9 @@ from chainer.initializers import HeNormal
 
 
 class Core(chainer.Chain):
-    def __init__(self, chz_channels):
+    def __init__(self, chz_channels, peephole_enabled=False):
         super().__init__()
+        self.peephole_enabled = peephole_enabled
         with self.init_scope():
             self.lstm_tanh = nn.Convolution2D(
                 None,
@@ -50,15 +51,24 @@ class Core(chainer.Chain):
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=broadcast_shape)
 
-        lstm_in = cf.concat((prev_hg, v, r, prev_z), axis=1)
-        lstm_in_peephole = cf.concat((lstm_in, prev_cg), axis=1)
-        forget_gate = cf.sigmoid(self.lstm_f(lstm_in_peephole))
-        input_gate = cf.sigmoid(self.lstm_i(lstm_in_peephole))
-        next_c = forget_gate * prev_cg + input_gate * cf.tanh(
-            self.lstm_tanh(lstm_in))
-        lstm_in_peephole = cf.concat((lstm_in, next_c), axis=1)
-        output_gate = cf.sigmoid(self.lstm_o(lstm_in_peephole))
-        next_h = output_gate * cf.tanh(next_c)
+        if self.peephole_enabled:
+            lstm_in = cf.concat((prev_hg, v, r, prev_z), axis=1)
+            lstm_in_peephole = cf.concat((lstm_in, prev_cg), axis=1)
+            forget_gate = cf.sigmoid(self.lstm_f(lstm_in_peephole))
+            input_gate = cf.sigmoid(self.lstm_i(lstm_in_peephole))
+            next_c = forget_gate * prev_cg + input_gate * cf.tanh(
+                self.lstm_tanh(lstm_in))
+            lstm_in_peephole = cf.concat((lstm_in, next_c), axis=1)
+            output_gate = cf.sigmoid(self.lstm_o(lstm_in_peephole))
+            next_h = output_gate * cf.tanh(next_c)
+        else:
+            lstm_in = cf.concat((prev_hg, v, r, prev_z), axis=1)
+            forget_gate = cf.sigmoid(self.lstm_f(lstm_in))
+            input_gate = cf.sigmoid(self.lstm_i(lstm_in))
+            next_c = forget_gate * prev_cg + input_gate * cf.tanh(
+                self.lstm_tanh(lstm_in))
+            output_gate = cf.sigmoid(self.lstm_o(lstm_in))
+            next_h = output_gate * cf.tanh(next_c)
 
         return next_h, next_c
 
