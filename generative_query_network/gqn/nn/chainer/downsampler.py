@@ -11,9 +11,9 @@ class Downsampler(chainer.Chain):
             self.conv = nn.Convolution2D(
                 None,
                 channels,
-                ksize=6,
+                ksize=4,
                 stride=4,
-                pad=1,
+                pad=0,
                 initialW=HeNormal(0.1))
 
     def __call__(self, x):

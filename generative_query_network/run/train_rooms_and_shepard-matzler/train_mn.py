@@ -19,7 +19,7 @@ import gqn
 
 from hyperparams import HyperParameters
 from model import Model
-from optimizer import Optimizer
+from optimizer import AdamOptimizer, MomentumSGDOptimizer, RMSpropOptimizer
 
 
 def printr(string):
@@ -94,7 +94,7 @@ def main():
     model = Model(hyperparams, snapshot_directory=args.snapshot_directory)
     model.to_gpu()
 
-    optimizer = Optimizer(
+    optimizer = AdamOptimizer(
         model.parameters,
         communicator=comm,
         mu_i=args.initial_lr,
@@ -191,11 +191,14 @@ def main():
                     loss_kld += cf.sum(kld)
 
                 # Optional
-                loss_sse = chainer.Variable(xp.array(0, dtype=xp.float32))
-                if args.loss_alpha > 0:
+                if args.loss_alpha <= 0:
+                    loss_sse = 0
                     for reconstrution_t in reconstrution_t_array:
                         loss_sse += cf.sum(
                             cf.squared_error(reconstrution_t, query_images))
+                else:
+                    loss_sse = cf.squared_error(mean_x, query_images)
+                loss_sse /= args.batch_size
 
                 # Negative log-likelihood of generated image
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
@@ -208,25 +211,25 @@ def main():
                 if args.loss_alpha <= 0:
                     loss = loss_nll + loss_kld
                 else:
-                    loss_sse /= args.batch_size
                     loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
 
                 model.cleargrads()
                 loss.backward()
                 optimizer.update(current_training_step)
 
+                loss_nll = float(loss_nll.data) / num_pixels
+                loss_kld = float(loss_kld.data)
+                loss_sse = float(loss_sse.data) / num_pixels
+                if args.loss_alpha > 0:
+                    loss_sse /= (hyperparams.generator_generation_steps - 1)
+
                 if comm.rank == 0:
                     printr(
                         "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
-                        format(
-                            iteration + 1, subset_loop + 1,
-                            subset_size_per_gpu, batch_index + 1,
-                            len(iterator),
-                            float(loss_nll.data) / num_pixels,
-                            float(loss_sse.data) / num_pixels /
-                            (hyperparams.generator_generation_steps - 1),
-                            float(loss_kld.data), optimizer.learning_rate,
-                            sigma_t))
+                        format(iteration + 1, subset_loop + 1,
+                               subset_size_per_gpu, batch_index + 1,
+                               len(iterator), loss_nll, loss_sse, loss_kld,
+                               optimizer.learning_rate, sigma_t))
 
                 sf = hyperparams.pixel_sigma_f
                 si = hyperparams.pixel_sigma_i
@@ -240,10 +243,9 @@ def main():
                 total_batch += 1
                 current_training_step += comm.size
                 # current_training_step += 1
-                mean_kld += float(loss_kld.data)
-                mean_nll += float(loss_nll.data)
-                mean_mse += float(loss_sse.data) / num_pixels / (
-                    hyperparams.generator_generation_steps - 1)
+                mean_kld += loss_kld
+                mean_nll += loss_nll
+                mean_mse += loss_sse
 
             if comm.rank == 0:
                 model.serialize(args.snapshot_directory)
@@ -252,7 +254,7 @@ def main():
             elapsed_time = time.time() - start_time
             print(
                 "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
-                format(iteration + 1, mean_nll / total_batch / num_pixels,
+                format(iteration + 1, mean_nll / total_batch,
                        mean_mse / total_batch, mean_kld / total_batch,
                        optimizer.learning_rate, sigma_t, current_training_step,
                        elapsed_time / 60))

@@ -279,7 +279,7 @@ class Model():
 
         h_t_gen, c_t_gen, u_t, h_t_enc, c_t_enc = self.generate_initial_state(
             batch_size, xp)
-            
+
         downsampled_x = self.inference_downsampler_x(x)
 
         v_broadcast_shape = (
@@ -331,6 +331,14 @@ class Model():
         batch_size = v.shape[0]
         h_t_gen, c_t_gen, u_t, _, _ = self.generate_initial_state(
             batch_size, xp)
+
+        v_broadcast_shape = (
+            h_t_gen.shape[0],
+            v.shape[1],
+        ) + h_t_gen.shape[2:]
+        v = xp.reshape(v, v.shape + (1, 1))
+        v = xp.broadcast_to(v, shape=v_broadcast_shape)
+
         reconstruction_t = xp.zeros(
             (
                 u_t.shape[0],
