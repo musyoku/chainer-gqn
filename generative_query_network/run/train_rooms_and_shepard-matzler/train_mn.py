@@ -212,7 +212,7 @@ def main():
                 if args.loss_alpha <= 0:
                     loss = loss_nll + loss_kld
                 else:
-                    loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
+                    loss = loss_nll + loss_kld + loss_sse / scheduler.pixel_variance
 
                 model.cleargrads()
                 loss.backward()
