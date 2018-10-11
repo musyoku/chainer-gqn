@@ -152,6 +152,27 @@ def main():
 
                 total_views = images.shape[1]
 
+
+
+
+
+
+                total_views = 10
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+
                 # Sample observations
                 num_views = random.choice(range(total_views + 1))
                 observation_view_indices = list(range(total_views))
