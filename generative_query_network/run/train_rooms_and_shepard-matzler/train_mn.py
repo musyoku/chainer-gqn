@@ -20,6 +20,7 @@ import gqn
 from hyperparams import HyperParameters
 from model import Model
 from optimizer import AdamOptimizer, MomentumSGDOptimizer, RMSpropOptimizer
+from scheduler import Scheduler
 
 
 def printr(string):
@@ -102,14 +103,14 @@ def main():
     if comm.rank == 0:
         print(optimizer)
 
-    sigma_t = hyperparams.pixel_sigma_i
+    scheduler = Scheduler()
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
-        sigma_t**2,
+        scheduler.pixel_variance**2,
         dtype="float32")
     pixel_ln_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
-        math.log(sigma_t**2),
+        math.log(scheduler.pixel_variance**2),
         dtype="float32")
     num_pixels = hyperparams.image_size[0] * hyperparams.image_size[1] * 3
     num_bins_x = 2**args.num_bits_x
@@ -225,20 +226,15 @@ def main():
 
                 if comm.rank == 0:
                     printr(
-                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f}".
                         format(iteration + 1, subset_loop + 1,
                                subset_size_per_gpu, batch_index + 1,
                                len(iterator), loss_nll, loss_sse, loss_kld,
-                               optimizer.learning_rate, sigma_t))
+                               optimizer.learning_rate,
+                               scheduler.pixel_variance))
 
-                sf = hyperparams.pixel_sigma_f
-                si = hyperparams.pixel_sigma_i
-                sigma_t = max(
-                    sf + (si - sf) *
-                    (1.0 - current_training_step / hyperparams.pixel_n), sf)
-
-                pixel_var[...] = sigma_t**2
-                pixel_ln_var[...] = math.log(sigma_t**2)
+                pixel_var[...] = scheduler.pixel_variance**2
+                pixel_ln_var[...] = math.log(scheduler.pixel_variance**2)
 
                 total_batch += 1
                 current_training_step += comm.size
@@ -247,17 +243,19 @@ def main():
                 mean_nll += loss_nll
                 mean_mse += loss_sse
 
+                scheduler.step(current_training_step)
+
             if comm.rank == 0:
                 model.serialize(args.snapshot_directory)
 
         if comm.rank == 0:
             elapsed_time = time.time() - start_time
             print(
-                "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
+                "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - step: {} - elapsed_time: {:.3f} min".
                 format(iteration + 1, mean_nll / total_batch,
                        mean_mse / total_batch, mean_kld / total_batch,
-                       optimizer.learning_rate, sigma_t, current_training_step,
-                       elapsed_time / 60))
+                       optimizer.learning_rate, scheduler.pixel_variance,
+                       current_training_step, elapsed_time / 60))
             model.serialize(args.snapshot_directory)
 
 
