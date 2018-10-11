@@ -89,7 +89,7 @@ def main():
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
     if comm.rank == 0:
         hyperparams.save(args.snapshot_directory)
-        hyperparams.print()
+        print(hyperparams)
 
     model = Model(hyperparams, snapshot_directory=args.snapshot_directory)
     model.to_gpu()
@@ -100,7 +100,7 @@ def main():
         mu_i=args.initial_lr,
         mu_f=args.final_lr)
     if comm.rank == 0:
-        optimizer.print()
+        print(optimizer)
 
     sigma_t = hyperparams.pixel_sigma_i
     pixel_var = xp.full(

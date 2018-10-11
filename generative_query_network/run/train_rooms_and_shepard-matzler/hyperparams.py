@@ -47,8 +47,8 @@ class HyperParameters():
         with open(os.path.join(snapshot_directory, self.filename), "w") as f:
             json.dump(self.__dict__, f, indent=4, sort_keys=True)
 
-    def print(self):
+    def __str__(self):
         rows = []
         for key, value in self.__dict__.items():
             rows.append([key, value])
-        print(tabulate(rows))
+        return tabulate(rows)

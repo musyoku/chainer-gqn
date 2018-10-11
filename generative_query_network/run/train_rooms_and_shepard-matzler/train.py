@@ -85,7 +85,7 @@ def main():
     hyperparams.pixel_sigma_i = args.initial_pixel_sigma
     hyperparams.pixel_sigma_f = args.final_pixel_sigma
     hyperparams.save(args.snapshot_directory)
-    hyperparams.print()
+    print(hyperparams)
 
     model = Model(hyperparams, snapshot_directory=args.snapshot_directory)
     if using_gpu:
@@ -93,7 +93,7 @@ def main():
 
     optimizer = Optimizer(
         model.parameters, mu_i=args.initial_lr, mu_f=args.final_lr)
-    optimizer.print()
+    print(optimizer)
 
     if args.with_visualization:
         figure = gqn.imgplot.figure()

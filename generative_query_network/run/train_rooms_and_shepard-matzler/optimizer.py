@@ -15,7 +15,7 @@ class Optimizer:
             mu_f=5.0 * 1e-5,
             n=1.6 * 1e6,
             # Learning rate as used by the Adam algorithm
-            beta_1=0.9,
+            beta_1=0.5,
             beta_2=0.99,
             # Adam regularisation parameter
             eps=1e-8,
@@ -57,8 +57,8 @@ class Optimizer:
             self.optimizer.update()
         self.anneal_learning_rate(training_step)
 
-    def print(self):
+    def __str__(self):
         rows = []
         for key, value in self.__dict__.items():
             rows.append([key, value])
-        print(tabulate(rows))
+        return tabulate(rows)
