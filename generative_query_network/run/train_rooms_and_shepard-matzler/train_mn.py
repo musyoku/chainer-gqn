@@ -49,13 +49,14 @@ def preprocess(image, num_bits_x):
 
 
 def main():
+    ##############################################
     # To avoid OpenMPI bug
     multiprocessing.set_start_method("forkserver")
     p = multiprocessing.Process(target=print, args=("", ))
     p.start()
     p.join()
+    ##############################################
 
-    
     try:
         os.mkdir(args.snapshot_directory)
     except:
@@ -66,7 +67,6 @@ def main():
     print("device", device, "/", comm.size)
     cuda.get_device(device).use()
     xp = cupy
-
 
     dataset = gqn.data.Dataset(args.dataset_directory)
 
@@ -147,8 +147,11 @@ def main():
 
                 total_views = images.shape[1]
 
-                # sample number of views
+                # Sample number of views
                 num_views = random.choice(range(total_views + 1))
+                observation_view_indices = list(range(total_views))
+                random.shuffle(observation_view_indices)
+                observation_view_indices = observation_view_indices[:num_views]
                 query_index = random.choice(range(total_views))
 
                 if current_training_step == 0 and num_views == 0:
@@ -156,7 +159,8 @@ def main():
 
                 if num_views > 0:
                     representation = model.compute_observation_representation(
-                        images[:, :num_views], viewpoints[:, :num_views])
+                        images[:, observation_view_indices],
+                        viewpoints[:, observation_view_indices])
                 else:
                     representation = xp.zeros(
                         (args.batch_size, hyperparams.representation_channels)

@@ -148,11 +148,18 @@ def main():
 
                 # Sample number of views
                 num_views = random.choice(range(total_views + 1))
+                observation_view_indices = list(range(total_views))
+                random.shuffle(observation_view_indices)
+                observation_view_indices = observation_view_indices[:num_views]
                 query_index = random.choice(range(total_views))
+
+                if current_training_step == 0 and num_views == 0:
+                    num_views = 1  # avoid OpenMPI error
 
                 if num_views > 0:
                     representation = model.compute_observation_representation(
-                        images[:, :num_views], viewpoints[:, :num_views])
+                        images[:, observation_view_indices],
+                        viewpoints[:, observation_view_indices])
                 else:
                     representation = xp.zeros(
                         (args.batch_size, hyperparams.representation_channels)
