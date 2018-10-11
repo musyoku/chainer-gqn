@@ -191,13 +191,13 @@ def main():
                     loss_kld += cf.sum(kld)
 
                 # Optional
-                if args.loss_alpha <= 0:
+                if args.loss_alpha > 0:
                     loss_sse = 0
                     for reconstrution_t in reconstrution_t_array:
                         loss_sse += cf.sum(
                             cf.squared_error(reconstrution_t, query_images))
                 else:
-                    loss_sse = cf.squared_error(mean_x, query_images)
+                    loss_sse = cf.sum(cf.squared_error(mean_x, query_images))
                 loss_sse /= args.batch_size
 
                 # Negative log-likelihood of generated image
