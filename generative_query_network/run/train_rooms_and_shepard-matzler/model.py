@@ -258,7 +258,7 @@ class Model():
         viewpoints = viewpoints.reshape((batch_size * num_views, ) +
                                         viewpoints.shape[2:])
 
-        # transfer to gpu
+        # Transfer to gpu
         xp = self.parameters.xp
         if xp is cupy:
             images = cuda.to_gpu(images)
@@ -269,7 +269,7 @@ class Model():
         # (batch * views, channels, height, width) -> (batch, views, channels, height, width)
         r = r.reshape((batch_size, num_views) + r.shape[1:])
 
-        # sum element-wise across views
+        # Sum element-wise across views
         r = cf.sum(r, axis=1)
 
         return r

@@ -117,6 +117,10 @@ def main():
     random.seed(0)
     subset_indices = list(range(len(dataset.subset_filenames)))
 
+    representation_shape = (
+        args.batch_size,
+        hyperparams.representation_channels) + hyperparams.chrz_size
+
     current_training_step = 0
     for iteration in range(args.training_iterations):
         mean_kld = 0
@@ -147,12 +151,11 @@ def main():
 
                 total_views = images.shape[1]
 
-                # Sample number of views
+                # Sample observations
                 num_views = random.choice(range(total_views + 1))
                 observation_view_indices = list(range(total_views))
                 random.shuffle(observation_view_indices)
                 observation_view_indices = observation_view_indices[:num_views]
-                query_index = random.choice(range(total_views))
 
                 if current_training_step == 0 and num_views == 0:
                     num_views = 1  # avoid OpenMPI error
@@ -163,11 +166,11 @@ def main():
                         viewpoints[:, observation_view_indices])
                 else:
                     representation = xp.zeros(
-                        (args.batch_size, hyperparams.representation_channels)
-                        + hyperparams.chrz_size,
-                        dtype="float32")
+                        representation_shape, dtype="float32")
                     representation = chainer.Variable(representation)
 
+                # Sample query
+                query_index = random.choice(range(total_views))
                 query_images = images[:, query_index]
                 query_viewpoints = viewpoints[:, query_index]
 
