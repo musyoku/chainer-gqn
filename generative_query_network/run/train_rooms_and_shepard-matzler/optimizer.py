@@ -15,7 +15,7 @@ class Optimizer:
             mu_f=5.0 * 1e-5,
             n=1.6 * 1e6,
             # Learning rate as used by the Adam algorithm
-            beta_1=0.5,
+            beta_1=0.9,
             beta_2=0.99,
             # Adam regularisation parameter
             eps=1e-8,

@@ -164,8 +164,7 @@ class Model():
             (
                 batch_size,
                 3,
-            ) + self.hyperparams.image_size,
-            dtype="float32")
+            ) + self.hyperparams.image_size, dtype="float32")
         initial_h_enc = xp.zeros(
             (
                 batch_size,
@@ -280,7 +279,15 @@ class Model():
 
         h_t_gen, c_t_gen, u_t, h_t_enc, c_t_enc = self.generate_initial_state(
             batch_size, xp)
+            
         downsampled_x = self.inference_downsampler_x(x)
+
+        v_broadcast_shape = (
+            h_t_enc.shape[0],
+            v.shape[1],
+        ) + h_t_enc.shape[2:]
+        v = xp.reshape(v, v.shape + (1, 1))
+        v = xp.broadcast_to(v, shape=v_broadcast_shape)
 
         z_t_params_array = []
         reconstruction_t_array = []

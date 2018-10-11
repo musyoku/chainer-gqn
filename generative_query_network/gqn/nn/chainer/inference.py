@@ -43,14 +43,6 @@ class Core(chainer.Chain):
                 initialW=HeNormal(0.1))
 
     def __call__(self, prev_hg, prev_he, prev_ce, downsampled_x, v, r):
-        xp = cuda.get_array_module(v)
-        broadcast_shape = (
-            prev_he.shape[0],
-            v.shape[1],
-        ) + prev_he.shape[2:]
-        v = xp.reshape(v, v.shape + (1, 1))
-        v = xp.broadcast_to(v, shape=broadcast_shape)
-
         if self.peephole_enabled:
             lstm_in = cf.concat(
                 (prev_he, prev_hg, downsampled_x, v, r), axis=1)
