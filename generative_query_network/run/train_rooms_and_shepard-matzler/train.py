@@ -17,7 +17,8 @@ import gqn
 
 from hyperparams import HyperParameters
 from model import Model
-from optimizer import Optimizer
+from optimizer import AdamOptimizer
+from scheduler import Scheduler
 
 # def make_uint8(array):
 #     image = to_cpu(array.transpose(1, 2, 0))
@@ -91,7 +92,7 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    optimizer = Optimizer(
+    optimizer = AdamOptimizer(
         model.parameters, mu_i=args.initial_lr, mu_f=args.final_lr)
     print(optimizer)
 
@@ -108,16 +109,14 @@ def main():
             "Query image / Reconstructed image / Generated image")
         plot.show()
 
-    sigma_t = hyperparams.pixel_sigma_i
-    noise_mean = xp.zeros(
-        (args.batch_size, 3) + hyperparams.image_size, dtype="float32")
+    scheduler = Scheduler()
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
-        sigma_t**2,
+        scheduler.pixel_variance**2,
         dtype="float32")
     pixel_ln_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
-        math.log(sigma_t**2),
+        math.log(scheduler.pixel_variance**2),
         dtype="float32")
     num_pixels = hyperparams.image_size[0] * hyperparams.image_size[1] * 3
     num_bins_x = 2**args.num_bits_x
@@ -219,24 +218,19 @@ def main():
                         axis3.update(make_uint8(generated_x[0], num_bins_x))
 
                 printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f}".
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f}".
                     format(
                         iteration + 1, subset_index + 1, len(dataset),
                         batch_index + 1, len(iterator),
                         float(loss_nll.data) / num_pixels,
                         float(loss_sse.data) / num_pixels /
                         (hyperparams.generator_generation_steps - 1),
-                        float(
-                            loss_kld.data), optimizer.learning_rate, sigma_t))
+                        float(loss_kld.data), optimizer.learning_rate,
+                        scheduler.pixel_variance))
 
-                sf = hyperparams.pixel_sigma_f
-                si = hyperparams.pixel_sigma_i
-                sigma_t = max(
-                    sf + (si - sf) *
-                    (1.0 - current_training_step / hyperparams.pixel_n), sf)
-
-                pixel_var[...] = sigma_t**2
-                pixel_ln_var[...] = math.log(sigma_t**2)
+                scheduler.step(current_training_step)
+                pixel_var[...] = scheduler.pixel_variance**2
+                pixel_ln_var[...] = math.log(scheduler.pixel_variance**2)
 
                 total_batch += 1
                 current_training_step += 1
@@ -249,11 +243,11 @@ def main():
 
         elapsed_time = time.time() - start_time
         print(
-            "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - sigma_t: {:.6f} - step: {} - elapsed_time: {:.3f} min".
+            "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - step: {} - elapsed_time: {:.3f} min".
             format(iteration + 1, mean_nll / total_batch / num_pixels,
                    mean_mse / total_batch, mean_kld / total_batch,
-                   optimizer.learning_rate, sigma_t, current_training_step,
-                   elapsed_time / 60))
+                   optimizer.learning_rate, scheduler.pixel_variance,
+                   current_training_step, elapsed_time / 60))
 
 
 if __name__ == "__main__":

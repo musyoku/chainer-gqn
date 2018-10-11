@@ -171,7 +171,7 @@ def main():
 
 
 
-                
+
 
                 # Sample observations
                 num_views = random.choice(range(total_views + 1))
@@ -254,8 +254,6 @@ def main():
                                optimizer.learning_rate,
                                scheduler.pixel_variance))
 
-                pixel_var[...] = scheduler.pixel_variance**2
-                pixel_ln_var[...] = math.log(scheduler.pixel_variance**2)
 
                 total_batch += 1
                 current_training_step += comm.size
@@ -265,6 +263,8 @@ def main():
                 mean_mse += loss_sse
 
                 scheduler.step(current_training_step)
+                pixel_var[...] = scheduler.pixel_variance**2
+                pixel_ln_var[...] = math.log(scheduler.pixel_variance**2)
 
             if comm.rank == 0:
                 model.serialize(args.snapshot_directory)
