@@ -196,19 +196,19 @@ def main():
                     loss_sse = cf.sum(cf.squared_error(mean_x, query_images))
                 loss_sse /= args.batch_size
 
+
                 # Negative log-likelihood of generated image
-                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mean_x, pixel_var, pixel_ln_var)
-                loss_nll = cf.sum(negative_log_likelihood)
+                # negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                #     query_images, mean_x, pixel_var, pixel_ln_var)
+                loss_nll = cf.sum(cf.squared_error(mean_x, query_images))
 
                 # Calculate the average loss value
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
-                loss_kld /= args.batch_size
-                loss_sse /= args.batch_size
+                loss_kld = loss_kld * scheduler.pixel_variance / args.batch_size
                 if args.loss_alpha <= 0:
                     loss = loss_nll + loss_kld
                 else:
-                    loss = loss_nll + loss_kld + loss_sse / scheduler.pixel_variance
+                    loss = loss_nll + loss_kld + loss_sse
 
                 model.cleargrads()
                 loss.backward()

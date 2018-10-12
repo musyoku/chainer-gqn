@@ -152,26 +152,7 @@ def main():
 
                 total_views = images.shape[1]
 
-
-
-
-
-
                 total_views = 10
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
                 # Sample observations
                 num_views = random.choice(range(total_views + 1))
@@ -223,17 +204,17 @@ def main():
                 loss_sse /= args.batch_size
 
                 # Negative log-likelihood of generated image
-                negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
-                    query_images, mean_x, pixel_var, pixel_ln_var)
-                loss_nll = cf.sum(negative_log_likelihood)
+                # negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                #     query_images, mean_x, pixel_var, pixel_ln_var)
+                loss_nll = cf.sum(cf.squared_error(mean_x, query_images))
 
                 # Calculate the average loss value
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
-                loss_kld /= args.batch_size
+                loss_kld = loss_kld * scheduler.pixel_variance / args.batch_size
                 if args.loss_alpha <= 0:
                     loss = loss_nll + loss_kld
                 else:
-                    loss = loss_nll + loss_kld + loss_sse / scheduler.pixel_variance
+                    loss = loss_nll + loss_kld + loss_sse
 
                 model.cleargrads()
                 loss.backward()
@@ -253,7 +234,6 @@ def main():
                                len(iterator), loss_nll, loss_sse, loss_kld,
                                optimizer.learning_rate,
                                scheduler.pixel_variance))
-
 
                 total_batch += 1
                 current_training_step += comm.size
