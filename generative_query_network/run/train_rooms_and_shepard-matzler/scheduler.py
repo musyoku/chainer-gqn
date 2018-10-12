@@ -1,8 +1,11 @@
 class Scheduler:
     def __init__(self):
-        self.pixel_variance = 0.2
+        self.pixel_variance = 0.05
 
     def step(self, num_updates):
+        if num_updates < 50000:
+            self.pixel_variance = 0.05
+            return
         if num_updates < 100000:
             self.pixel_variance = 0.2
             return

@@ -4,7 +4,7 @@ import chainer.links as nn
 from chainer.initializers import HeNormal
 
 
-class Downsampler(chainer.Chain):
+class _Downsampler(chainer.Chain):
     def __init__(self, channels):
         super().__init__()
         with self.init_scope():
@@ -20,7 +20,7 @@ class Downsampler(chainer.Chain):
         return self.conv(x)
 
 
-class _Downsampler(chainer.Chain):
+class Downsampler(chainer.Chain):
     def __init__(self, channels):
         super().__init__()
         with self.init_scope():

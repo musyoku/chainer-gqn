@@ -72,24 +72,24 @@ class Model():
             for _ in range(num_upsamplers):
                 if True:
                     upsampler = gqn.nn.chainer.upsampler.DeconvolutionUpsampler(
-                        channels=3)
+                        channels=u_channels)
                 else:
                     upsampler = gqn.nn.chainer.upsampler.SubPixelConvolutionUpsampler(
-                        channels=3 * scale**2, scale=scale)
+                        channels=u_channels * scale**2, scale=scale)
                 upsampler_h_u_array.append(upsampler)
                 self.parameters.append(upsampler)
 
             # 1x1 conv (u -> x)
-            # map_u_x = nn.Convolution2D(
-            #     u_channels,
-            #     3,
-            #     ksize=1,
-            #     stride=1,
-            #     pad=0,
-            #     initialW=HeNormal(0.1))
-            # self.parameters.append(map_u_x)
+            map_u_x = nn.Convolution2D(
+                u_channels,
+                3,
+                ksize=1,
+                stride=1,
+                pad=0,
+                initialW=HeNormal(0.1))
+            self.parameters.append(map_u_x)
 
-        return core_array, prior_array, upsampler_h_u_array, None
+        return core_array, prior_array, upsampler_h_u_array, map_u_x
 
     def build_inference_network(self, generation_steps, chz_channels,
                                 downsampler_channels):
@@ -163,8 +163,9 @@ class Model():
         initial_u = xp.zeros(
             (
                 batch_size,
-                3,
-            ) + self.hyperparams.image_size, dtype="float32")
+                self.hyperparams.generator_u_channels,
+            ) + self.hyperparams.image_size,
+            dtype="float32")
         initial_h_enc = xp.zeros(
             (
                 batch_size,
@@ -321,7 +322,7 @@ class Model():
             h_t_enc = h_next_enc
             c_t_enc = c_next_enc
 
-            reconstruction_t = u_t
+            reconstruction_t = self.generation_map_u_x(u_t)
             reconstruction_t_array.append(reconstruction_t)
 
         mean_x = reconstruction_t_array[-1]
@@ -359,9 +360,8 @@ class Model():
             u_t = u_t + generation_upsampler(h_next_gen)
             h_t_gen = h_next_gen
             c_t_gen = c_next_gen
-            reconstruction_t = u_t
 
-        mean_x = u_t
+        mean_x = self.generation_map_u_x(u_t)
         return mean_x.data
 
     def reconstruct_image(self, query_images, v, r, xp):

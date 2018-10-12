@@ -185,11 +185,16 @@ def main():
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
                     loss_kld += cf.sum(kld)
 
+
                 # Optional
-                loss_sse = 0
-                for reconstrution_t in reconstrution_t_array:
-                    loss_sse += cf.sum(
-                        cf.squared_error(reconstrution_t, query_images))
+                if args.loss_alpha > 0:
+                    loss_sse = 0
+                    for reconstrution_t in reconstrution_t_array:
+                        loss_sse += cf.sum(
+                            cf.squared_error(reconstrution_t, query_images))
+                else:
+                    loss_sse = cf.sum(cf.squared_error(mean_x, query_images))
+                loss_sse /= args.batch_size
 
                 # Negative log-likelihood of generated image
                 negative_log_likelihood = gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
@@ -200,7 +205,10 @@ def main():
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
                 loss_kld /= args.batch_size
                 loss_sse /= args.batch_size
-                loss = loss_nll + loss_kld + args.loss_alpha * loss_sse
+                if args.loss_alpha <= 0:
+                    loss = loss_nll + loss_kld
+                else:
+                    loss = loss_nll + loss_kld + loss_sse / scheduler.pixel_variance
 
                 model.cleargrads()
                 loss.backward()
