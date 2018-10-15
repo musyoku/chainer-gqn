@@ -210,11 +210,14 @@ def main():
 
                 # Calculate the average loss value
                 loss_nll = loss_nll / args.batch_size + math.log(num_bins_x)
-                loss_kld = loss_kld * scheduler.pixel_variance / args.batch_size
+                loss_kld = loss_kld / args.batch_size
                 if args.loss_alpha <= 0:
-                    loss = loss_nll + loss_kld
+                    loss = (loss_nll / scheduler.pixel_variance) + (
+                        loss_kld * scheduler.kl_weight)
                 else:
-                    loss = loss_nll + loss_kld + loss_sse
+                    loss = (loss_nll / scheduler.pixel_variance) + (
+                        loss_kld * scheduler.kl_weight) + (
+                            loss_sse * scheduler.reconstruction_weight)
 
                 model.cleargrads()
                 loss.backward()
