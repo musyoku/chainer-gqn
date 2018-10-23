@@ -6,10 +6,6 @@
 
 **Todo**
 
-- [x] OpenGL Renderer
-    - [ ] Shading
-    - [ ] Texture
-    - [ ] Headless rendering
 - [x] Implement GQN
 - [x] Implement training loop
 - [ ] Hyperparameter search (It takes 2 weeks to run a training)
@@ -27,55 +23,23 @@ Iteration 235 - loss: nll_per_pixel: 0.566455 mse: 0.004107 kld: 15.464150 - lr:
 
 # Requirements
 
-- pybind11
 - Python 3
-- OpenGL 4.5
 - GLFW 3
 - Ubuntu
-- C++14 (gcc-6)
 - Chainer 4
-
-# Installation
-
-**GLFW**
-
-```
-sudo apt install libglfw3-dev
-```
-
-**pybind11**
-
-```
-pip3 install pybind11 --user
-```
-
-**Renderer**
-
-```
-cd three
-make
-```
-
-**imgplot**
-
-```
-cd imgplot
-make
-```
-
-**Chainer**
-
-```
-pip3 install chainer cupy h5py
-```
 
 # Dataset
 
-There are two choices:
+https://github.com/musyoku/gqn-dataset-renderer
 
-- Run `construct_datasets/shepard_matzler.py` to generate observations with your own scene settings.
-- Convert [the official dataset](https://github.com/deepmind/gqn-datasets) to NumPy array by [gqn-datasets-translator](https://github.com/musyoku/gqn-datasets-translator).
+- **Shepard-Matzler**
 
+![shepard_matzler](https://user-images.githubusercontent.com/15250418/47383748-53496d80-d740-11e8-8db8-e7a25bd1ad5c.gif)
 
-# Training
-# Experimental Results
+- **Rooms**
+
+![anim](https://user-images.githubusercontent.com/15250418/47347087-7e54a280-d6e9-11e8-93db-47dd2b4efaea.gif)
+
+- **MNIST Dice**
+
+![rooms](https://user-images.githubusercontent.com/15250418/47368004-ce4c5d00-d71b-11e8-9834-bf87b128892b.gif)
