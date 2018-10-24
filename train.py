@@ -262,7 +262,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
-    parser.add_argument("--chz-channels", "-cz", type=int, default=64)
+    parser.add_argument("--chz-channels", "-cz", type=int, default=3)
     parser.add_argument("--u-channels", "-cu", type=int, default=64)
     parser.add_argument(
         "--representation-channels", "-cr", type=int, default=256)
