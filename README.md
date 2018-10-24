@@ -8,7 +8,7 @@
 
 - [x] Implement GQN
 - [x] Implement training loop
-- [ ] Hyperparameter search (It takes 2 weeks to run a training)
+- [ ] Hyperparameter search
 - [ ] Debug
 
 Current training progress:

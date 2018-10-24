@@ -236,7 +236,7 @@ def main():
         elapsed_time = time.time() - start_time
         print(
             "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - step: {} - elapsed_time: {:.3f} min".
-            format(iteration + 1, mean_nll / total_batch / num_pixels,
+            format(iteration + 1, mean_nll / total_batch,
                    mean_mse / total_batch, mean_kld / total_batch,
                    optimizer.learning_rate, scheduler.pixel_variance,
                    current_training_step, elapsed_time / 60))
