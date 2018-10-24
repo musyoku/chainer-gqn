@@ -24,8 +24,6 @@ Iteration 235 - loss: nll_per_pixel: 0.566455 mse: 0.004107 kld: 15.464150 - lr:
 # Requirements
 
 - Python 3
-- GLFW 3
-- Ubuntu
 - Chainer 4
 
 # Dataset
