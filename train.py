@@ -213,8 +213,8 @@ def main():
 
                 total_batch += 1
                 current_training_step += 1
-                mean_kld += loss_nll
-                mean_nll += loss_kld
+                mean_kld += loss_kld
+                mean_nll += loss_nll
                 mean_mse += loss_mse
 
             model.serialize(args.snapshot_directory)
