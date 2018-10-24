@@ -69,7 +69,7 @@ class Model():
             num_upsamplers = 1 if self.hyperparams.generator_share_upsampler else generation_steps
             scale = 4
             for _ in range(num_upsamplers):
-                if True:
+                if False:
                     upsampler = gqn.nn.chainer.upsampler.DeconvolutionUpsampler(
                         channels=u_channels)
                 else:
