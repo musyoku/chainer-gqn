@@ -205,8 +205,13 @@ def main():
 
                 loss_nll = float(loss_nll.data) / num_pixels
                 loss_kld = float(loss_kld.data)
-                loss_mse = float(loss_sse.data) / num_pixels / (
-                    hyperparams.generator_generation_steps - 1)
+
+                if scheduler.reconstruction_weight > 0:
+                    loss_mse = float(loss_sse.data) / num_pixels / (
+                        hyperparams.generator_generation_steps - 1)
+                else:
+                    loss_mse = float(
+                        cf.mean_squared_error(query_images, mean_x).data)
 
                 if comm.rank == 0:
                     printr(
