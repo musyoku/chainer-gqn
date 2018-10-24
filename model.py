@@ -1,17 +1,16 @@
 import os
 import sys
-import chainer
 import uuid
-import cupy
+
+import chainer
 import chainer.functions as cf
 import chainer.links as nn
+import cupy
+from chainer.backends import cuda
 from chainer.initializers import HeNormal
 from chainer.serializers import load_hdf5, save_hdf5
-from chainer.backends import cuda
 
-sys.path.append(os.path.join("..", ".."))
 import gqn
-
 from hyperparams import HyperParameters
 
 
