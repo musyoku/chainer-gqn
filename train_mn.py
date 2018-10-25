@@ -178,12 +178,13 @@ def main():
 
                 # Compute loss
                 ## KL Divergence
-                loss_kld = 0
-                for params in z_t_param_array:
-                    mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
-                    kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
-                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
-                    loss_kld += cf.sum(kld)
+                loss_kld = chainer.Variable(xp.zeros((), dtype=xp.float32))
+                if scheduler.kl_weight > 0:
+                    for params in z_t_param_array:
+                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
+                        kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                            mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
+                        loss_kld += cf.sum(kld)
 
                 # Optional
                 loss_sse = chainer.Variable(xp.zeros((), dtype=xp.float32))
