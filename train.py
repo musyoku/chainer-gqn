@@ -205,7 +205,7 @@ def main():
                         cf.mean_squared_error(query_images, mean_x).data)
 
                 printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}".
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}    ".
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
                            len(iterator), loss_nll, loss_mse, loss_kld,
@@ -268,7 +268,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final-pixel-variance", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=200000)
-    parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=20000)
+    parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=10000)
     parser.add_argument("--chz-channels", "-cz", type=int, default=3)
     parser.add_argument("--u-channels", "-cu", type=int, default=256)
     parser.add_argument(
