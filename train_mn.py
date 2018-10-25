@@ -96,7 +96,8 @@ def main():
         sigma_end=args.final_pixel_variance,
         pretrain_steps=args.pretrain_pixel_n,
         final_num_updates=args.pixel_n)
-    print(scheduler)
+    if comm.rank == 0:
+        print(scheduler)
 
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
