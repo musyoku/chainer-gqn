@@ -68,8 +68,8 @@ def main():
     hyperparams.chz_channels = args.chz_channels
     hyperparams.representation_channels = args.representation_channels
     hyperparams.pixel_n = args.pixel_n
-    hyperparams.pixel_sigma_i = args.initial_pixel_sigma
-    hyperparams.pixel_sigma_f = args.final_pixel_sigma
+    hyperparams.pixel_sigma_i = args.initial_pixel_variance
+    hyperparams.pixel_sigma_f = args.final_pixel_variance
     hyperparams.save(args.snapshot_directory)
     print(hyperparams)
 
@@ -81,7 +81,13 @@ def main():
         model.parameters, mu_i=args.initial_lr, mu_f=args.final_lr)
     print(optimizer)
 
-    scheduler = Scheduler()
+    scheduler = Scheduler(
+        sigma_start=args.initial_pixel_variance,
+        sigma_end=args.final_pixel_variance,
+        pretrain_steps=args.pretrain_pixel_n,
+        final_num_updates=args.pixel_n)
+    print(scheduler)
+
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
         scheduler.pixel_variance**2,
@@ -258,10 +264,11 @@ if __name__ == "__main__":
         "--initial-lr", "-mu-i", type=float, default=5.0 * 1e-4)
     parser.add_argument("--final-lr", "-mu-f", type=float, default=5.0 * 1e-5)
     parser.add_argument(
-        "--initial-pixel-sigma", "-ps-i", type=float, default=2.0)
+        "--initial-pixel-variance", "-ps-i", type=float, default=2.0)
     parser.add_argument(
-        "--final-pixel-sigma", "-ps-f", type=float, default=0.7)
-    parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
+        "--final-pixel-variance", "-ps-f", type=float, default=0.7)
+    parser.add_argument("--pixel-n", "-pn", type=int, default=200000)
+    parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=20000)
     parser.add_argument("--chz-channels", "-cz", type=int, default=3)
     parser.add_argument("--u-channels", "-cu", type=int, default=64)
     parser.add_argument(
