@@ -40,4 +40,4 @@ https://github.com/musyoku/gqn-dataset-renderer
 
 - **MNIST Dice**
 
-![rooms](https://user-images.githubusercontent.com/15250418/47368004-ce4c5d00-d71b-11e8-9834-bf87b128892b.gif)
+![mnist_dice](https://user-images.githubusercontent.com/15250418/47478271-e4653500-d863-11e8-8d26-1b61cc34cc3b.gif)
