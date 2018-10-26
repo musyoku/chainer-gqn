@@ -63,7 +63,6 @@ def main():
     hyperparams.generator_share_core = args.generator_share_core
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.generator_generation_steps = args.generation_steps
-    hyperparams.generator_downsampler_channels = args.generator_downsampler_channels
     hyperparams.generator_u_channels = args.u_channels
     hyperparams.generator_share_upsampler = args.generator_share_upsampler
     hyperparams.generator_lstm_peephole_enabled = args.generator_lstm_peephole_enabled
@@ -71,7 +70,8 @@ def main():
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
     hyperparams.inference_lstm_peephole_enabled = args.inference_lstm_peephole_enabled
-    hyperparams.chz_channels = args.chz_channels
+    hyperparams.h_channels = args.h_channels
+    hyperparams.z_channels = args.z_channels
     hyperparams.representation_channels = args.representation_channels
     hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_variance
@@ -274,14 +274,13 @@ if __name__ == "__main__":
         "--final-pixel-variance", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
     parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=10000)
-    parser.add_argument("--chz-channels", "-cz", type=int, default=3)
+    parser.add_argument("--h-channels", "-ch", type=int, default=64)
+    parser.add_argument("--z-channels", "-cz", type=int, default=3)
     parser.add_argument("--u-channels", "-cu", type=int, default=256)
     parser.add_argument(
         "--representation-channels", "-cr", type=int, default=256)
     parser.add_argument(
         "--inference-downsampler-channels", "-cix", type=int, default=32)
-    parser.add_argument(
-        "--generator-downsampler-channels", "-cgx", type=int, default=32)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(

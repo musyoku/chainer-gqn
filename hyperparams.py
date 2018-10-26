@@ -8,7 +8,8 @@ class HyperParameters():
     def __init__(self, snapshot_directory=None):
         self.image_size = (64, 64)
         self.chrz_size = (16, 16)  # needs to be 1/4 of image_size
-        self.chz_channels = 64
+        self.h_channels = 64
+        self.z_channels = 3
         self.inference_share_core = False
         self.inference_share_posterior = False
         self.inference_downsampler_channels = 12
@@ -18,7 +19,6 @@ class HyperParameters():
         self.generator_share_core = False
         self.generator_share_prior = False
         self.generator_share_upsampler = False
-        self.generator_downsampler_channels = 12
         self.generator_lstm_peephole_enabled = False
         self.pixel_sigma_i = 2.0
         self.pixel_sigma_f = 0.7

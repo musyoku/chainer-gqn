@@ -23,13 +23,14 @@ class Model():
 
         self.generation_cores, self.generation_priors, self.generation_upsamplers, self.generation_map_u_x = self.build_generation_network(
             generation_steps=self.generation_steps,
-            chz_channels=hyperparams.chz_channels,
-            downsampler_channels=hyperparams.generator_downsampler_channels,
+            h_channels=hyperparams.h_channels,
+            z_channels=hyperparams.z_channels,
             u_channels=hyperparams.generator_u_channels)
 
         self.inference_cores, self.inference_posteriors, self.inference_downsampler_x = self.build_inference_network(
             generation_steps=self.generation_steps,
-            chz_channels=hyperparams.chz_channels,
+            h_channels=hyperparams.h_channels,
+            z_channels=hyperparams.z_channels,
             downsampler_channels=hyperparams.inference_downsampler_channels)
 
         self.representation_network = self.build_representation_network(
@@ -45,8 +46,8 @@ class Model():
             except Exception as error:
                 print(error)
 
-    def build_generation_network(self, generation_steps, chz_channels,
-                                 downsampler_channels, u_channels):
+    def build_generation_network(self, generation_steps, h_channels,
+                                 z_channels, u_channels):
         core_array = []
         prior_array = []
         upsampler_h_u_array = []
@@ -54,14 +55,14 @@ class Model():
             # LSTM core
             num_cores = 1 if self.hyperparams.generator_share_core else generation_steps
             for _ in range(num_cores):
-                core = gqn.nn.chainer.generator.Core(chz_channels=chz_channels)
+                core = gqn.nn.chainer.generator.Core(h_channels=h_channels)
                 core_array.append(core)
                 self.parameters.append(core)
 
             # z prior sampler
             num_priors = 1 if self.hyperparams.generator_share_prior else generation_steps
             for _ in range(num_priors):
-                prior = gqn.nn.chainer.generator.Prior(channels_z=chz_channels)
+                prior = gqn.nn.chainer.generator.Prior(z_channels=z_channels)
                 prior_array.append(prior)
                 self.parameters.append(prior)
 
@@ -93,7 +94,7 @@ class Model():
 
         return core_array, prior_array, upsampler_h_u_array, map_u_x
 
-    def build_inference_network(self, generation_steps, chz_channels,
+    def build_inference_network(self, generation_steps, h_channels, z_channels,
                                 downsampler_channels):
         core_array = []
         posterior_array = []
@@ -101,7 +102,7 @@ class Model():
             num_cores = 1 if self.hyperparams.inference_share_core else generation_steps
             for t in range(num_cores):
                 # LSTM core
-                core = gqn.nn.chainer.inference.Core(chz_channels=chz_channels)
+                core = gqn.nn.chainer.inference.Core(h_channels=h_channels)
                 core_array.append(core)
                 self.parameters.append(core)
 
@@ -109,7 +110,7 @@ class Model():
             num_posteriors = 1 if self.hyperparams.inference_share_posterior else generation_steps
             for t in range(num_posteriors):
                 posterior = gqn.nn.chainer.inference.Posterior(
-                    channels_z=chz_channels)
+                    z_channels=z_channels)
                 posterior_array.append(posterior)
                 self.parameters.append(posterior)
 
@@ -153,13 +154,13 @@ class Model():
         initial_h_gen = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.chz_channels,
+                self.hyperparams.h_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
         initial_c_gen = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.chz_channels,
+                self.hyperparams.h_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
         initial_u = xp.zeros(
@@ -171,13 +172,13 @@ class Model():
         initial_h_enc = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.chz_channels,
+                self.hyperparams.h_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
         initial_c_enc = xp.zeros(
             (
                 batch_size,
-                self.hyperparams.chz_channels,
+                self.hyperparams.h_channels,
             ) + self.hyperparams.chrz_size,
             dtype="float32")
         return initial_h_gen, initial_c_gen, initial_u, initial_h_enc, initial_c_enc

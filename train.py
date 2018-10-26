@@ -59,13 +59,13 @@ def main():
     hyperparams.generator_share_core = args.generator_share_core
     hyperparams.generator_share_prior = args.generator_share_prior
     hyperparams.generator_generation_steps = args.generation_steps
-    hyperparams.generator_downsampler_channels = args.generator_downsampler_channels
     hyperparams.generator_u_channels = args.u_channels
     hyperparams.generator_share_upsampler = args.generator_share_upsampler
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
-    hyperparams.chz_channels = args.chz_channels
+    hyperparams.h_channels = args.h_channels
+    hyperparams.z_channels = args.z_channels
     hyperparams.representation_channels = args.representation_channels
     hyperparams.pixel_n = args.pixel_n
     hyperparams.pixel_sigma_i = args.initial_pixel_variance
@@ -101,10 +101,13 @@ def main():
     fig = plt.figure(figsize=(9, 3))
     axis_data = fig.add_subplot(1, 3, 1)
     axis_data.set_title("Data")
+    axis_data.axis("off")
     axis_reconstruction = fig.add_subplot(1, 3, 2)
     axis_reconstruction.set_title("Reconstruction")
+    axis_reconstruction.axis("off")
     axis_generation = fig.add_subplot(1, 3, 3)
     axis_generation.set_title("Generation")
+    axis_generation.axis("off")
 
     current_training_step = 0
     for iteration in range(args.training_iterations):
@@ -269,14 +272,13 @@ if __name__ == "__main__":
         "--final-pixel-variance", "-ps-f", type=float, default=0.7)
     parser.add_argument("--pixel-n", "-pn", type=int, default=200000)
     parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=10000)
-    parser.add_argument("--chz-channels", "-cz", type=int, default=3)
+    parser.add_argument("--h-channels", "-ch", type=int, default=64)
+    parser.add_argument("--z-channels", "-cz", type=int, default=3)
     parser.add_argument("--u-channels", "-cu", type=int, default=256)
     parser.add_argument(
         "--representation-channels", "-cr", type=int, default=256)
     parser.add_argument(
         "--inference-downsampler-channels", "-cix", type=int, default=32)
-    parser.add_argument(
-        "--generator-downsampler-channels", "-cgx", type=int, default=32)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(

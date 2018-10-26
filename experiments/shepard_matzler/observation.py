@@ -115,7 +115,7 @@ def main():
 
     num_views_per_scene = 4
     num_generation = 4
-    total_frames = 4
+    total_frames = 72
 
     image_shape = (3, ) + hyperparams.image_size
     observed_image_array = xp.zeros(

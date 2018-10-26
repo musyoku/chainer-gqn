@@ -9,34 +9,34 @@ from chainer.initializers import HeNormal
 
 
 class Core(chainer.Chain):
-    def __init__(self, chz_channels, peephole_enabled=False):
+    def __init__(self, h_channels, peephole_enabled=False):
         super().__init__()
         self.peephole_enabled = peephole_enabled
         with self.init_scope():
             self.lstm_tanh = nn.Convolution2D(
                 None,
-                chz_channels,
+                h_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
             self.lstm_i = nn.Convolution2D(
                 None,
-                chz_channels,
+                h_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
             self.lstm_f = nn.Convolution2D(
                 None,
-                chz_channels,
+                h_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
                 initialW=HeNormal(0.1))
             self.lstm_o = nn.Convolution2D(
                 None,
-                chz_channels,
+                h_channels,
                 ksize=5,
                 stride=1,
                 pad=2,
@@ -66,13 +66,13 @@ class Core(chainer.Chain):
 
 
 class Prior(chainer.Chain):
-    def __init__(self, channels_z):
+    def __init__(self, z_channels):
         super().__init__()
-        self.channels_z = channels_z
+        self.z_channels = z_channels
         with self.init_scope():
             self.conv = nn.Convolution2D(
                 None,
-                channels_z * 2,
+                z_channels * 2,
                 ksize=5,
                 stride=1,
                 pad=2,
@@ -80,8 +80,8 @@ class Prior(chainer.Chain):
 
     def compute_parameter(self, h):
         param = self.conv(h)
-        mean = param[:, :self.channels_z]
-        ln_var = param[:, self.channels_z:]
+        mean = param[:, :self.z_channels]
+        ln_var = param[:, self.z_channels:]
         return mean, ln_var
 
     def sample_z(self, h):
