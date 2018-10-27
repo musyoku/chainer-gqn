@@ -283,7 +283,7 @@ if __name__ == "__main__":
     parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=10000)
     parser.add_argument("--h-channels", "-ch", type=int, default=64)
     parser.add_argument("--z-channels", "-cz", type=int, default=3)
-    parser.add_argument("--u-channels", "-cu", type=int, default=256)
+    parser.add_argument("--u-channels", "-cu", type=int, default=16)
     parser.add_argument(
         "--representation-channels", "-cr", type=int, default=256)
     parser.add_argument(
