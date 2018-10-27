@@ -6,6 +6,7 @@ import os
 import random
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import chainer
 import chainer.functions as cf
 import cupy
@@ -55,7 +56,8 @@ def generate_random_query_viewpoint(num_generation, xp):
 
 def rotate_query_viewpoint(angle_rad, num_generation, xp):
     view_radius = 3
-    eye = (view_radius * math.sin(angle_rad), 0,
+    eye = (view_radius * math.sin(angle_rad),
+           view_radius * math.sin(angle_rad),
            view_radius * math.cos(angle_rad))
     center = (0, 0, 0)
     yaw = gqn.math.yaw(eye, center)
@@ -67,6 +69,13 @@ def rotate_query_viewpoint(angle_rad, num_generation, xp):
     query_viewpoints = xp.broadcast_to(
         query_viewpoints, (num_generation, ) + query_viewpoints.shape)
     return query_viewpoints
+
+
+def add_annotation(axis, array):
+    text = axis.text(-155, -60, "observations", fontsize=18)
+    array.append(text)
+    text = axis.text(-30, -60, "neural rendering", fontsize=18)
+    array.append(text)
 
 
 def main():
@@ -83,9 +92,8 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    plt.tight_layout()
     plt.style.use("dark_background")
-    fig = plt.figure(figsize=(8, 5))
+    fig = plt.figure(figsize=(10, 5))
 
     axis_observation_array = []
     axis_observation_array.append(fig.add_subplot(2, 4, 1))
@@ -96,9 +104,6 @@ def main():
     for axis in axis_observation_array:
         axis.axis("off")
 
-    axis = axis_observation_array[0]
-    axis.text(40, -10, "observations", fontsize=16)
-
     axis_generation_array = []
     axis_generation_array.append(fig.add_subplot(2, 4, 3))
     axis_generation_array.append(fig.add_subplot(2, 4, 4))
@@ -108,28 +113,30 @@ def main():
     for axis in axis_generation_array:
         axis.axis("off")
 
-    axis = axis_generation_array[0]
-    axis.text(30, -10, "neural rendering", fontsize=16)
-
-    ims = []
+    axis = axis_generation_array[-1]
+    axis.text(-200, -85, "observations", fontsize=18)
+    axis.text(-50, -85, "neural rendering", fontsize=18)
 
     num_views_per_scene = 4
     num_generation = 4
-    total_frames = 72
+    total_frames_per_rotation = 24
 
     image_shape = (3, ) + hyperparams.image_size
-    observed_image_array = xp.zeros(
-        (num_views_per_scene, ) + image_shape, dtype=np.float32)
-    observed_viewpoint_array = xp.zeros(
-        (num_views_per_scene, 7), dtype=np.float32)
-
     blank_image = make_uint8(np.full(image_shape, 0))
+    file_number = 1
 
     with chainer.no_backprop_mode():
-        for _, subset in enumerate(dataset):
+        for subset in dataset:
             iterator = gqn.data.Iterator(subset, batch_size=1)
 
             for data_indices in iterator:
+                artist_frame_array = []
+
+                observed_image_array = xp.zeros(
+                    (num_views_per_scene, ) + image_shape, dtype=np.float32)
+                observed_viewpoint_array = xp.zeros(
+                    (num_views_per_scene, 7), dtype=np.float32)
+
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
@@ -150,14 +157,17 @@ def main():
                     ) + hyperparams.chrz_size,
                     dtype=np.float32)
 
-                for axis in axis_observation_array:
-                    axis.imshow(
-                        make_uint8(blank_image),
-                        interpolation="none",
-                        animated=True)
-
                 angle_rad = 0
-                for t in range(total_frames):
+                for t in range(total_frames_per_rotation):
+                    artist_array = []
+
+                    for axis in axis_observation_array:
+                        axis_image = axis.imshow(
+                            make_uint8(blank_image),
+                            interpolation="none",
+                            animated=True)
+                        artist_array.append(axis_image)
+
                     query_viewpoints = rotate_query_viewpoint(
                         angle_rad, num_generation, xp)
                     generated_images = model.generate_image(
@@ -165,10 +175,16 @@ def main():
 
                     for j, axis in enumerate(axis_generation_array):
                         image = make_uint8(generated_images[j])
-                        axis.imshow(image, interpolation="none", animated=True)
+                        axis_image = axis.imshow(
+                            image, interpolation="none", animated=True)
+                        artist_array.append(axis_image)
 
-                    angle_rad += 2 * math.pi / total_frames
-                    plt.pause(1e-8)
+                    angle_rad += 2 * math.pi / total_frames_per_rotation
+
+                    # plt.pause(1e-8)
+                    axis = axis_generation_array[-1]
+                    add_annotation(axis, artist_array)
+                    artist_frame_array.append(artist_array)
 
                 # Generate images with observations
                 for m in range(num_views_per_scene):
@@ -184,14 +200,18 @@ def main():
 
                     r = cf.broadcast_to(r, (num_generation, ) + r.shape[1:])
 
-                    axis = axis_observation_array[m]
-                    axis.imshow(
-                        make_uint8(observed_image),
-                        interpolation="none",
-                        animated=True)
-
                     angle_rad = 0
-                    for t in range(total_frames):
+                    for t in range(total_frames_per_rotation):
+                        artist_array = []
+
+                        for axis, observed_image in zip(
+                                axis_observation_array, observed_image_array):
+                            axis_image = axis.imshow(
+                                make_uint8(observed_image),
+                                interpolation="none",
+                                animated=True)
+                            artist_array.append(axis_image)
+
                         query_viewpoints = rotate_query_viewpoint(
                             angle_rad, num_generation, xp)
                         generated_images = model.generate_image(
@@ -199,13 +219,41 @@ def main():
 
                         for j in range(num_generation):
                             axis = axis_generation_array[j]
-                            axis.imshow(
+                            axis_image = axis.imshow(
                                 make_uint8(generated_images[j]),
                                 interpolation="none",
                                 animated=True)
+                            artist_array.append(axis_image)
 
-                        angle_rad += 2 * math.pi / total_frames
-                        plt.pause(1e-8)
+                        angle_rad += 2 * math.pi / total_frames_per_rotation
+                        # plt.pause(1e-8)
+
+                        axis = axis_generation_array[-1]
+                        add_annotation(axis, artist_array)
+                        artist_frame_array.append(artist_array)
+
+                plt.tight_layout()
+                plt.subplots_adjust(
+                    left=None,
+                    bottom=None,
+                    right=None,
+                    top=None,
+                    wspace=0,
+                    hspace=0)
+                anim = animation.ArtistAnimation(
+                    fig,
+                    artist_frame_array,
+                    interval=1 / 24,
+                    blit=True,
+                    repeat_delay=0)
+
+                anim.save(
+                    "result_{}.gif".format(file_number), writer="imagemagick")
+                anim.save(
+                    "result_{}.mp4".format(file_number),
+                    writer="ffmpeg",
+                    fps=12)
+                file_number += 1
 
 
 if __name__ == "__main__":
