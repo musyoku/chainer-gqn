@@ -287,7 +287,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--representation-channels", "-cr", type=int, default=256)
     parser.add_argument(
-        "--inference-downsampler-channels", "-cix", type=int, default=32)
+        "--inference-downsampler-channels", "-cix", type=int, default=128)
     parser.add_argument(
         "--generator-share-core", "-g-share-core", action="store_true")
     parser.add_argument(
