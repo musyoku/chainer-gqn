@@ -24,7 +24,8 @@ Iteration 235 - loss: nll_per_pixel: 0.566455 mse: 0.004107 kld: 15.464150 - lr:
 # Requirements
 
 - Python 3
-- Chainer 4
+- Chainer v4 / v5
+    `pip3 install chainer`
 
 # Dataset
 

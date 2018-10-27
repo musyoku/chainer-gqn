@@ -114,7 +114,8 @@ def main():
         mean_kld = 0
         mean_nll = 0
         mean_mse = 0
-        total_batch = 0
+        mean_elbo = 0
+        total_num_batch = 0
         start_time = time.time()
 
         for subset_index, subset in enumerate(dataset):
@@ -186,7 +187,7 @@ def main():
                         query_images, mean_x, pixel_var, pixel_ln_var))
 
                 # Calculate the average loss value
-                loss_nll = loss_nll / args.batch_size + math.log(256.0)
+                loss_nll = loss_nll / args.batch_size
                 loss_kld = loss_kld / args.batch_size
 
                 loss = (loss_nll / scheduler.pixel_variance) + (
@@ -197,8 +198,10 @@ def main():
                 loss.backward()
                 optimizer.update(current_training_step)
 
-                loss_nll = float(loss_nll.data) / num_pixels
+                loss_nll = float(loss_nll.data) + math.log(256.0)
                 loss_kld = float(loss_kld.data)
+
+                elbo = -(loss_nll + loss_kld)
 
                 if scheduler.reconstruction_weight > 0:
                     loss_mse = float(loss_sse.data) / num_pixels / (
@@ -208,10 +211,10 @@ def main():
                         cf.mean_squared_error(query_images, mean_x).data)
 
                 printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}    ".
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
-                           len(iterator), loss_nll, loss_mse, loss_kld,
+                           len(iterator), elbo, loss_nll, loss_mse, loss_kld,
                            optimizer.learning_rate, scheduler.pixel_variance,
                            scheduler.kl_weight,
                            scheduler.reconstruction_weight,
@@ -221,11 +224,12 @@ def main():
                 pixel_var[...] = scheduler.pixel_variance**2
                 pixel_ln_var[...] = math.log(scheduler.pixel_variance**2)
 
-                total_batch += 1
+                total_num_batch += 1
                 current_training_step += 1
                 mean_kld += loss_kld
                 mean_nll += loss_nll
                 mean_mse += loss_mse
+                mean_elbo += elbo
 
             model.serialize(args.snapshot_directory)
 
@@ -245,11 +249,12 @@ def main():
 
         elapsed_time = time.time() - start_time
         print(
-            "\033[2KIteration {} - loss: nll_per_pixel: {:.6f} mse: {:.6f} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.6f} - step: {} - elapsed_time: {:.3f} min".
-            format(iteration + 1, mean_nll / total_batch,
-                   mean_mse / total_batch, mean_kld / total_batch,
-                   optimizer.learning_rate, scheduler.pixel_variance,
-                   current_training_step, elapsed_time / 60))
+            "\033[2KIteration {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
+            format(iteration + 1, mean_elbo / total_num_batch,
+                   mean_nll / total_num_batch, mean_mse / total_num_batch,
+                   mean_kld / total_num_batch, optimizer.learning_rate,
+                   scheduler.pixel_variance, current_training_step,
+                   elapsed_time / 60))
         model.serialize(args.snapshot_directory)
 
 
