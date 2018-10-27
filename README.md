@@ -15,11 +15,8 @@ Current training progress:
 
 :thinking::thinking::thinking:
 
-![https://thumbs.gfycat.com/OffbeatCoordinatedArcherfish-size_restricted.gif](https://thumbs.gfycat.com/OffbeatCoordinatedArcherfish-size_restricted.gif)
+![result_1](https://user-images.githubusercontent.com/15250418/47601671-03ec9100-da0f-11e8-8f96-b4b5189d6c1c.gif)
 
-```
-Iteration 235 - loss: nll_per_pixel: 0.566455 mse: 0.004107 kld: 15.464150 - lr: 4.1628e-05 - sigma_t: 0.700000 - step: 1037760 - elapsed_time: 2.135 min
-```
 
 # Requirements
 
