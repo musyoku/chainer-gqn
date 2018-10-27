@@ -227,8 +227,8 @@ def main():
                 if comm.rank == 0:
                     printr(
                         "Iteration {}: Subset {} / {}: Batch {} / {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
-                        format(iteration + 1,
-                               subset_index + 1, len(dataset), batch_index + 1,
+                        format(iteration + 1, subset_loop + 1,
+                               subset_size_per_gpu, batch_index + 1,
                                len(iterator), elbo, loss_nll, loss_mse,
                                loss_kld, optimizer.learning_rate,
                                scheduler.pixel_variance, scheduler.kl_weight,
@@ -251,13 +251,15 @@ def main():
 
         if comm.rank == 0:
             elapsed_time = time.time() - start_time
+            mean_elbo /= total_num_batch
+            mean_nll /= total_num_batch
+            mean_mse /= total_num_batch
+            mean_kld /= total_num_batch
             print(
                 "\033[2KIteration {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
-                format(iteration + 1, mean_elbo / total_num_batch,
-                       mean_nll / total_num_batch, mean_mse / total_num_batch,
-                       mean_kld / total_num_batch, optimizer.learning_rate,
-                       scheduler.pixel_variance, current_training_step,
-                       elapsed_time / 60))
+                format(iteration + 1, mean_elbo, mean_nll, mean_mse, mean_kld,
+                       optimizer.learning_rate, scheduler.pixel_variance,
+                       current_training_step, elapsed_time / 60))
             model.serialize(args.snapshot_directory)
 
 
