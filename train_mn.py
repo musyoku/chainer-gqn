@@ -149,12 +149,12 @@ def main():
 
                 # Sample observations
                 num_views = random.choice(range(total_views + 1))
+                if current_training_step == 0 and num_views == 0:
+                    num_views = 1  # avoid OpenMPI error
+
                 observation_view_indices = list(range(total_views))
                 random.shuffle(observation_view_indices)
                 observation_view_indices = observation_view_indices[:num_views]
-
-                if current_training_step == 0 and num_views == 0:
-                    num_views = 1  # avoid OpenMPI error
 
                 if num_views > 0:
                     representation = model.compute_observation_representation(
@@ -228,12 +228,12 @@ def main():
                     printr(
                         "Iteration {}: Subset {} / {}: Batch {} / {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
                         format(iteration + 1,
-                            subset_index + 1, len(dataset), batch_index + 1,
-                            len(iterator), elbo, loss_nll, loss_mse, loss_kld,
-                            optimizer.learning_rate, scheduler.pixel_variance,
-                            scheduler.kl_weight,
-                            scheduler.reconstruction_weight,
-                            current_training_step))
+                               subset_index + 1, len(dataset), batch_index + 1,
+                               len(iterator), elbo, loss_nll, loss_mse,
+                               loss_kld, optimizer.learning_rate,
+                               scheduler.pixel_variance, scheduler.kl_weight,
+                               scheduler.reconstruction_weight,
+                               current_training_step))
 
                 total_num_batch += 1
                 current_training_step += comm.size
@@ -254,10 +254,10 @@ def main():
             print(
                 "\033[2KIteration {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
                 format(iteration + 1, mean_elbo / total_num_batch,
-                    mean_nll / total_num_batch, mean_mse / total_num_batch,
-                    mean_kld / total_num_batch, optimizer.learning_rate,
-                    scheduler.pixel_variance, current_training_step,
-                    elapsed_time / 60))
+                       mean_nll / total_num_batch, mean_mse / total_num_batch,
+                       mean_kld / total_num_batch, optimizer.learning_rate,
+                       scheduler.pixel_variance, current_training_step,
+                       elapsed_time / 60))
             model.serialize(args.snapshot_directory)
 
 
