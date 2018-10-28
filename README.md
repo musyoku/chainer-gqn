@@ -16,14 +16,17 @@ Current training progress:
 :thinking::thinking::thinking:
 
 **Shepard-Matzler**
+
 ![shepard_matzler](https://thumbs.gfycat.com/UnimportantFortunateIndianelephant-size_restricted.gif)
 https://gfycat.com/gifs/detail/UnimportantFortunateIndianelephant
 
 **Rooms**
+
 ![rooms_ring_camera](https://thumbs.gfycat.com/NeatPlayfulFlea-size_restricted.gif)
 https://gfycat.com/gifs/detail/NeatPlayfulFlea
 
 **MNIST Dice**
+
 ![mnist_dice_ring_camera](https://thumbs.gfycat.com/ShamelessWindyFruitfly-size_restricted.gif)
 https://gfycat.com/gifs/detail/ShamelessWindyFruitfly
 
