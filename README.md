@@ -17,8 +17,8 @@ Current training progress:
 
 **Shepard-Matzler**
 
-![shepard_matzler](https://thumbs.gfycat.com/UnimportantFortunateIndianelephant-size_restricted.gif)
-https://gfycat.com/gifs/detail/UnimportantFortunateIndianelephant
+![shepard_matzler](https://thumbs.gfycat.com/LeanSelfassuredCanadagoose-size_restricted.gif)
+https://gfycat.com/gifs/detail/LeanSelfassuredCanadagoose
 
 **Rooms**
 
