@@ -38,7 +38,6 @@ class Core(chainer.Chain):
 class Prior(chainer.Chain):
     def __init__(self, z_channels):
         super().__init__()
-        self.z_channels = z_channels
         with self.init_scope():
             self.conv = nn.Convolution2D(
                 None,
@@ -50,8 +49,7 @@ class Prior(chainer.Chain):
 
     def compute_parameter(self, h):
         param = self.conv(h)
-        mean = param[:, :self.z_channels]
-        ln_var = param[:, self.z_channels:]
+        mean, ln_var = cf.split_axis(param, 2, axis=1)
         return mean, ln_var
 
     def sample_z(self, h):
