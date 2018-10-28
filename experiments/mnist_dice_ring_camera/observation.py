@@ -79,6 +79,11 @@ def add_annotation(axis, array):
 
 
 def main():
+    try:
+        os.mkdir(args.output_directory)
+    except:
+        pass
+
     xp = np
     using_gpu = args.gpu_device >= 0
     if using_gpu:
@@ -244,9 +249,12 @@ def main():
                     repeat_delay=0)
 
                 anim.save(
-                    "mnist_dice_ring_camera_{}.gif".format(file_number), writer="imagemagick")
+                    "{}/mnist_dice_ring_camera_{}.gif".format(
+                        args.output_directory, file_number),
+                    writer="imagemagick")
                 anim.save(
-                    "mnist_dice_ring_camera_{}.mp4".format(file_number),
+                    "{}/mnist_dice_ring_camera_{}.mp4".format(
+                        args.output_directory, file_number),
                     writer="ffmpeg",
                     fps=12)
                 file_number += 1
@@ -258,5 +266,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
+    parser.add_argument("--output-directory", "-out", type=str, default="gif")
     args = parser.parse_args()
     main()
