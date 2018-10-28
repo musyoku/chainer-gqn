@@ -129,8 +129,6 @@ def main():
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
                 images = images / 255.0
-                images += np.random.uniform(
-                    0, 1.0 / 256.0, size=images.shape).astype(np.float32)
 
                 total_views = images.shape[1]
 
@@ -159,6 +157,10 @@ def main():
                 # Transfer to gpu
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
+
+                # Add noise
+                query_images += xp.random.uniform(
+                    0, 1.0 / 256.0, size=query_images.shape).astype(xp.float32)
 
                 z_t_param_array, mean_x, reconstrution_t_array = model.sample_z_and_x_params_from_posterior(
                     query_images, query_viewpoints, representation)
@@ -211,7 +213,7 @@ def main():
                         cf.mean_squared_error(query_images, mean_x).data)
 
                 printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
                            len(iterator), elbo, loss_nll, loss_mse, loss_kld,
@@ -234,7 +236,7 @@ def main():
             model.serialize(args.snapshot_directory)
 
             # Visualize
-            if True:
+            if False:
                 axis_data.imshow(
                     make_uint8(query_images[0]), interpolation="none")
                 axis_reconstruction.imshow(
@@ -249,7 +251,7 @@ def main():
 
         elapsed_time = time.time() - start_time
         print(
-            "\033[2KIteration {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
+            "\033[2KIteration {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
             format(iteration + 1, mean_elbo / total_num_batch,
                    mean_nll / total_num_batch, mean_mse / total_num_batch,
                    mean_kld / total_num_batch, optimizer.learning_rate,

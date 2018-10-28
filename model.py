@@ -267,6 +267,10 @@ class Model():
             images = cuda.to_gpu(images)
             viewpoints = cuda.to_gpu(viewpoints)
 
+        # Add noise
+        images += xp.random.uniform(
+            0, 1.0 / 256.0, size=images.shape).astype(xp.float32)
+
         r = self.representation_network(images, viewpoints)
 
         # (batch * views, channels, height, width) -> (batch, views, channels, height, width)

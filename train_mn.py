@@ -226,7 +226,7 @@ def main():
 
                 if comm.rank == 0:
                     printr(
-                        "Iteration {}: Subset {} / {}: Batch {} / {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
                         format(iteration + 1, subset_loop + 1,
                                subset_size_per_gpu, batch_index + 1,
                                len(iterator), elbo, loss_nll, loss_mse,
@@ -256,7 +256,7 @@ def main():
             mean_mse /= total_num_batch
             mean_kld /= total_num_batch
             print(
-                "\033[2KIteration {} - loss: elbo: {:.2f} nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
+                "\033[2KIteration {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
                 format(iteration + 1, mean_elbo, mean_nll, mean_mse, mean_kld,
                        optimizer.learning_rate, scheduler.pixel_variance,
                        current_training_step, elapsed_time / 60))
