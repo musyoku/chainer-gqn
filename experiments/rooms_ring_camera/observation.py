@@ -40,9 +40,10 @@ def to_cpu(array):
 
 def generate_random_query_viewpoint(num_generation, xp):
     view_radius = 3
-    eye = np.random.normal(size=3)
-    eye = tuple(view_radius * (eye / np.linalg.norm(eye)))
-    center = (0, 0, 0)
+    rotation = random.uniform(0, math.pi * 2)
+    eye = (view_radius * math.cos(rotation), -0.125,
+           view_radius * math.sin(rotation))
+    center = (0, -0.125, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
     query_viewpoints = xp.array(
@@ -56,10 +57,9 @@ def generate_random_query_viewpoint(num_generation, xp):
 
 def rotate_query_viewpoint(angle_rad, num_generation, xp):
     view_radius = 3
-    eye = (view_radius * math.sin(angle_rad),
-           view_radius * math.sin(angle_rad),
+    eye = (view_radius * math.sin(angle_rad), -0.125,
            view_radius * math.cos(angle_rad))
-    center = (0, 0, 0)
+    center = (0, -0.125, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
     query_viewpoints = xp.array(
@@ -72,9 +72,9 @@ def rotate_query_viewpoint(angle_rad, num_generation, xp):
 
 
 def add_annotation(axis, array):
-    text = axis.text(-155, -60, "observations", fontsize=18)
+    text = axis.text(-190, -90, "observations", fontsize=18)
     array.append(text)
-    text = axis.text(-30, -60, "neural rendering", fontsize=18)
+    text = axis.text(-45, -90, "neural rendering", fontsize=18)
     array.append(text)
 
 
@@ -228,14 +228,14 @@ def main():
                         add_annotation(axis, artist_array)
                         artist_frame_array.append(artist_array)
 
-                plt.tight_layout()
-                plt.subplots_adjust(
-                    left=None,
-                    bottom=None,
-                    right=None,
-                    top=None,
-                    wspace=0,
-                    hspace=0)
+                # plt.tight_layout()
+                # plt.subplots_adjust(
+                #     left=None,
+                #     bottom=None,
+                #     right=None,
+                #     top=None,
+                #     wspace=0,
+                #     hspace=0)
                 anim = animation.ArtistAnimation(
                     fig,
                     artist_frame_array,
@@ -244,9 +244,9 @@ def main():
                     repeat_delay=0)
 
                 anim.save(
-                    "shepard_matzler_{}.gif".format(file_number), writer="imagemagick")
+                    "rooms_ring_camera_{}.gif".format(file_number), writer="imagemagick")
                 anim.save(
-                    "shepard_matzler_{}.mp4".format(file_number),
+                    "rooms_ring_camera_{}.mp4".format(file_number),
                     writer="ffmpeg",
                     fps=12)
                 file_number += 1

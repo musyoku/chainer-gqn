@@ -15,7 +15,17 @@ Current training progress:
 
 :thinking::thinking::thinking:
 
-![result_1](https://user-images.githubusercontent.com/15250418/47601671-03ec9100-da0f-11e8-8f96-b4b5189d6c1c.gif)
+**Shepard-Matzler**
+![shepard_matzler](https://thumbs.gfycat.com/UnimportantFortunateIndianelephant-size_restricted.gif)
+https://gfycat.com/gifs/detail/UnimportantFortunateIndianelephant
+
+**Rooms**
+![rooms_ring_camera](https://thumbs.gfycat.com/NeatPlayfulFlea-size_restricted.gif)
+https://gfycat.com/gifs/detail/NeatPlayfulFlea
+
+**MNIST Dice**
+![mnist_dice_ring_camera](https://thumbs.gfycat.com/ShamelessWindyFruitfly-size_restricted.gif)
+https://gfycat.com/gifs/detail/ShamelessWindyFruitfly
 
 
 # Requirements
