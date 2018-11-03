@@ -303,8 +303,6 @@ class Model():
         v = xp.broadcast_to(v, shape=v_broadcast_shape)
 
         z_t_params_array = []
-        reconstruction_t_array = []
-        reconstruction_t = xp.zeros_like(x)
 
         for t in range(self.generation_steps):
             inference_core = self.get_inference_core(t)
@@ -334,11 +332,8 @@ class Model():
             h_t_enc = h_next_enc
             c_t_enc = c_next_enc
 
-            reconstruction_t = self.map_u_x(u_t)
-            reconstruction_t_array.append(reconstruction_t)
-
-        mean_x = reconstruction_t_array[-1]
-        return z_t_params_array, mean_x, reconstruction_t_array[:-1]
+        mean_x = self.map_u_x(u_t)
+        return z_t_params_array, mean_x
 
     def generate_image(self, v, r, xp):
         batch_size = v.shape[0]

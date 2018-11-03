@@ -174,28 +174,19 @@ def main():
                 query_images = to_gpu(query_images)
                 query_viewpoints = to_gpu(query_viewpoints)
 
-                z_t_param_array, mean_x, reconstrution_t_array = model.sample_z_and_x_params_from_posterior(
+                z_t_param_array, mean_x = model.sample_z_and_x_params_from_posterior(
                     query_images, query_viewpoints, representation)
 
                 # Compute loss
                 ## KL Divergence
                 loss_kld = chainer.Variable(xp.zeros((), dtype=xp.float32))
-                if scheduler.kl_weight > 0:
-                    for params in z_t_param_array:
-                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
-                        kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
-                            mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
-                        loss_kld += cf.sum(kld)
+                for params in z_t_param_array:
+                    mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
+                    kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
+                    loss_kld += cf.sum(kld)
 
-                # Optional
-                loss_sse = chainer.Variable(xp.zeros((), dtype=xp.float32))
-                if scheduler.reconstruction_weight > 0:
-                    for reconstrution_t in reconstrution_t_array:
-                        loss_sse += cf.sum(
-                            cf.squared_error(reconstrution_t, query_images))
-                    loss_sse /= args.batch_size
-
-                # Negative log-likelihood of generated image
+                ##Negative log-likelihood of generated image
                 loss_nll = cf.sum(
                     gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                         query_images, mean_x, pixel_var, pixel_ln_var))
@@ -204,9 +195,7 @@ def main():
                 loss_nll = loss_nll / args.batch_size
                 loss_kld = loss_kld / args.batch_size
 
-                loss = (loss_nll / scheduler.pixel_variance) + (
-                    loss_kld * scheduler.kl_weight) + (
-                        loss_sse * scheduler.reconstruction_weight)
+                loss = (loss_nll / scheduler.pixel_variance) + loss_kld
 
                 model.cleargrads()
                 loss.backward()
@@ -217,22 +206,17 @@ def main():
 
                 elbo = -(loss_nll + loss_kld)
 
-                if scheduler.reconstruction_weight > 0:
-                    loss_mse = float(loss_sse.data) / num_pixels / (
-                        hyperparams.generator_generation_steps - 1)
-                else:
-                    loss_mse = float(
-                        cf.mean_squared_error(query_images, mean_x).data)
+                loss_mse = float(
+                    cf.mean_squared_error(query_images, mean_x).data)
 
                 if comm.rank == 0:
                     printr(
-                        "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
+                        "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {}  ".
                         format(iteration + 1, subset_loop + 1,
                                subset_size_per_gpu, batch_index + 1,
                                len(iterator), elbo, loss_nll, loss_mse,
                                loss_kld, optimizer.learning_rate,
-                               scheduler.pixel_variance, scheduler.kl_weight,
-                               scheduler.reconstruction_weight,
+                               scheduler.pixel_variance,
                                current_training_step))
 
                 total_num_batch += 1

@@ -84,7 +84,6 @@ def main():
     scheduler = Scheduler(
         sigma_start=args.initial_pixel_variance,
         sigma_end=args.final_pixel_variance,
-        pretrain_steps=args.pretrain_pixel_n,
         final_num_updates=args.pixel_n)
     print(scheduler)
 
@@ -162,28 +161,19 @@ def main():
                 query_images += xp.random.uniform(
                     0, 1.0 / 256.0, size=query_images.shape).astype(xp.float32)
 
-                z_t_param_array, mean_x, reconstrution_t_array = model.sample_z_and_x_params_from_posterior(
+                z_t_param_array, mean_x = model.sample_z_and_x_params_from_posterior(
                     query_images, query_viewpoints, representation)
 
                 # Compute loss
                 ## KL Divergence
-                loss_kld = chainer.Variable(xp.zeros((), dtype=xp.float32))
-                if scheduler.kl_weight > 0:
-                    for params in z_t_param_array:
-                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
-                        kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
-                            mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
-                        loss_kld += cf.sum(kld)
+                loss_kld = 0
+                for params in z_t_param_array:
+                    mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
+                    kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
+                    loss_kld += cf.sum(kld)
 
-                # Optional
-                loss_sse = chainer.Variable(xp.zeros((), dtype=xp.float32))
-                if scheduler.reconstruction_weight > 0:
-                    for reconstrution_t in reconstrution_t_array:
-                        loss_sse += cf.sum(
-                            cf.squared_error(reconstrution_t, query_images))
-                    loss_sse /= args.batch_size
-
-                # Negative log-likelihood of generated image
+                ## Negative log-likelihood of generated image
                 loss_nll = cf.sum(
                     gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
                         query_images, mean_x, pixel_var, pixel_ln_var))
@@ -192,9 +182,7 @@ def main():
                 loss_nll = loss_nll / args.batch_size
                 loss_kld = loss_kld / args.batch_size
 
-                loss = (loss_nll / scheduler.pixel_variance) + (
-                    loss_kld * scheduler.kl_weight) + (
-                        loss_sse * scheduler.reconstruction_weight)
+                loss = loss_nll / scheduler.pixel_variance + loss_kld
 
                 model.cleargrads()
                 loss.backward()
@@ -205,21 +193,15 @@ def main():
 
                 elbo = -(loss_nll + loss_kld)
 
-                if scheduler.reconstruction_weight > 0:
-                    loss_mse = float(loss_sse.data) / num_pixels / (
-                        hyperparams.generator_generation_steps - 1)
-                else:
-                    loss_mse = float(
-                        cf.mean_squared_error(query_images, mean_x).data)
+                loss_mse = float(
+                    cf.mean_squared_error(query_images, mean_x).data)
 
                 printr(
-                    "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - kl_weight: {:.3f} - rec_weight: {:.3f} - step: {}  ".
+                    "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {}  ".
                     format(iteration + 1,
                            subset_index + 1, len(dataset), batch_index + 1,
                            len(iterator), elbo, loss_nll, loss_mse, loss_kld,
                            optimizer.learning_rate, scheduler.pixel_variance,
-                           scheduler.kl_weight,
-                           scheduler.reconstruction_weight,
                            current_training_step))
 
                 scheduler.step(current_training_step)
@@ -236,7 +218,7 @@ def main():
             model.serialize(args.snapshot_directory)
 
             # Visualize
-            if False:
+            if args.with_visualization:
                 axis_data.imshow(
                     make_uint8(query_images[0]), interpolation="none")
                 axis_reconstruction.imshow(
@@ -269,7 +251,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", "-b", type=int, default=36)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
     parser.add_argument(
-        "--training-iterations", "-iter", type=int, default=2 * 10**6)
+        "--training-iterations", "-iter", type=int, default=10000000)
     parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
     parser.add_argument("--initial-lr", "-mu-i", type=float, default=0.0005)
     parser.add_argument("--final-lr", "-mu-f", type=float, default=0.0005)
@@ -277,8 +259,7 @@ if __name__ == "__main__":
         "--initial-pixel-variance", "-ps-i", type=float, default=2.0)
     parser.add_argument(
         "--final-pixel-variance", "-ps-f", type=float, default=0.7)
-    parser.add_argument("--pixel-n", "-pn", type=int, default=200000)
-    parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=10000)
+    parser.add_argument("--pixel-n", "-pn", type=int, default=160000)
     parser.add_argument("--h-channels", "-ch", type=int, default=64)
     parser.add_argument("--z-channels", "-cz", type=int, default=3)
     parser.add_argument("--u-channels", "-cu", type=int, default=16)
@@ -300,7 +281,6 @@ if __name__ == "__main__":
         "--inference-share-posterior",
         "-i-share-posterior",
         action="store_true")
-    parser.add_argument("--num-bits-x", "-bits", type=int, default=8)
     parser.add_argument(
         "--with-visualization",
         "-visualize",
