@@ -61,6 +61,7 @@ def main():
     hyperparams.generator_generation_steps = args.generation_steps
     hyperparams.generator_u_channels = args.u_channels
     hyperparams.generator_share_upsampler = args.generator_share_upsampler
+    hyperparams.generator_subpixel_convolution_enabled = args.generator_subpixel_convolution_enabled
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
@@ -274,6 +275,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--generator-share-upsampler",
         "-g-share-upsampler",
+        action="store_true")
+    parser.add_argument(
+        "--generator-subpixel-convolution-enabled",
+        "-g-subpixel-convolution",
         action="store_true")
     parser.add_argument(
         "--inference-share-core", "-i-share-core", action="store_true")

@@ -65,11 +65,10 @@ def main():
     hyperparams.generator_generation_steps = args.generation_steps
     hyperparams.generator_u_channels = args.u_channels
     hyperparams.generator_share_upsampler = args.generator_share_upsampler
-    hyperparams.generator_lstm_peephole_enabled = args.generator_lstm_peephole_enabled
+    hyperparams.generator_subpixel_convolution_enabled = args.generator_subpixel_convolution_enabled
     hyperparams.inference_share_core = args.inference_share_core
     hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.inference_downsampler_channels = args.inference_downsampler_channels
-    hyperparams.inference_lstm_peephole_enabled = args.inference_lstm_peephole_enabled
     hyperparams.h_channels = args.h_channels
     hyperparams.z_channels = args.z_channels
     hyperparams.representation_channels = args.representation_channels
@@ -281,18 +280,14 @@ if __name__ == "__main__":
         "-g-share-upsampler",
         action="store_true")
     parser.add_argument(
+        "--generator-subpixel-convolution-enabled",
+        "-g-subpixel-convolution",
+        action="store_true")
+    parser.add_argument(
         "--inference-share-core", "-i-share-core", action="store_true")
     parser.add_argument(
         "--inference-share-posterior",
         "-i-share-posterior",
-        action="store_true")
-    parser.add_argument(
-        "--inference-lstm-peephole-enabled",
-        "-i-peephole",
-        action="store_true")
-    parser.add_argument(
-        "--generator-lstm-peephole-enabled",
-        "-g-peephole",
         action="store_true")
     parser.add_argument("--num-bits-x", "-bits", type=int, default=8)
     args = parser.parse_args()

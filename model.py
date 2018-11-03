@@ -70,12 +70,12 @@ class Model():
             num_upsamplers = 1 if self.hyperparams.generator_share_upsampler else generation_steps
             scale = 4
             for _ in range(num_upsamplers):
-                if False:
-                    upsampler = gqn.nn.chainer.upsampler.DeconvolutionUpsampler(
-                        channels=u_channels)
-                else:
+                if self.hyperparams.generator_subpixel_convolution_enabled:
                     upsampler = gqn.nn.chainer.upsampler.SubPixelConvolutionUpsampler(
                         channels=u_channels * scale**2, scale=scale)
+                else:
+                    upsampler = gqn.nn.chainer.upsampler.DeconvolutionUpsampler(
+                        channels=u_channels)
                 upsampler_h_u_array.append(upsampler)
                 self.parameters.append(upsampler)
 
