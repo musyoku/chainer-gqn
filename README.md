@@ -17,7 +17,7 @@ Current training progress:
 
 **Shepard-Matzler**
 
-![shepard_matzler_3](https://user-images.githubusercontent.com/15250418/47952404-18ea9680-dfb2-11e8-96be-895e20654431.gif)
+![shepard_matzler_7](https://user-images.githubusercontent.com/15250418/47960418-fa7eac80-e03e-11e8-8acc-c507bd186301.gif)
 https://thumbs.gfycat.com/AdventurousAcclaimedGavial-size_restricted.gif
 
 **Rooms**
