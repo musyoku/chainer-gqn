@@ -93,7 +93,6 @@ def main():
     scheduler = Scheduler(
         sigma_start=args.initial_pixel_variance,
         sigma_end=args.final_pixel_variance,
-        pretrain_steps=args.pretrain_pixel_n,
         final_num_updates=args.pixel_n)
     if comm.rank == 0:
         print(scheduler)
