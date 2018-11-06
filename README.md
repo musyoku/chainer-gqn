@@ -22,8 +22,14 @@ https://thumbs.gfycat.com/AdventurousAcclaimedGavial-size_restricted.gif
 
 **Rooms**
 
-![rooms_ring_camera](https://thumbs.gfycat.com/NeatPlayfulFlea-size_restricted.gif)
-https://gfycat.com/gifs/detail/NeatPlayfulFlea
+![rooms_ring_camera](https://thumbs.gfycat.com/UnrealisticJoyousGlobefish-size_restricted.gif)
+https://gfycat.com/gifs/detail/UnrealisticJoyousGlobefish
+
+![rooms_ring_camera](https://thumbs.gfycat.com/PeskyYawningIndianhare-size_restricted.gif)
+https://gfycat.com/gifs/detail/PeskyYawningIndianhare
+
+![rooms_ring_camera](https://thumbs.gfycat.com/PresentOpulentEastrussiancoursinghounds-size_restricted.gif)
+https://gfycat.com/gifs/detail/PresentOpulentEastrussiancoursinghounds
 
 **MNIST Dice**
 
