@@ -12,9 +12,9 @@ class SubPixelConvolutionUpsampler(chainer.Chain):
             self.conv = nn.Convolution2D(
                 None,
                 channels,
-                ksize=3,
+                ksize=1,
                 stride=1,
-                pad=1,
+                pad=0,
                 initialW=HeNormal(0.1))
 
     def __call__(self, x):

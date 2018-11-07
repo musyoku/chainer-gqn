@@ -55,14 +55,14 @@ class Model():
             # LSTM core
             num_cores = 1 if self.hyperparams.generator_share_core else generation_steps
             for _ in range(num_cores):
-                core = gqn.nn.chainer.generator.Core(h_channels=h_channels)
+                core = gqn.nn.generator.Core(h_channels=h_channels)
                 core_array.append(core)
                 self.parameters.append(core)
 
             # z prior sampler
             num_priors = 1 if self.hyperparams.generator_share_prior else generation_steps
             for _ in range(num_priors):
-                prior = gqn.nn.chainer.generator.Prior(z_channels=z_channels)
+                prior = gqn.nn.generator.Prior(z_channels=z_channels)
                 prior_array.append(prior)
                 self.parameters.append(prior)
 
@@ -71,10 +71,10 @@ class Model():
             scale = 4
             for _ in range(num_upsamplers):
                 if self.hyperparams.generator_subpixel_convolution_enabled:
-                    upsampler = gqn.nn.chainer.upsampler.SubPixelConvolutionUpsampler(
+                    upsampler = gqn.nn.upsampler.SubPixelConvolutionUpsampler(
                         channels=u_channels * scale**2, scale=scale)
                 else:
-                    upsampler = gqn.nn.chainer.upsampler.DeconvolutionUpsampler(
+                    upsampler = gqn.nn.upsampler.DeconvolutionUpsampler(
                         channels=u_channels)
                 upsampler_h_u_array.append(upsampler)
                 self.parameters.append(upsampler)
@@ -102,20 +102,19 @@ class Model():
             num_cores = 1 if self.hyperparams.inference_share_core else generation_steps
             for t in range(num_cores):
                 # LSTM core
-                core = gqn.nn.chainer.inference.Core(h_channels=h_channels)
+                core = gqn.nn.inference.Core(h_channels=h_channels)
                 core_array.append(core)
                 self.parameters.append(core)
 
             # z posterior sampler
             num_posteriors = 1 if self.hyperparams.inference_share_posterior else generation_steps
             for t in range(num_posteriors):
-                posterior = gqn.nn.chainer.inference.Posterior(
-                    z_channels=z_channels)
+                posterior = gqn.nn.inference.Posterior(z_channels=z_channels)
                 posterior_array.append(posterior)
                 self.parameters.append(posterior)
 
             # x downsampler
-            downsampler_x_h = gqn.nn.chainer.downsampler.Downsampler(
+            downsampler_x_h = gqn.nn.downsampler.Downsampler(
                 channels=downsampler_channels)
             self.parameters.append(downsampler_x_h)
 
@@ -123,8 +122,7 @@ class Model():
 
     def build_representation_network(self, architecture, r_channels):
         if architecture == "tower":
-            layer = gqn.nn.chainer.representation.TowerNetwork(
-                r_channels=r_channels)
+            layer = gqn.nn.representation.TowerNetwork(r_channels=r_channels)
             with self.parameters.init_scope():
                 self.parameters.append(layer)
             return layer
@@ -241,7 +239,7 @@ class Model():
     #         h_next_gen, c_next_gen, u_next_enc = generation_core.forward_onestep(
     #             hl_gen, cl_gen, ul_enc, ze_l, v, r)
 
-    #         kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+    #         kld = gqn.nn.functions.gaussian_kl_divergence(
     #             mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
 
     #         loss_kld += cf.sum(kld)

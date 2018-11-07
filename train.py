@@ -170,13 +170,13 @@ def main():
                 loss_kld = 0
                 for params in z_t_param_array:
                     mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
-                    kld = gqn.nn.chainer.functions.gaussian_kl_divergence(
+                    kld = gqn.functions.gaussian_kl_divergence(
                         mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
                     loss_kld += cf.sum(kld)
 
                 ## Negative log-likelihood of generated image
                 loss_nll = cf.sum(
-                    gqn.nn.chainer.functions.gaussian_negative_log_likelihood(
+                    gqn.functions.gaussian_negative_log_likelihood(
                         query_images, mean_x, pixel_var, pixel_ln_var))
 
                 # Calculate the average loss value
