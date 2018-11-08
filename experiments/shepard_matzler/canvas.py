@@ -74,9 +74,9 @@ def rotate_query_viewpoint(angle_rad, num_generation, xp):
 
 
 def add_annotation(axis, array):
-    text = axis.text(-145, -400, "observations", fontsize=18)
+    text = axis.text(-70, -320, "observations", fontsize=16)
     array.append(text)
-    text = axis.text(5, -400, "DRAW", fontsize=18)
+    text = axis.text(15, -320, "DRAW", fontsize=16)
     array.append(text)
 
 
@@ -103,7 +103,7 @@ def main():
 
     plt.style.use("dark_background")
     # fig = plt.figure()
-    fig = plt.figure(figsize=(5, 4 * num_rows))
+    fig = plt.figure(figsize=(5, 2 * num_rows))
 
     axis_observation_array = []
     axis_observation_array.append(fig.add_subplot(num_rows, 2, 1))
@@ -229,7 +229,7 @@ def main():
                             artist_array.append(axis_image)
 
                         angle_rad += 2 * math.pi / total_frames_per_rotation
-                        plt.pause(1e-8)
+                        # plt.pause(1e-8)
 
                         axis = axis_generation_array[-1]
                         add_annotation(axis, artist_array)
