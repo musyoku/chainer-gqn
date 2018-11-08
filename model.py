@@ -345,12 +345,6 @@ class Model():
         v = xp.reshape(v, v.shape + (1, 1))
         v = xp.broadcast_to(v, shape=v_broadcast_shape)
 
-        reconstruction_t = xp.zeros(
-            (
-                u_t.shape[0],
-                3,
-            ) + u_t.shape[2:], dtype=xp.float32)
-
         for t in range(self.generation_steps):
             generation_core = self.get_generation_core(t)
             generation_piror = self.get_generation_prior(t)
@@ -368,6 +362,39 @@ class Model():
 
         mean_x = self.map_u_x(u_t)
         return mean_x.data
+
+    def generate_canvas_states(self, v, r, xp):
+        batch_size = v.shape[0]
+        h_t_gen, c_t_gen, u_t, _, _ = self.generate_initial_state(
+            batch_size, xp)
+
+        v_broadcast_shape = (
+            h_t_gen.shape[0],
+            v.shape[1],
+        ) + h_t_gen.shape[2:]
+        v = xp.reshape(v, v.shape + (1, 1))
+        v = xp.broadcast_to(v, shape=v_broadcast_shape)
+
+        u_t_array = []
+
+        for t in range(self.generation_steps):
+            generation_core = self.get_generation_core(t)
+            generation_piror = self.get_generation_prior(t)
+            generation_upsampler = self.get_generation_upsampler(t)
+
+            mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
+            z_t = cf.gaussian(mean_z_p, ln_var_z_p)
+
+            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
+                                                     r)
+
+            u_t = u_t + generation_upsampler(h_next_gen)
+            h_t_gen = h_next_gen
+            c_t_gen = c_next_gen
+
+            u_t_array.append(u_t)
+
+        return u_t_array
 
     def reconstruct_image(self, query_images, v, r, xp):
         batch_size = v.shape[0]
