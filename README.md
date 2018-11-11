@@ -20,6 +20,8 @@ Current training progress:
 ![shepard_matzler_7](https://user-images.githubusercontent.com/15250418/47960418-fa7eac80-e03e-11e8-8acc-c507bd186301.gif)
 https://thumbs.gfycat.com/AdventurousAcclaimedGavial-size_restricted.gif
 
+![shepard_matzler_predictions_15](https://user-images.githubusercontent.com/15250418/48316880-935b8c00-e62c-11e8-8f03-313cc0135b01.png)
+
 **Rooms**
 
 ![rooms_ring_camera](https://thumbs.gfycat.com/UnrealisticJoyousGlobefish-size_restricted.gif)
