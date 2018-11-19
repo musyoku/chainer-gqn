@@ -15,28 +15,17 @@ Current training progress:
 
 :thinking::thinking::thinking:
 
-**Shepard-Matzler**
+**Shepard-Matzler 64x64**
 
 ![shepard_matzler_7](https://thumbs.gfycat.com/FickleCoolAnglerfish-size_restricted.gif)
 https://gfycat.com/gifs/detail/FickleCoolAnglerfish
 
 ![shepard_matzler_predictions_15](https://user-images.githubusercontent.com/15250418/48316880-935b8c00-e62c-11e8-8f03-313cc0135b01.png)
 
-**Rooms**
+**Rooms (Free Camera) 32x32**
 
-![rooms_ring_camera](https://thumbs.gfycat.com/UnrealisticJoyousGlobefish-size_restricted.gif)
-https://gfycat.com/gifs/detail/UnrealisticJoyousGlobefish
-
-![rooms_ring_camera](https://thumbs.gfycat.com/PeskyYawningIndianhare-size_restricted.gif)
-https://gfycat.com/gifs/detail/PeskyYawningIndianhare
-
-![rooms_ring_camera](https://thumbs.gfycat.com/PresentOpulentEastrussiancoursinghounds-size_restricted.gif)
-https://gfycat.com/gifs/detail/PresentOpulentEastrussiancoursinghounds
-
-**MNIST Dice**
-
-![mnist_dice_ring_camera](https://thumbs.gfycat.com/ShamelessWindyFruitfly-size_restricted.gif)
-https://gfycat.com/gifs/detail/ShamelessWindyFruitfly
+![rooms_ring_camera](https://thumbs.gfycat.com/AnimatedBareBasil-size_restricted.gif)
+https://gfycat.com/AnimatedBareBasil
 
 
 # Requirements
