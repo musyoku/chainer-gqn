@@ -18,6 +18,7 @@ Current training progress:
 **Shepard-Matzler 64x64**
 
 ![shepard_matzler_7](https://thumbs.gfycat.com/FickleCoolAnglerfish-size_restricted.gif)
+
 https://gfycat.com/gifs/detail/FickleCoolAnglerfish
 
 ![shepard_matzler_predictions_15](https://user-images.githubusercontent.com/15250418/48316880-935b8c00-e62c-11e8-8f03-313cc0135b01.png)
@@ -25,6 +26,7 @@ https://gfycat.com/gifs/detail/FickleCoolAnglerfish
 **Rooms (Free Camera) 32x32**
 
 ![rooms_ring_camera](https://thumbs.gfycat.com/AnimatedBareBasil-size_restricted.gif)
+
 https://gfycat.com/AnimatedBareBasil
 
 
