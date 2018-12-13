@@ -26,45 +26,47 @@ def to_gpu(array):
     return array
 
 
-def generate_random_query_viewpoint(num_generation, xp):
-    view_radius = 3
-    eye = np.random.normal(size=3)
-    eye = tuple(view_radius * (eye / np.linalg.norm(eye)))
-    center = (0, 0, 0)
+def make_query_viewpoint(eye, center, batch_size, xp):
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
     query_viewpoints = xp.array(
         (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw), math.cos(pitch),
          math.sin(pitch)),
-        dtype=np.float32)
-    query_viewpoints = xp.broadcast_to(
-        query_viewpoints, (num_generation, ) + query_viewpoints.shape)
+        dtype=xp.float32)
+    query_viewpoints = xp.broadcast_to(query_viewpoints,
+                                       (batch_size, ) + query_viewpoints.shape)
     return query_viewpoints
 
 
-def rotate_query_viewpoint(angle_rad, num_generation, xp):
+def interpolate(x, y, a):
+    z = (
+        y[0] * a + x[0] * (1.0 - a),
+        y[1] * a + x[1] * (1.0 - a),
+        y[2] * a + x[2] * (1.0 - a),
+    )
+    return z
 
-    angle_rad = 1
-    view_radius = 3
-    eye = (view_radius * math.sin(angle_rad),
-           view_radius * math.sin(angle_rad),
-           view_radius * math.cos(angle_rad))
-    center = (0, 0, 0)
+
+def rotate_query_viewpoint(angle_rad, batch_size, xp):
+    eye_radius = 3
+    eye = (eye_radius * math.sin(angle_rad), -0.125,
+           eye_radius * math.cos(angle_rad))
+    center = (0, -0.125, 0)
     yaw = gqn.math.yaw(eye, center)
     pitch = gqn.math.pitch(eye, center)
     query_viewpoints = xp.array(
         (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw), math.cos(pitch),
          math.sin(pitch)),
         dtype=np.float32)
-    query_viewpoints = xp.broadcast_to(
-        query_viewpoints, (num_generation, ) + query_viewpoints.shape)
+    query_viewpoints = xp.broadcast_to(query_viewpoints,
+                                       (batch_size, ) + query_viewpoints.shape)
     return query_viewpoints
 
 
 def add_annotation(axis, array):
-    text = axis.text(-46, -0, "observations", fontsize=18)
+    text = axis.text(-25, -2, "observations", fontsize=18)
     array.append(text)
-    text = axis.text(18, -0, "neural rendering", fontsize=18)
+    text = axis.text(7, -2, "neural rendering", fontsize=18)
     array.append(text)
 
 
@@ -104,7 +106,7 @@ def main():
 
     num_views_per_scene = 4
     num_generation = 1
-    total_frames_per_rotation = 24
+    total_frames_per_movement = 72
 
     image_shape = (3, ) + hyperparams.image_size
     blank_image = np.full(image_shape, -0.5)
@@ -142,33 +144,6 @@ def main():
                     ) + hyperparams.chrz_size,
                     dtype=np.float32)
 
-                angle_rad = 0
-                for t in range(total_frames_per_rotation):
-                    artist_array = []
-
-                    for axis in axis_observation_array:
-                        axis_image = axis.imshow(
-                            make_uint8(blank_image),
-                            interpolation="none",
-                            animated=True)
-                        artist_array.append(axis_image)
-
-                    query_viewpoints = rotate_query_viewpoint(
-                        angle_rad, num_generation, xp)
-                    generated_images = model.generate_image(
-                        query_viewpoints, r)
-
-                    image = make_uint8(generated_images[0])
-                    axis_image = axis_generation.imshow(
-                        image, interpolation="none", animated=True)
-                    artist_array.append(axis_image)
-
-                    angle_rad += 2 * math.pi / total_frames_per_rotation
-
-                    # plt.pause(1e-8)
-                    add_annotation(axis_generation, artist_array)
-                    artist_frame_array.append(artist_array)
-
                 # Generate images with observations
                 for m in range(num_views_per_scene):
                     observed_image = images[batch_index, m]
@@ -183,8 +158,15 @@ def main():
 
                     r = cf.broadcast_to(r, (num_generation, ) + r.shape[1:])
 
-                    angle_rad = 0
-                    for t in range(total_frames_per_rotation):
+                    grid_size = 8
+                    trajectory_length = grid_size / 3
+
+                    eye_start = (-trajectory_length, -0.125, trajectory_length)
+                    eye_end = (-trajectory_length, -0.125, -trajectory_length)
+                    center_start = (-trajectory_length, -0.125, grid_size / 2)
+                    center_end = (-trajectory_length, -0.125, 0)
+
+                    for t in range(total_frames_per_movement):
                         artist_array = []
 
                         for axis, observed_image in zip(
@@ -195,20 +177,87 @@ def main():
                                 animated=True)
                             artist_array.append(axis_image)
 
-                        query_viewpoints = rotate_query_viewpoint(
-                            angle_rad, num_generation, xp)
+                        interp = t / (total_frames_per_movement - 1)
+                        eye = interpolate(eye_start, eye_end, interp)
+                        center = interpolate(center_start, center_end, interp)
+                        query_viewpoints = make_query_viewpoint(
+                            eye, center, num_generation, xp)
                         generated_images = model.generate_image(
                             query_viewpoints, r)
 
+                        image = make_uint8(generated_images[0])
                         axis_image = axis_generation.imshow(
-                            make_uint8(generated_images[0]),
-                            interpolation="none",
-                            animated=True)
+                            image, interpolation="none", animated=True)
                         artist_array.append(axis_image)
 
-                        angle_rad += 2 * math.pi / total_frames_per_rotation
                         # plt.pause(1e-8)
+                        add_annotation(axis_generation, artist_array)
+                        artist_frame_array.append(artist_array)
 
+                    eye_start = (-trajectory_length, -0.125,
+                                 -trajectory_length)
+                    eye_end = (trajectory_length, -0.125, -trajectory_length)
+                    center_start = (-trajectory_length, -0.125, 0)
+                    center_end = (trajectory_length, -0.125, 0)
+
+                    for t in range(total_frames_per_movement):
+                        artist_array = []
+
+                        for axis, observed_image in zip(
+                                axis_observation_array, observed_image_array):
+                            axis_image = axis.imshow(
+                                make_uint8(observed_image),
+                                interpolation="none",
+                                animated=True)
+                            artist_array.append(axis_image)
+
+                        interp = t / (total_frames_per_movement - 1)
+                        eye = interpolate(eye_start, eye_end, interp)
+                        center = interpolate(center_start, center_end, interp)
+                        query_viewpoints = make_query_viewpoint(
+                            eye, center, num_generation, xp)
+                        generated_images = model.generate_image(
+                            query_viewpoints, r)
+
+                        image = make_uint8(generated_images[0])
+                        axis_image = axis_generation.imshow(
+                            image, interpolation="none", animated=True)
+                        artist_array.append(axis_image)
+
+                        # plt.pause(1e-8)
+                        add_annotation(axis_generation, artist_array)
+                        artist_frame_array.append(artist_array)
+
+                    eye_start = (trajectory_length, -0.125, -trajectory_length)
+                    eye_end = (trajectory_length, -0.125, trajectory_length)
+                    center_start = (trajectory_length, -0.125, 0)
+                    center_end = (trajectory_length, -0.125, grid_size / 2)
+
+                    for t in range(total_frames_per_movement):
+                        artist_array = []
+
+                        for axis, observed_image in zip(
+                                axis_observation_array, observed_image_array):
+                            axis_image = axis.imshow(
+                                make_uint8(observed_image),
+                                interpolation="none",
+                                animated=True)
+                            artist_array.append(axis_image)
+
+                        interp = t / (total_frames_per_movement - 1)
+                        eye = interpolate(eye_start, eye_end, interp)
+                        center = interpolate(center_start, center_end, interp)
+                        query_viewpoints = make_query_viewpoint(
+                            eye, center, num_generation, xp)
+                        generated_images = model.generate_image(
+                            query_viewpoints, r)
+
+                        image = make_uint8(generated_images[0])
+                        axis_image = axis_generation.imshow(
+                            image, interpolation="none", animated=True)
+                        artist_array.append(axis_image)
+
+                        # plt.pause(1e-8)
                         add_annotation(axis_generation, artist_array)
                         artist_frame_array.append(artist_array)
 
@@ -228,12 +277,12 @@ def main():
                     repeat_delay=0)
 
                 anim.save(
-                    "{}/shepard_matzler_{}.gif".format(args.output_directory,
-                                                       file_number),
+                    "{}/rooms_free_camera_{}.gif".format(
+                        args.output_directory, file_number),
                     writer="imagemagick")
                 anim.save(
-                    "{}/shepard_matzler_{}.mp4".format(args.output_directory,
-                                                       file_number),
+                    "{}/rooms_free_camera_{}.mp4".format(
+                        args.output_directory, file_number),
                     writer="ffmpeg",
                     fps=12)
                 file_number += 1

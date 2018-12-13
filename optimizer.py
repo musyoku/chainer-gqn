@@ -7,6 +7,14 @@ from chainer.optimizer_hooks import GradientClipping
 from tabulate import tabulate
 
 
+def optimizer_by_name(name, *args, **kwargs):
+    if str(name).lower() == "adam":
+        return AdamOptimizer(*args, **kwargs)
+    if str(name).lower() == "msgd":
+        return MomentumSGDOptimizer(*args, **kwargs)
+    raise NotImplementedError
+
+
 class AdamOptimizer:
     def __init__(
             self,

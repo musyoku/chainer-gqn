@@ -9,7 +9,6 @@
 - [x] Implement GQN
 - [x] Implement training loop
 - [ ] Hyperparameter search
-- [ ] Debug
 
 Current training progress:
 

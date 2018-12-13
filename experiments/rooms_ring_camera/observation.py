@@ -15,26 +15,14 @@ from chainer.backends import cuda
 
 sys.path.append(".")
 import gqn
+from gqn.preprocessing import preprocess_images, make_uint8
 from hyperparams import HyperParameters
 from model import Model
-
-
-def make_uint8(image):
-    if (image.shape[0] == 3):
-        image = image.transpose(1, 2, 0)
-    image = to_cpu(image)
-    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def to_gpu(array):
     if isinstance(array, np.ndarray):
         return cuda.to_gpu(array)
-    return array
-
-
-def to_cpu(array):
-    if isinstance(array, cupy.ndarray):
-        return cuda.to_cpu(array)
     return array
 
 
@@ -123,7 +111,7 @@ def main():
     total_frames_per_rotation = 24
 
     image_shape = (3, ) + hyperparams.image_size
-    blank_image = make_uint8(np.full(image_shape, 0))
+    blank_image = np.full(image_shape, -0.5)
     file_number = 1
 
     with chainer.no_backprop_mode():
@@ -144,9 +132,7 @@ def main():
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
-                images = images / 255.0
-                images += np.random.uniform(
-                    0, 1.0 / 256.0, size=images.shape).astype(np.float32)
+                images = preprocess_images(images)
 
                 batch_index = 0
 
@@ -172,7 +158,7 @@ def main():
                     query_viewpoints = rotate_query_viewpoint(
                         angle_rad, num_generation, xp)
                     generated_images = model.generate_image(
-                        query_viewpoints, r, xp)
+                        query_viewpoints, r)
 
                     for j, axis in enumerate(axis_generation_array):
                         image = make_uint8(generated_images[j])
@@ -216,7 +202,7 @@ def main():
                         query_viewpoints = rotate_query_viewpoint(
                             angle_rad, num_generation, xp)
                         generated_images = model.generate_image(
-                            query_viewpoints, r, xp)
+                            query_viewpoints, r)
 
                         for j in range(num_generation):
                             axis = axis_generation_array[j]

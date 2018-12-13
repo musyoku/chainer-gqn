@@ -7,18 +7,15 @@ from tabulate import tabulate
 class HyperParameters():
     def __init__(self, snapshot_directory=None):
         self.image_size = (64, 64)
-        self.chrz_size = (16, 16)  # needs to be 1/4 of image_size
         self.h_channels = 64
         self.z_channels = 3
         self.inference_share_core = False
         self.inference_share_posterior = False
-        self.inference_downsampler_channels = 12
         self.generator_generation_steps = 12
-        self.generator_u_channels = 64
+        self.u_channels = 128
         self.generator_share_core = False
         self.generator_share_prior = False
         self.generator_share_upsampler = False
-        self.generator_subpixel_convolution_enabled = False
         self.pixel_sigma_i = 2.0
         self.pixel_sigma_f = 0.7
         self.pixel_n = 2 * 1e5
@@ -35,8 +32,6 @@ class HyperParameters():
                         if isinstance(value, list):
                             value = tuple(value)
                         setattr(self, key, value)
-            else:
-                raise Exception
 
     @property
     def filename(self):
