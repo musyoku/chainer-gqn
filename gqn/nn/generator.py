@@ -36,7 +36,8 @@ class Core(chainer.Chain):
                 ksize=h_size,
                 pad=0,
                 stride=h_size,
-                initialW=weight_initializer)
+                initialW=weight_initializer,
+                nobias=True)
             if r_size[0] == 1:
                 self.broadcast_r = nn.Deconvolution2D(
                     r_channels,
@@ -44,7 +45,8 @@ class Core(chainer.Chain):
                     ksize=h_size,
                     pad=0,
                     stride=h_size,
-                    initialW=weight_initializer)
+                    initialW=weight_initializer,
+                    nobias=True)
             self.lstm = nn.Convolution2D(
                 None,
                 h_channels * 4,
