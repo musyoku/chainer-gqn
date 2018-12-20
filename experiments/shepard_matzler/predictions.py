@@ -6,7 +6,6 @@ import os
 import random
 
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import chainer
 import chainer.functions as cf
 import cupy
@@ -26,49 +25,9 @@ def to_gpu(array):
     return array
 
 
-def generate_random_query_viewpoint(num_generation, xp):
-    view_radius = 3
-    eye = np.random.normal(size=3)
-    eye = tuple(view_radius * (eye / np.linalg.norm(eye)))
-    center = (0, 0, 0)
-    yaw = gqn.math.yaw(eye, center)
-    pitch = gqn.math.pitch(eye, center)
-    query_viewpoints = xp.array(
-        (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw), math.cos(pitch),
-         math.sin(pitch)),
-        dtype=np.float32)
-    query_viewpoints = xp.broadcast_to(
-        query_viewpoints, (num_generation, ) + query_viewpoints.shape)
-    return query_viewpoints
-
-
-def rotate_query_viewpoint(angle_rad, num_generation, xp):
-    view_radius = 3
-    eye = (view_radius * math.sin(angle_rad),
-           view_radius * math.sin(angle_rad),
-           view_radius * math.cos(angle_rad))
-    center = (0, 0, 0)
-    yaw = gqn.math.yaw(eye, center)
-    pitch = gqn.math.pitch(eye, center)
-    query_viewpoints = xp.array(
-        (eye[0], eye[1], eye[2], math.cos(yaw), math.sin(yaw), math.cos(pitch),
-         math.sin(pitch)),
-        dtype=np.float32)
-    query_viewpoints = xp.broadcast_to(
-        query_viewpoints, (num_generation, ) + query_viewpoints.shape)
-    return query_viewpoints
-
-
-def add_annotation(axis, array):
-    text = axis.text(-46, -0, "observations", fontsize=18)
-    array.append(text)
-    text = axis.text(18, -0, "neural rendering", fontsize=18)
-    array.append(text)
-
-
 def main():
     try:
-        os.mkdir(args.output_directory)
+        os.mkdir(args.figure_directory)
     except:
         pass
 
@@ -85,27 +44,35 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    plt.style.use("dark_background")
-    fig = plt.figure(figsize=(10, 5))
+    fig = plt.figure(figsize=(12, 16))
 
-    axis_observation_array = []
-    axis_observation_array.append(plt.subplot2grid((2, 4), (0, 0)))
-    axis_observation_array.append(plt.subplot2grid((2, 4), (0, 1)))
-    axis_observation_array.append(plt.subplot2grid((2, 4), (1, 0)))
-    axis_observation_array.append(plt.subplot2grid((2, 4), (1, 1)))
+    axis_observation_1 = plt.subplot2grid((4, 3), (0, 0))
+    axis_observation_2 = plt.subplot2grid((4, 3), (0, 1))
+    axis_observation_3 = plt.subplot2grid((4, 3), (0, 2))
 
-    for axis in axis_observation_array:
-        axis.axis("off")
+    axis_predictions = plt.subplot2grid((4, 3), (1, 0), rowspan=3, colspan=3)
 
-    axis_generation = plt.subplot2grid((2, 4), (0, 2), rowspan=2, colspan=2)
-    axis_generation.axis("off")
+    axis_observation_1.axis("off")
+    axis_observation_2.axis("off")
+    axis_observation_3.axis("off")
+    axis_predictions.set_xticks([], [])
+    axis_predictions.set_yticks([], [])
 
-    num_views_per_scene = 4
-    num_generation = 1
-    total_frames_per_rotation = 24
+    axis_observation_1.set_title("Observation 1", fontsize=22)
+    axis_observation_2.set_title("Observation 2", fontsize=22)
+    axis_observation_3.set_title("Observation 3", fontsize=22)
 
+    axis_predictions.set_title("Neural Rendering", fontsize=22)
+    axis_predictions.set_xlabel("Yaw", fontsize=22)
+    axis_predictions.set_ylabel("Pitch", fontsize=22)
+
+    num_views_per_scene = 3
+    num_yaw_pitch_steps = 10
+    image_width, image_height = hyperparams.image_size
     image_shape = (3, ) + hyperparams.image_size
-    blank_image = np.full(image_shape, -0.5)
+    prediction_images = make_uint8(
+        np.full((num_yaw_pitch_steps * image_width,
+                 num_yaw_pitch_steps * image_height, 3), 0))
     file_number = 1
 
     with chainer.no_backprop_mode():
@@ -113,127 +80,71 @@ def main():
             iterator = gqn.data.Iterator(subset, batch_size=1)
 
             for data_indices in iterator:
-                artist_frame_array = []
-
-                observed_image_array = xp.full(
-                    (num_views_per_scene, ) + image_shape,
-                    -0.5,
-                    dtype=np.float32)
-                observed_viewpoint_array = xp.zeros(
-                    (num_views_per_scene, 7), dtype=np.float32)
-
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
-                images = preprocess_images(images, add_noise=False)
+                images = preprocess_images(images)
 
                 batch_index = 0
 
-                # Generate images without observations
-                r = xp.zeros(
-                    (
-                        num_generation,
-                        hyperparams.representation_channels,
-                    ) + hyperparams.chrz_size,
-                    dtype=np.float32)
+                total_views = images.shape[1]
+                observation_view_indices = list(range(total_views))
+                random.shuffle(observation_view_indices)
+                observation_view_indices = observation_view_indices[:
+                                                                    num_views_per_scene]
 
-                angle_rad = 0
-                for t in range(total_frames_per_rotation):
-                    artist_array = []
+                observed_image_array = images[:, observation_view_indices]
+                representation = model.compute_observation_representation(
+                    observed_image_array,
+                    viewpoints[:, observation_view_indices])
 
-                    for axis in axis_observation_array:
-                        axis_image = axis.imshow(
-                            make_uint8(blank_image),
-                            interpolation="none",
-                            animated=True)
-                        artist_array.append(axis_image)
+                axis_observation_1.imshow(
+                    make_uint8(observed_image_array[batch_index, 0]))
+                axis_observation_2.imshow(
+                    make_uint8(observed_image_array[batch_index, 1]))
+                axis_observation_3.imshow(
+                    make_uint8(observed_image_array[batch_index, 2]))
 
-                    query_viewpoints = rotate_query_viewpoint(
-                        angle_rad, num_generation, xp)
-                    generated_images = model.generate_image(
-                        query_viewpoints, r)
+                x_angle_rad = math.pi / 2
+                for pitch_loop in range(num_yaw_pitch_steps):
+                    y_angle_rad = math.pi
+                    for yaw_loop in range(num_yaw_pitch_steps):
+                        eye_norm = 3
+                        eye_y = eye_norm * math.sin(x_angle_rad)
+                        radius = math.cos(x_angle_rad)
+                        eye = (radius * math.sin(y_angle_rad), eye_y,
+                               radius * math.cos(y_angle_rad))
+                        center = (0, 0, 0)
+                        yaw = gqn.math.yaw(eye, center)
+                        pitch = gqn.math.pitch(eye, center)
+                        query_viewpoints = xp.array(
+                            (eye[0], eye[1], eye[2], math.cos(yaw),
+                             math.sin(yaw), math.cos(pitch), math.sin(pitch)),
+                            dtype=np.float32)
+                        query_viewpoints = xp.broadcast_to(
+                            query_viewpoints, (1, ) + query_viewpoints.shape)
 
-                    image = make_uint8(generated_images[0])
-                    axis_image = axis_generation.imshow(
-                        image, interpolation="none", animated=True)
-                    artist_array.append(axis_image)
-
-                    angle_rad += 2 * math.pi / total_frames_per_rotation
-
-                    # plt.pause(1e-8)
-                    add_annotation(axis_generation, artist_array)
-                    artist_frame_array.append(artist_array)
-
-                # Generate images with observations
-                for m in range(num_views_per_scene):
-                    observed_image = images[batch_index, m]
-                    observed_viewpoint = viewpoints[batch_index, m]
-
-                    observed_image_array[m] = to_gpu(observed_image)
-                    observed_viewpoint_array[m] = to_gpu(observed_viewpoint)
-
-                    r = model.compute_observation_representation(
-                        observed_image_array[None, :m + 1],
-                        observed_viewpoint_array[None, :m + 1])
-
-                    r = cf.broadcast_to(r, (num_generation, ) + r.shape[1:])
-
-                    angle_rad = 0
-                    for t in range(total_frames_per_rotation):
-                        artist_array = []
-
-                        for axis, observed_image in zip(
-                                axis_observation_array, observed_image_array):
-                            axis_image = axis.imshow(
-                                make_uint8(observed_image),
-                                interpolation="none",
-                                animated=True)
-                            artist_array.append(axis_image)
-
-                        query_viewpoints = rotate_query_viewpoint(
-                            angle_rad, num_generation, xp)
                         generated_images = model.generate_image(
-                            query_viewpoints, r)
+                            query_viewpoints, representation)[0]
 
-                        axis_image = axis_generation.imshow(
-                            make_uint8(generated_images[0]),
-                            interpolation="none",
-                            animated=True)
-                        artist_array.append(axis_image)
+                        yi_start = pitch_loop * image_height
+                        yi_end = (pitch_loop + 1) * image_height
+                        xi_start = yaw_loop * image_width
+                        xi_end = (yaw_loop + 1) * image_width
+                        prediction_images[yi_start:yi_end, xi_start:
+                                          xi_end] = make_uint8(
+                                              generated_images)
 
-                        angle_rad += 2 * math.pi / total_frames_per_rotation
-                        # plt.pause(1e-8)
+                        y_angle_rad -= 2 * math.pi / num_yaw_pitch_steps
+                    x_angle_rad -= math.pi / num_yaw_pitch_steps
 
-                        add_annotation(axis_generation, artist_array)
-                        artist_frame_array.append(artist_array)
+                axis_predictions.imshow(prediction_images)
 
-                plt.tight_layout()
-                plt.subplots_adjust(
-                    left=None,
-                    bottom=None,
-                    right=None,
-                    top=None,
-                    wspace=0,
-                    hspace=0)
-                anim = animation.ArtistAnimation(
-                    fig,
-                    artist_frame_array,
-                    interval=1 / 24,
-                    blit=True,
-                    repeat_delay=0)
-
-                anim.save(
-                    "{}/shepard_matzler_zero_z_{}.gif".format(
-                        args.output_directory, file_number),
-                    writer="imagemagick")
-                anim.save(
-                    "{}/shepard_matzler_zero_z_{}.mp4".format(
-                        args.output_directory, file_number),
-                    writer="ffmpeg",
-                    fps=12)
+                plt.savefig("{}/shepard_matzler_predictions_{}.png".format(
+                    args.figure_directory, file_number))
                 file_number += 1
 
 
@@ -243,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--snapshot-path", "-snapshot", type=str, required=True)
     parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
-    parser.add_argument("--output-directory", "-out", type=str, default="gif")
+    parser.add_argument(
+        "--figure-directory", "-fig", type=str, default="figures")
     args = parser.parse_args()
     main()

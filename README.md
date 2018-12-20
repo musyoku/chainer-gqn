@@ -16,18 +16,21 @@ Current training progress:
 
 **Shepard-Matzler 64x64**
 
-![shepard_matzler_7](https://thumbs.gfycat.com/FickleCoolAnglerfish-size_restricted.gif)
+![shepard_matzler](https://thumbs.gfycat.com/FoolishIdenticalAiredale.webp)
 
-https://gfycat.com/gifs/detail/FickleCoolAnglerfish
+https://gfycat.com/FoolishIdenticalAiredale
 
-![shepard_matzler_predictions_15](https://user-images.githubusercontent.com/15250418/48316880-935b8c00-e62c-11e8-8f03-313cc0135b01.png)
+![shepard_matzler](https://thumbs.gfycat.com/PhysicalWarmheartedBarnacle.webp)
 
-**Rooms (Free Camera) 32x32**
+https://gfycat.com/PhysicalWarmheartedBarnacle
 
-![rooms_ring_camera](https://thumbs.gfycat.com/AnimatedBareBasil-size_restricted.gif)
+![shepard_matzler](https://thumbs.gfycat.com/BeneficialInconsequentialJaguar.webp)
 
-https://gfycat.com/AnimatedBareBasil
+https://gfycat.com/BeneficialInconsequentialJaguar
 
+![shepard_matzler_predictions_6](https://user-images.githubusercontent.com/15250418/50263627-1953c980-045a-11e9-8924-a7f896f5fc7e.png)
+![shepard_matzler_predictions_7](https://user-images.githubusercontent.com/15250418/50263631-21136e00-045a-11e9-87da-0cc2c529c609.png)
+![shepard_matzler_predictions_9](https://user-images.githubusercontent.com/15250418/50263644-2c669980-045a-11e9-8574-d887c351f2ad.png)
 
 # Requirements
 
