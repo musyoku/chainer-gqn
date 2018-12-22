@@ -71,15 +71,19 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    optimizer = AdamOptimizer(
-        model.parameters, mu_i=args.initial_lr, mu_f=args.final_lr)
-    print(optimizer)
-
     scheduler = Scheduler(
         sigma_start=args.initial_pixel_variance,
         sigma_end=args.final_pixel_variance,
-        final_num_updates=args.pixel_n)
+        final_num_updates=args.pixel_n,
+        snapshot_directory=args.snapshot_directory)
     print(scheduler)
+
+    optimizer = AdamOptimizer(
+        model.parameters,
+        mu_i=args.initial_lr,
+        mu_f=args.final_lr,
+        initial_training_step=scheduler.num_updates)
+    print(optimizer)
 
     pixel_var = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
