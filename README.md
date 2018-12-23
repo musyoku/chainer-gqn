@@ -4,15 +4,7 @@
 
 [https://deepmind.com/blog/neural-scene-representation-and-rendering/](https://deepmind.com/blog/neural-scene-representation-and-rendering/)
 
-**Todo**
-
-- [x] Implement GQN
-- [x] Implement training loop
-- [ ] Hyperparameter search
-
 Current training progress:
-
-:thinking::thinking::thinking:
 
 **Shepard-Matzler 64x64**
 
@@ -45,6 +37,20 @@ https://gfycat.com/PartialYellowishFritillarybutterfly
 ![gqn_representation](https://user-images.githubusercontent.com/15250418/50375240-adca5180-063d-11e9-8b2a-fb2c3995bc33.png)
 
 # Dataset
+
+## deepmind/gqn-datasets
+
+Datasets used to train GQN in the paper are available to download.
+
+https://github.com/deepmind/gqn-datasets
+
+You need to convert `.tfrecord` files to NumPy `.npy` format before starting training.
+
+https://github.com/musyoku/gqn-datasets-translator
+
+## gqn-dataset-renderer
+
+I am working on a ray tracer for rendering GQN dataset.
 
 https://github.com/musyoku/gqn-dataset-renderer
 
