@@ -15,28 +15,14 @@ from chainer.backends import cuda
 
 sys.path.append(".")
 import gqn
+from gqn.preprocessing import preprocess_images, make_uint8
 from hyperparams import HyperParameters
 from model import Model
-
-
-def make_uint8(image):
-    if isinstance(image, chainer.Variable):
-        image = image.data
-    if (image.shape[0] == 3):
-        image = image.transpose(1, 2, 0)
-    image = to_cpu(image)
-    return np.uint8(np.clip(image * 255, 0, 255))
 
 
 def to_gpu(array):
     if isinstance(array, np.ndarray):
         return cuda.to_gpu(array)
-    return array
-
-
-def to_cpu(array):
-    if isinstance(array, cupy.ndarray):
-        return cuda.to_cpu(array)
     return array
 
 
@@ -99,7 +85,7 @@ def main():
     if using_gpu:
         model.to_gpu()
 
-    num_rows = hyperparams.generator_generation_steps
+    num_rows = hyperparams.num_generative_layers
 
     plt.style.use("dark_background")
     # fig = plt.figure()
@@ -116,8 +102,7 @@ def main():
 
     axis_generation_array = []
     for r in range(num_rows):
-        axis_generation_array.append(
-            fig.add_subplot(num_rows, 2, r * 2 + 2))
+        axis_generation_array.append(fig.add_subplot(num_rows, 2, r * 2 + 2))
 
     for axis in axis_generation_array:
         axis.axis("off")
@@ -147,9 +132,7 @@ def main():
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
-                images = images / 255.0
-                images += np.random.uniform(
-                    0, 1.0 / 256.0, size=images.shape).astype(np.float32)
+                images = preprocess_images(images)
 
                 batch_index = 0
 
@@ -158,7 +141,8 @@ def main():
                     (
                         1,
                         hyperparams.representation_channels,
-                    ) + hyperparams.chrz_size,
+                    ) + (hyperparams.image_size[0] // 4,
+                         hyperparams.image_size[1] // 4),
                     dtype=np.float32)
 
                 angle_rad = 0
@@ -221,7 +205,8 @@ def main():
                         u_t_array = model.generate_canvas_states(
                             query_viewpoints, r, xp)
 
-                        for axis, canvas in zip(axis_generation_array, u_t_array):
+                        for axis, canvas in zip(axis_generation_array,
+                                                u_t_array):
                             image = model.map_u_x(canvas)
                             image = make_uint8(image[0])
                             axis_image = axis.imshow(
@@ -251,12 +236,12 @@ def main():
                     repeat_delay=0)
 
                 anim.save(
-                    "{}/shepard_matzler_canvas_{}.gif".format(args.output_directory,
-                                                       file_number),
+                    "{}/shepard_matzler_canvas_{}.gif".format(
+                        args.output_directory, file_number),
                     writer="imagemagick")
                 anim.save(
-                    "{}/shepard_matzler_canvas_{}.mp4".format(args.output_directory,
-                                                       file_number),
+                    "{}/shepard_matzler_canvas_{}.mp4".format(
+                        args.output_directory, file_number),
                     writer="ffmpeg",
                     fps=12)
                 file_number += 1

@@ -43,7 +43,7 @@ def generate_random_query_viewpoint(num_generation, xp):
 
 
 def rotate_query_viewpoint(angle_rad, num_generation, xp):
-    view_radius = 3
+    view_radius = 3.3
     eye = (view_radius * math.sin(angle_rad),
            view_radius * math.sin(angle_rad),
            view_radius * math.cos(angle_rad))

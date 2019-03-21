@@ -9,33 +9,34 @@ class HyperParameters():
         self.image_size = (64, 64)
         self.h_channels = 64
         self.z_channels = 3
-        self.inference_share_core = False
-        self.inference_share_posterior = False
-        self.generator_generation_steps = 12
         self.u_channels = 128
+        self.r_channels = 256
+        self.inference_share_core = False
+        self.num_layers = 12
         self.generator_share_core = False
-        self.generator_share_prior = False
-        self.generator_share_upsampler = False
-        self.pixel_sigma_i = 2.0
-        self.pixel_sigma_f = 0.7
-        self.pixel_n = 2 * 1e5
+        self.initial_pixel_sigma = 2.0
+        self.final_pixel_sigma = 0.7
+        self.pixel_sigma_annealing_steps = 200000
+        self.learning_rate_annealing_steps = 1600000
         self.representation_architecture = "tower"
-        self.representation_channels = 256
 
         if snapshot_directory is not None:
-            json_path = os.path.join(snapshot_directory, self.filename)
-            if os.path.exists(json_path) and os.path.isfile(json_path):
-                with open(json_path, "r") as f:
-                    print("loading", json_path)
-                    obj = json.load(f)
-                    for (key, value) in obj.items():
-                        if isinstance(value, list):
-                            value = tuple(value)
-                        setattr(self, key, value)
+            self.load(snapshot_directory)
 
     @property
     def filename(self):
         return "hyperparams.json"
+
+    def load(self, snapshot_directory):
+        json_path = os.path.join(snapshot_directory, self.filename)
+        if os.path.exists(json_path) and os.path.isfile(json_path):
+            with open(json_path, "r") as f:
+                print("loading", json_path)
+                obj = json.load(f)
+                for (key, value) in obj.items():
+                    if isinstance(value, list):
+                        value = tuple(value)
+                    setattr(self, key, value)
 
     def save(self, snapshot_directory):
         with open(os.path.join(snapshot_directory, self.filename), "w") as f:
@@ -45,4 +46,4 @@ class HyperParameters():
         rows = []
         for key, value in self.__dict__.items():
             rows.append([key, value])
-        return tabulate(rows)
+        return tabulate(rows, headers=["Hyperparameters", ""])

@@ -3,318 +3,383 @@ import math
 import multiprocessing
 import os
 import random
-import subprocess
 import sys
-import time
 
 import chainer
 import chainer.functions as cf
 import chainermn
-import cupy
+import cupy as cp
+import matplotlib.pyplot as plt
 import numpy as np
 from chainer.backends import cuda
 
 import gqn
-from gqn.preprocessing import preprocess_images
+from gqn.data import Dataset, Iterator
+from gqn.preprocessing import make_uint8, preprocess_images
 from hyperparams import HyperParameters
 from model import Model
-from optimizer import optimizer_by_name
-from scheduler import Scheduler
+from trainer.dataframe import DataFrame
+from trainer.meter import Meter
+from trainer.optimizer import AdamOptimizer
+from trainer.scheduler import PixelVarianceScheduler
 
 
-def printr(string):
-    sys.stdout.write(string)
-    sys.stdout.write("\r")
-    sys.stdout.flush()
-
-
-def to_gpu(array):
-    if isinstance(array, np.ndarray):
-        return cuda.to_gpu(array)
-    return array
+def _mkdir(directory):
+    try:
+        os.mkdir(directory)
+    except:
+        pass
 
 
 def main():
-    ##############################################
-    # To avoid OpenMPI bug
+    _mkdir(args.snapshot_directory)
+    _mkdir(args.log_directory)
+
+    meter_train = Meter()
+    meter_path = os.path.join(args.snapshot_directory, "meter.json")
+    meter_train.load(meter_path)
+
+    #==============================================================================
+    # Workaround to fix OpenMPI bug
+    #==============================================================================
     multiprocessing.set_start_method("forkserver")
     p = multiprocessing.Process(target=print, args=("", ))
     p.start()
     p.join()
-    ##############################################
 
-    try:
-        os.mkdir(args.snapshot_directory)
-    except:
-        pass
-
+    #==============================================================================
+    # Selecting the GPU
+    #==============================================================================
     comm = chainermn.create_communicator()
     device = comm.intra_rank
-    print("device", device, "/", comm.size)
     cuda.get_device(device).use()
-    xp = cupy
 
-    dataset = gqn.data.Dataset(args.dataset_directory)
+    def _print(*args):
+        if comm.rank == 0:
+            print(*args)
 
+    _print("Using {} GPUs".format(comm.size))
+
+    #==============================================================================
+    # Dataset
+    #==============================================================================
+    dataset_train = Dataset(args.train_dataset_directory)
+    dataset_test = None
+    if args.test_dataset_directory is not None:
+        dataset_test = Dataset(args.test_dataset_directory)
+
+    #==============================================================================
+    # Hyperparameters
+    #==============================================================================
     hyperparams = HyperParameters()
+    hyperparams.num_layers = args.generation_steps
     hyperparams.generator_share_core = args.generator_share_core
-    hyperparams.generator_share_prior = args.generator_share_prior
-    hyperparams.generator_generation_steps = args.generation_steps
-    hyperparams.generator_share_upsampler = args.generator_share_upsampler
     hyperparams.inference_share_core = args.inference_share_core
-    hyperparams.inference_share_posterior = args.inference_share_posterior
     hyperparams.h_channels = args.h_channels
     hyperparams.z_channels = args.z_channels
     hyperparams.u_channels = args.u_channels
+    hyperparams.r_channels = args.r_channels
     hyperparams.image_size = (args.image_size, args.image_size)
-    hyperparams.representation_channels = args.representation_channels
     hyperparams.representation_architecture = args.representation_architecture
-    hyperparams.pixel_n = args.pixel_n
-    hyperparams.pixel_sigma_i = args.initial_pixel_variance
-    hyperparams.pixel_sigma_f = args.final_pixel_variance
+    hyperparams.pixel_sigma_annealing_steps = args.pixel_sigma_annealing_steps
+    hyperparams.initial_pixel_sigma = args.initial_pixel_sigma
+    hyperparams.final_pixel_sigma = args.final_pixel_sigma
+    _print(hyperparams, "\n")
+
     if comm.rank == 0:
         hyperparams.save(args.snapshot_directory)
 
-        ##   Debug   ##
-        hyperparams.save("results")
-        print(hyperparams)
-
-    model = Model(
-        hyperparams,
-        snapshot_directory=args.snapshot_directory,
-        optimized=args.optimized)
+    #==============================================================================
+    # Model
+    #==============================================================================
+    model = Model(hyperparams)
+    model.load(args.snapshot_directory, meter_train.epoch)
     model.to_gpu()
 
-    optimizer = optimizer_by_name(
-        args.optimizer,
+    #==============================================================================
+    # Pixel-variance annealing
+    #==============================================================================
+    variance_scheduler = PixelVarianceScheduler(
+        sigma_start=args.initial_pixel_sigma,
+        sigma_end=args.final_pixel_sigma,
+        final_num_updates=args.pixel_sigma_annealing_steps)
+    variance_scheduler_path = os.path.join(args.snapshot_directory,
+                                           variance_scheduler.filename)
+    variance_scheduler.load(variance_scheduler_path)
+    _print(variance_scheduler, "\n")
+
+    pixel_log_sigma = cp.full(
+        (args.batch_size, 3) + hyperparams.image_size,
+        math.log(variance_scheduler.standard_deviation),
+        dtype="float32")
+
+    #==============================================================================
+    # Logging
+    #==============================================================================
+    csv_path = os.path.join(args.log_directory, "loss.csv")
+    df = DataFrame()
+    if os.path.exists(csv_path):
+        df.from_csv(csv_path)
+
+    #==============================================================================
+    # Optimizer
+    #==============================================================================
+    optimizer = AdamOptimizer(
         model.parameters,
-        communicator=comm,
-        mu_i=args.initial_lr,
-        mu_f=args.final_lr)
-    if comm.rank == 0:
-        print(optimizer)
+        initial_lr=args.initial_lr,
+        final_lr=args.final_lr,
+        initial_training_step=variance_scheduler.training_step)
+    _print(optimizer, "\n")
 
-    scheduler = Scheduler(
-        sigma_start=args.initial_pixel_variance,
-        sigma_end=args.final_pixel_variance,
-        final_num_updates=args.pixel_n,
-        snapshot_directory=args.snapshot_directory)
-    if comm.rank == 0:
-        print(scheduler)
+    #==============================================================================
+    # Algorithms
+    #==============================================================================
+    def encode_scene(images, viewpoints):
+        # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
+        images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
 
-    pixel_var = xp.full(
-        (args.batch_size, 3) + hyperparams.image_size,
-        scheduler.pixel_variance**2,
-        dtype="float32")
-    pixel_ln_var = xp.full(
-        (args.batch_size, 3) + hyperparams.image_size,
-        math.log(scheduler.pixel_variance**2),
-        dtype="float32")
+        # Sample number of views
+        total_views = images.shape[1]
+        num_views = random.choice(range(1, total_views + 1))
 
+        # Sample views
+        observation_view_indices = list(range(total_views))
+        random.shuffle(observation_view_indices)
+        observation_view_indices = observation_view_indices[:num_views]
+
+        observation_images = preprocess_images(
+            images[:, observation_view_indices])
+
+        observation_query = viewpoints[:, observation_view_indices]
+        representation = model.compute_observation_representation(
+            observation_images, observation_query)
+
+        # Sample query view
+        query_index = random.choice(range(total_views))
+        query_images = preprocess_images(images[:, query_index])
+        query_viewpoints = viewpoints[:, query_index]
+
+        # Transfer to gpu if necessary
+        query_images = cuda.to_gpu(query_images)
+        query_viewpoints = cuda.to_gpu(query_viewpoints)
+
+        return representation, query_images, query_viewpoints
+
+    def estimate_ELBO(query_images, z_t_param_array, pixel_mean,
+                      pixel_log_sigma):
+        # KL Diverge, pixel_ln_varnce
+        kl_divergence = 0
+        for params_t in z_t_param_array:
+            mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params_t
+            normal_q = chainer.distributions.Normal(
+                mean_z_q, log_scale=ln_var_z_q)
+            normal_p = chainer.distributions.Normal(
+                mean_z_p, log_scale=ln_var_z_p)
+            kld_t = chainer.kl_divergence(normal_q, normal_p)
+            kl_divergence += cf.sum(kld_t)
+        kl_divergence = kl_divergence / args.batch_size
+
+        # Negative log-likelihood of generated image
+        batch_size = query_images.shape[0]
+        num_pixels_per_batch = np.prod(query_images.shape[1:])
+        normal = chainer.distributions.Normal(
+            query_images, log_scale=pixel_log_sigma)
+
+        log_px = cf.sum(normal.log_prob(pixel_mean)) / batch_size
+        negative_log_likelihood = -log_px
+
+        # Empirical ELBO
+        ELBO = log_px - kl_divergence
+
+        # https://arxiv.org/abs/1604.08772 Section.2
+        # https://www.reddit.com/r/MachineLearning/comments/56m5o2/discussion_calculation_of_bitsdims/
+        bits_per_pixel = -(ELBO / num_pixels_per_batch - np.log(256)) / np.log(
+            2)
+
+        return ELBO, bits_per_pixel, negative_log_likelihood, kl_divergence
+
+    #==============================================================================
+    # Training iterations
+    #==============================================================================
+    dataset_size = len(dataset_train)
     random.seed(0)
-    subset_indices = list(range(len(dataset.subset_filenames)))
+    subset_indices = list(range(len(dataset_train.subset_filenames)))
 
-    representation_shape = (args.batch_size,
-                            hyperparams.representation_channels,
-                            args.image_size // 4, args.image_size // 4)
+    for epoch in range(args.epochs):
+        _print("Epoch {}/{}:".format(
+            epoch + 1,
+            args.epochs,
+        ))
+        meter_train.next_epoch()
 
-    current_training_step = scheduler.num_updates
-    for iteration in range(scheduler.iteration, args.training_iterations):
-        mean_kld = 0
-        mean_nll = 0
-        mean_mse = 0
-        mean_elbo = 0
-        total_num_batch = 0
         subset_size_per_gpu = len(subset_indices) // comm.size
         if len(subset_indices) % comm.size != 0:
             subset_size_per_gpu += 1
-        start_time = time.time()
 
         for subset_loop in range(subset_size_per_gpu):
             random.shuffle(subset_indices)
             subset_index = subset_indices[comm.rank]
-            subset = dataset.read(subset_index)
+            subset = dataset_train.read(subset_index)
             iterator = gqn.data.Iterator(subset, batch_size=args.batch_size)
 
             for batch_index, data_indices in enumerate(iterator):
-                # shape: (batch, views, height, width, channels)
-                # range: [-1, 1]
+                #------------------------------------------------------------------------------
+                # Scene encoder
+                #------------------------------------------------------------------------------
+                # images.shape: (batch, views, height, width, channels)
                 images, viewpoints = subset[data_indices]
+                representation, query_images, query_viewpoints = encode_scene(
+                    images, viewpoints)
 
-                # (batch, views, height, width, channels) ->  (batch, views, channels, height, width)
-                images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
+                #------------------------------------------------------------------------------
+                # Compute empirical ELBO
+                #------------------------------------------------------------------------------
+                # Compute distribution parameterws
+                (z_t_param_array,
+                 pixel_mean) = model.sample_z_and_x_params_from_posterior(
+                     query_images, query_viewpoints, representation)
 
-                total_views = images.shape[1]
+                # Compute ELBO
+                (ELBO, bits_per_pixel, negative_log_likelihood,
+                 kl_divergence) = estimate_ELBO(query_images, z_t_param_array,
+                                                pixel_mean, pixel_log_sigma)
 
-                # Sample observations
-                num_views = random.choice(range(1, total_views + 1))
-
-                observation_view_indices = list(range(total_views))
-                random.shuffle(observation_view_indices)
-                observation_view_indices = observation_view_indices[:num_views]
-
-                if num_views > 0:
-                    observation_images = preprocess_images(
-                        images[:, observation_view_indices])
-                    observation_query = viewpoints[:, observation_view_indices]
-                    representation = model.compute_observation_representation(
-                        observation_images, observation_query)
-                else:
-                    representation = xp.zeros(
-                        representation_shape, dtype="float32")
-                    representation = chainer.Variable(representation)
-
-                # Sample query
-                query_index = random.choice(range(total_views))
-                query_images = preprocess_images(images[:, query_index])
-                query_viewpoints = viewpoints[:, query_index]
-
-                # Transfer to gpu
-                query_images = to_gpu(query_images)
-                query_viewpoints = to_gpu(query_viewpoints)
-
-                z_t_param_array, mean_x = model.sample_z_and_x_params_from_posterior(
-                    query_images, query_viewpoints, representation)
-
-                # Compute loss
-                ## KL Divergence
-                loss_kld = chainer.Variable(xp.zeros((), dtype=xp.float32))
-                for params in z_t_param_array:
-                    mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p = params
-                    kld = gqn.functions.gaussian_kl_divergence(
-                        mean_z_q, ln_var_z_q, mean_z_p, ln_var_z_p)
-                    loss_kld += cf.sum(kld)
-
-                ##Negative log-likelihood of generated image
-                loss_nll = cf.sum(
-                    gqn.functions.gaussian_negative_log_likelihood(
-                        query_images, mean_x, pixel_var, pixel_ln_var))
-
-                # Calculate the average loss value
-                loss_nll = loss_nll / args.batch_size
-                loss_kld = loss_kld / args.batch_size
-
-                loss = (loss_nll / scheduler.pixel_variance) + loss_kld
-
+                #------------------------------------------------------------------------------
+                # Update parameters
+                #------------------------------------------------------------------------------
+                loss = -ELBO
                 model.cleargrads()
                 loss.backward()
-                optimizer.update(current_training_step)
+                optimizer.update(meter_train.num_updates)
 
-                loss_nll = float(loss_nll.data)
-                loss_kld = float(loss_kld.data)
+                #------------------------------------------------------------------------------
+                # Logging
+                #------------------------------------------------------------------------------
+                with chainer.no_backprop_mode():
+                    mean_squared_error = cf.mean_squared_error(
+                        query_images, pixel_mean)
+                meter_train.update(
+                    ELBO=float(ELBO.data),
+                    bits_per_pixel=float(bits_per_pixel.data),
+                    negative_log_likelihood=float(
+                        negative_log_likelihood.data),
+                    kl_divergence=float(kl_divergence.data),
+                    mean_squared_error=float(mean_squared_error.data))
 
-                elbo = -(loss_nll + loss_kld)
+                #------------------------------------------------------------------------------
+                # Annealing
+                #------------------------------------------------------------------------------
+                variance_scheduler.update(meter_train.num_updates)
+                pixel_log_sigma[...] = math.log(
+                    variance_scheduler.standard_deviation)
 
-                loss_mse = float(
-                    cf.mean_squared_error(query_images, mean_x).data)
+            if subset_loop % 100 == 0:
+                _print("    Subset {}/{}:".format(
+                    subset_loop + 1,
+                    subset_size_per_gpu,
+                    dataset_size,
+                ))
+                _print("        {}".format(meter_train))
+                _print("        lr: {} - sigma: {}".format(
+                    optimizer.learning_rate,
+                    variance_scheduler.standard_deviation))
 
-                # if comm.rank == 0:
-                #     printr(
-                #         "Iteration {}: Subset {} / {}: Batch {} / {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {:.5f} kld: {:.5f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {}  ".
-                #         format(iteration, subset_loop + 1,
-                #                subset_size_per_gpu, batch_index + 1,
-                #                len(iterator), elbo, loss_nll, loss_mse,
-                #                loss_kld, optimizer.learning_rate,
-                #                scheduler.pixel_variance,
-                #                current_training_step))
-
-                total_num_batch += 1
-                current_training_step += 1
-                mean_kld += loss_kld
-                mean_nll += loss_nll
-                mean_mse += loss_mse
-                mean_elbo += elbo
-
-                scheduler.step(iteration, current_training_step)
-                pixel_var[...] = scheduler.pixel_variance**2
-                pixel_ln_var[...] = math.log(scheduler.pixel_variance**2)
-
-                # keys = ("name", "memory.total", "memory.free", "memory.used",
-                #         "utilization.gpu", "utilization.memory")
-                # cmd = "nvidia-smi --query-gpu={} --format=csv".format(
-                #     ",".join(keys))
-                # output = str(subprocess.check_output(cmd, shell=True))
-                # if comm.rank == 0:
-                #     print(output)
-
-            # if comm.rank == 0:
-            #     model.serialize(args.snapshot_directory)
-
+        #------------------------------------------------------------------------------
+        # Validation
+        #------------------------------------------------------------------------------
         if comm.rank == 0:
-            elapsed_time = time.time() - start_time
-            mean_elbo /= total_num_batch
-            mean_nll /= total_num_batch
-            mean_mse /= total_num_batch
-            mean_kld /= total_num_batch
-            print(
-                "\033[2KIteration {} - elbo: {:.2f} - loss: nll: {:.2f} mse: {} kld: {:.6f} - lr: {:.4e} - pixel_variance: {:.5f} - step: {} - time: {:.3f} min".
-                format(iteration, mean_elbo, mean_nll, mean_mse, mean_kld,
-                       optimizer.learning_rate, scheduler.pixel_variance,
-                       current_training_step, elapsed_time / 60))
-            model.serialize(args.snapshot_directory)
-            scheduler.save(args.snapshot_directory)
+            meter_test = None
+            if dataset_test is not None:
+                meter_test = Meter()
+                batch_size = args.batch_size * 6
+                _pixel_ln_var = cp.full(
+                    (batch_size, 3) + hyperparams.image_size,
+                    math.log(variance_scheduler.standard_deviation),
+                    dtype="float32")
 
-            ##   Debug   ##
-            model.serialize("results")
+                with chainer.no_backprop_mode():
+                    for subset in dataset_test:
+                        iterator = Iterator(subset, batch_size=batch_size)
+                        for data_indices in iterator:
+                            images, viewpoints = subset[data_indices]
+
+                            # Scene encoder
+                            representation, query_images, query_viewpoints = encode_scene(
+                                images, viewpoints)
+
+                            # Compute empirical ELBO
+                            (z_t_param_array, pixel_mean
+                             ) = model.sample_z_and_x_params_from_posterior(
+                                 query_images, query_viewpoints,
+                                 representation)
+                            (ELBO, bits_per_pixel, negative_log_likelihood,
+                             kl_divergence) = estimate_ELBO(
+                                 query_images, z_t_param_array, pixel_mean,
+                                 _pixel_ln_var)
+                            mean_squared_error = cf.mean_squared_error(
+                                query_images, pixel_mean)
+
+                            # Logging
+                            meter_test.update(
+                                ELBO=float(ELBO.data),
+                                bits_per_pixel=float(bits_per_pixel.data),
+                                negative_log_likelihood=float(
+                                    negative_log_likelihood.data),
+                                kl_divergence=float(kl_divergence.data),
+                                mean_squared_error=float(
+                                    mean_squared_error.data))
+
+                print("    Validation:")
+                print("        {} - done in {:.3f} min".format(
+                    meter_test,
+                    meter_test.elapsed_time,
+                ))
+
+            model.serialize(args.snapshot_directory, meter_train.epoch)
+            df.append(epoch, meter_train, meter_test)
+            df.to_csv(csv_path)
+            variance_scheduler.save(variance_scheduler_path)
+
+            print("Epoch {} done in {:.3f} min".format(
+                epoch + 1,
+                meter_train.epoch_elapsed_time,
+            ))
+            print("    {}".format(meter_train))
+            print("    lr: {} - sigma: {} - training_steps: {}".format(
+                optimizer.learning_rate,
+                variance_scheduler.standard_deviation,
+                meter_train.num_updates,
+            ))
+            print("    Time elapsed: {:.3f} min".format(
+                meter_train.elapsed_time))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--train-dataset-directory", type=str, required=True)
+    parser.add_argument("--test-dataset-directory", type=str, default=None)
+    parser.add_argument("--snapshot-directory", type=str, default="snapshots")
+    parser.add_argument("--log-directory", type=str, default="log")
+    parser.add_argument("--batch-size", type=int, default=36)
+    parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--generation-steps", type=int, default=12)
+    parser.add_argument("--initial-lr", type=float, default=1e-4)
+    parser.add_argument("--final-lr", type=float, default=1e-5)
+    parser.add_argument("--initial-pixel-sigma", type=float, default=2.0)
+    parser.add_argument("--final-pixel-sigma", type=float, default=0.7)
     parser.add_argument(
-        "--dataset-directory", "-dataset", type=str, default="dataset_train")
-    parser.add_argument(
-        "--snapshot-directory", "-snapshot", type=str, default="snapshot")
-    parser.add_argument("--batch-size", "-b", type=int, default=36)
-    parser.add_argument(
-        "--training-iterations", "-iter", type=int, default=2 * 10**6)
-    parser.add_argument("--generation-steps", "-gsteps", type=int, default=12)
-    parser.add_argument("--initial-lr", "-mu-i", type=float, default=5e-4)
-    parser.add_argument("--final-lr", "-mu-f", type=float, default=5e-5)
-    parser.add_argument(
-        "--initial-pixel-variance", "-ps-i", type=float, default=2.0)
-    parser.add_argument(
-        "--final-pixel-variance", "-ps-f", type=float, default=0.7)
-    parser.add_argument("--pixel-n", "-pn", type=int, default=2 * 10**5)
-    parser.add_argument("--pretrain-pixel-n", "-ppn", type=int, default=10000)
-    parser.add_argument("--h-channels", "-ch", type=int, default=128)
-    parser.add_argument("--z-channels", "-cz", type=int, default=3)
-    parser.add_argument("--u-channels", "-cu", type=int, default=128)
-    parser.add_argument("--image-size", "-is", type=int, default=64)
-    parser.add_argument(
-        "--representation-channels", "-cr", type=int, default=256)
+        "--pixel-sigma-annealing-steps", type=int, default=160000)
+    parser.add_argument("--h-channels", type=int, default=128)
+    parser.add_argument("--z-channels", type=int, default=3)
+    parser.add_argument("--u-channels", type=int, default=128)
+    parser.add_argument("--r-channels", type=int, default=256)
+    parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument(
         "--representation-architecture",
-        "-r",
         type=str,
         default="tower",
         choices=["tower", "pool"])
-    parser.add_argument(
-        "--inference-downsampler-channels", "-cix", type=int, default=128)
-    parser.add_argument(
-        "--inference-use-deep-downsampler",
-        "-i-deep-downsampler",
-        action="store_true")
-    parser.add_argument(
-        "--generator-share-core", "-g-share-core", action="store_true")
-    parser.add_argument(
-        "--generator-share-prior", "-g-share-prior", action="store_true")
-    parser.add_argument(
-        "--generator-share-upsampler",
-        "-g-share-upsampler",
-        action="store_true")
-    parser.add_argument(
-        "--generator-subpixel-convolution-enabled",
-        "-g-subpixel-convolution",
-        action="store_true")
-    parser.add_argument(
-        "--inference-share-core", "-i-share-core", action="store_true")
-    parser.add_argument(
-        "--inference-share-posterior",
-        "-i-share-posterior",
-        action="store_true")
-    parser.add_argument(
-        "--optimized", "-optimized", action="store_true", default=False)
-    parser.add_argument(
-        "--optimizer", "-optim", default="adam", choices=["adam", "msgd"])
+    parser.add_argument("--generator-share-core", action="store_true")
+    parser.add_argument("--inference-share-core", action="store_true")
     args = parser.parse_args()
     main()

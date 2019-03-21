@@ -3,18 +3,14 @@ import chainer.functions as cf
 import chainer.links as nn
 import cupy
 
-from .cuda import RepresentationTowerFunction
-
 
 class TowerNetwork(chainer.Chain):
     def __init__(self,
                  r_channels=256,
                  v_size=(16, 16),
-                 use_cuda_kernel=False,
                  weight_initializer=None):
         super().__init__()
         self.v_size = v_size
-        self.use_cuda_kernel = use_cuda_kernel
         with self.init_scope():
             self.conv1_1 = nn.Convolution2D(
                 3,
@@ -82,24 +78,15 @@ class TowerNetwork(chainer.Chain):
 
     def __call__(self, x, v):
         v = self.broadcast_v(v)
-
-        if self.use_cuda_kernel:
-            out = RepresentationTowerFunction()(
-                x, v, self.conv1_1.W, self.conv1_1.b, self.conv1_2.W,
-                self.conv1_2.b, self.conv1_res.W, self.conv1_res.b,
-                self.conv1_3.W, self.conv1_3.b, self.conv2_1.W, self.conv2_1.b,
-                self.conv2_res.W, self.conv2_res.b, self.conv2_2.W,
-                self.conv2_2.b, self.conv2_3.W, self.conv2_3.b)
-        else:
-            resnet_in = cf.relu(self.conv1_1(x))
-            residual = cf.relu(self.conv1_res(resnet_in))
-            out = cf.relu(self.conv1_2(resnet_in))
-            out = cf.relu(self.conv1_3(out)) + residual
-            resnet_in = cf.concat((out, v), axis=1)
-            residual = cf.relu(self.conv2_res(resnet_in))
-            out = cf.relu(self.conv2_1(resnet_in))
-            out = cf.relu(self.conv2_2(out)) + residual
-            out = self.conv2_3(out)
+        resnet_in = cf.relu(self.conv1_1(x))
+        residual = cf.relu(self.conv1_res(resnet_in))
+        out = cf.relu(self.conv1_2(resnet_in))
+        out = cf.relu(self.conv1_3(out)) + residual
+        resnet_in = cf.concat((out, v), axis=1)
+        residual = cf.relu(self.conv2_res(resnet_in))
+        out = cf.relu(self.conv2_1(resnet_in))
+        out = cf.relu(self.conv2_2(out)) + residual
+        out = self.conv2_3(out)
         return out
 
 

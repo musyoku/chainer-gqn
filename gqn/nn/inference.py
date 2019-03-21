@@ -5,12 +5,9 @@ import chainer.functions as cf
 import chainer.links as nn
 import cupy
 from chainer import function_node
-from chainer.backends import cuda
-
-from .cuda import CoreFunction
 
 
-class Core(chainer.Chain):
+class InferenceCore(chainer.Chain):
     def __init__(
             self,
             h_channels=128,
@@ -19,6 +16,7 @@ class Core(chainer.Chain):
             r_size=(16, 16),
             u_channels=128,
             use_cuda_kernel=False,
+            nobias_broadcast=True,
             weight_initializer=None,
     ):
         super().__init__()
@@ -38,7 +36,7 @@ class Core(chainer.Chain):
                 pad=0,
                 stride=h_size,
                 initialW=weight_initializer,
-                nobias=True)
+                nobias=nobias_broadcast)
             if r_size[0] == 1:
                 self.broadcast_r = nn.Deconvolution2D(
                     r_channels,
@@ -47,7 +45,7 @@ class Core(chainer.Chain):
                     pad=0,
                     stride=h_size,
                     initialW=weight_initializer,
-                    nobias=True)
+                    nobias=nobias_broadcast)
 
             self.lstm = nn.Convolution2D(
                 None,
@@ -80,25 +78,3 @@ class Core(chainer.Chain):
             next_h = output_gate * cf.tanh(next_c)
 
         return next_h, next_c
-
-
-class Posterior(chainer.Chain):
-    def __init__(self, z_channels, weight_initializer=None):
-        super().__init__()
-        with self.init_scope():
-            self.conv = nn.Convolution2D(
-                None,
-                z_channels * 2,
-                ksize=5,
-                stride=1,
-                pad=2,
-                initialW=weight_initializer)
-
-    def compute_parameter(self, h):
-        param = self.conv(h)
-        mean, ln_var = cf.split_axis(param, 2, axis=1)
-        return mean, ln_var
-
-    def sample_z(self, h):
-        mean, ln_var = self.compute_parameter(h)
-        return cf.gaussian(mean, ln_var)

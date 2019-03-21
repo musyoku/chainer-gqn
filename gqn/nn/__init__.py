@@ -1,5 +1,3 @@
-from . import generator
-from . import representation
-from . import inference
-from . import downsampler
-from . import upsampler
+from .generator import GenerationCore
+from .inference import InferenceCore
+from .representation import TowerNetwork, PoolNetwork

@@ -8,22 +8,41 @@ import chainer.links as nn
 import cupy
 from chainer.backends import cuda
 from chainer.initializers import HeNormal
-from chainer.serializers import load_hdf5, save_hdf5
+from chainer.serializers import save_hdf5
 
 import gqn
 from hyperparams import HyperParameters
 
 
+class NormalDistribution(chainer.Chain):
+    def __init__(self, z_channels, weight_initializer=None):
+        super().__init__()
+        with self.init_scope():
+            self.conv = nn.Convolution2D(
+                None,
+                z_channels * 2,
+                ksize=5,
+                stride=1,
+                pad=2,
+                initialW=weight_initializer)
+
+    def compute_parameter(self, h):
+        param = self.conv(h)
+        mean, ln_var = cf.split_axis(param, 2, axis=1)
+        return mean, ln_var
+
+    def sample(self, h):
+        mean, ln_var = self.compute_parameter(h)
+        return cf.gaussian(mean, ln_var)
+
+
 class Model():
-    def __init__(self,
-                 hyperparams: HyperParameters,
-                 snapshot_directory=None,
-                 optimized=False):
+    def __init__(self, hyperparams: HyperParameters):
         assert isinstance(hyperparams, HyperParameters)
-        self.generation_steps = hyperparams.generator_generation_steps
+        self.num_layers = hyperparams.num_layers
         self.hyperparams = hyperparams
-        self.optimized = optimized
         self.parameters = chainer.ChainList()
+        self.snapshot_filename = "model.hdf5"
 
         h_size = (hyperparams.image_size[0] // 4,
                   hyperparams.image_size[0] // 4)
@@ -36,140 +55,86 @@ class Model():
         else:
             raise NotImplementedError
 
-        (self.generation_cores, self.generation_priors,
-         self.generation_upsamplers,
-         self.generation_map_u_x) = self.build_generation_network(
-             generation_steps=self.generation_steps,
-             h_channels=hyperparams.h_channels,
-             h_size=h_size,
-             r_channels=hyperparams.representation_channels,
-             r_size=r_size,
-             z_channels=hyperparams.z_channels,
-             u_channels=hyperparams.u_channels)
+        weight_initializer = chainer.initializers.GlorotNormal()
 
-        (self.inference_cores,
-         self.inference_posteriors) = self.build_inference_network(
-             generation_steps=self.generation_steps,
-             h_channels=hyperparams.h_channels,
-             h_size=h_size,
-             r_channels=hyperparams.representation_channels,
-             r_size=r_size,
-             z_channels=hyperparams.z_channels,
-             u_channels=hyperparams.u_channels)
-
-        self.representation_network = self.build_representation_network(
-            architecture=hyperparams.representation_architecture,
-            r_channels=hyperparams.representation_channels,
-            r_size=r_size,
-            v_size=v_size)
-
-        if snapshot_directory is not None:
-            try:
-                filepath = os.path.join(snapshot_directory, self.filename)
-                if os.path.exists(filepath) and os.path.isfile(filepath):
-                    print("loading {}".format(filepath))
-                    load_hdf5(filepath, self.parameters)
-            except Exception as error:
-                print(error)
-
-    def build_generation_network(self, generation_steps, h_channels, h_size,
-                                 r_channels, r_size, z_channels, u_channels):
-        core_array = []
-        prior_array = []
-        upsampler_h_u_array = []
-        weight_initializer = None
+        #------------------------------------------------------------------------------
+        # Generation network
+        #------------------------------------------------------------------------------
+        self.generation_cores = []
         with self.parameters.init_scope():
             # LSTM core
-            num_cores = 1 if self.hyperparams.generator_share_core else generation_steps
+            num_cores = 1 if self.hyperparams.generator_share_core else self.num_layers
             for _ in range(num_cores):
-                core = gqn.nn.generator.Core(
-                    h_channels=h_channels,
+                core = gqn.nn.GenerationCore(
+                    h_channels=hyperparams.h_channels,
                     h_size=h_size,
-                    r_channels=r_channels,
+                    r_channels=hyperparams.r_channels,
                     r_size=r_size,
-                    u_channels=u_channels,
-                    use_cuda_kernel=self.optimized)
-                core_array.append(core)
+                    u_channels=hyperparams.u_channels,
+                    weight_initializer=weight_initializer)
+                self.generation_cores.append(core)
                 self.parameters.append(core)
 
-            # z prior sampler
-            num_priors = 1 if self.hyperparams.generator_share_prior else generation_steps
-            for _ in range(num_priors):
-                prior = gqn.nn.generator.Prior(z_channels=z_channels)
-                prior_array.append(prior)
-                self.parameters.append(prior)
-
-            # upsampler (h -> u)
-            num_upsamplers = 1 if self.hyperparams.generator_share_upsampler else generation_steps
-            for _ in range(num_upsamplers):
-                upsampler = gqn.nn.upsampler.DeconvolutionUpsampler(
-                    channels=u_channels)
-                upsampler_h_u_array.append(upsampler)
-                self.parameters.append(upsampler)
+            # z prior
+            self.z_prior_distribution = NormalDistribution(
+                z_channels=hyperparams.z_channels)
+            self.parameters.append(self.z_prior_distribution)
 
             # 1x1 conv (u -> x)
-            if u_channels == 3:
-                map_u_x = None
+            if hyperparams.u_channels == 3:
+                self._map_u_x = None
             else:
-                map_u_x = nn.Convolution2D(
-                    u_channels,
+                self._map_u_x = nn.Convolution2D(
+                    hyperparams.u_channels,
                     3,
                     ksize=1,
                     stride=1,
                     pad=0,
                     initialW=weight_initializer)
-                self.parameters.append(map_u_x)
+                self.parameters.append(self._map_u_x)
 
-        return core_array, prior_array, upsampler_h_u_array, map_u_x
-
-    def build_inference_network(self, generation_steps, h_channels, h_size,
-                                r_channels, r_size, z_channels, u_channels):
-        core_array = []
-        posterior_array = []
+        #------------------------------------------------------------------------------
+        # Inference network
+        #------------------------------------------------------------------------------
+        self.inference_cores = []
         with self.parameters.init_scope():
-            num_cores = 1 if self.hyperparams.inference_share_core else generation_steps
+            num_cores = 1 if self.hyperparams.inference_share_core else self.num_layers
             for t in range(num_cores):
                 # LSTM core
-                core = gqn.nn.inference.Core(
-                    h_channels=h_channels,
+                core = gqn.nn.InferenceCore(
+                    h_channels=hyperparams.h_channels,
                     h_size=h_size,
-                    r_channels=r_channels,
+                    r_channels=hyperparams.r_channels,
                     r_size=r_size,
-                    u_channels=u_channels,
-                    use_cuda_kernel=self.optimized)
-                core_array.append(core)
+                    u_channels=hyperparams.u_channels,
+                    weight_initializer=weight_initializer)
+                self.inference_cores.append(core)
                 self.parameters.append(core)
 
-            # z posterior sampler
-            num_posteriors = 1 if self.hyperparams.inference_share_posterior else generation_steps
-            for t in range(num_posteriors):
-                posterior = gqn.nn.inference.Posterior(z_channels=z_channels)
-                posterior_array.append(posterior)
-                self.parameters.append(posterior)
+            # z posterior
+            self.z_posterior_distribution = NormalDistribution(
+                z_channels=hyperparams.z_channels)
+            self.parameters.append(self.z_posterior_distribution)
 
-        return core_array, posterior_array
-
-    def build_representation_network(self, architecture, r_channels, r_size,
-                                     v_size):
-        if architecture == "tower":
-            layer = gqn.nn.representation.TowerNetwork(
-                r_channels=r_channels,
+        #------------------------------------------------------------------------------
+        # Representation network
+        #------------------------------------------------------------------------------
+        if hyperparams.representation_architecture == "tower":
+            self.representation_network = gqn.nn.TowerNetwork(
+                r_channels=hyperparams.r_channels,
                 v_size=v_size,
-                use_cuda_kernel=self.optimized)
+                weight_initializer=weight_initializer)
             with self.parameters.init_scope():
-                self.parameters.append(layer)
-            return layer
-        if architecture == "pool":
-            layer = gqn.nn.representation.PoolNetwork(
-                r_channels=r_channels,
+                self.parameters.append(self.representation_network)
+
+        if hyperparams.representation_architecture == "pool":
+            self.representation_network = gqn.nn.PoolNetwork(
+                r_channels=hyperparams.r_channels,
                 r_size=r_size,
                 v_size=v_size,
-                use_cuda_kernel=self.optimized)
+                weight_initializer=weight_initializer)
             with self.parameters.init_scope():
-                self.parameters.append(layer)
-            return layer
-
-        raise NotImplementedError
+                self.parameters.append(self.representation_network)
 
     def to_gpu(self):
         self.parameters.to_gpu()
@@ -178,17 +143,30 @@ class Model():
         self.parameters.cleargrads()
 
     @property
-    def filename(self):
-        return "model.hdf5"
+    def num_trainable_parameters(self):
+        size = 0
+        for param in self.parameters.params():
+            size += param.data.size
+        return size
 
-    def serialize(self, path):
-        self.serialize_parameter(path, self.filename, self.parameters)
+    def load(self, snapshot_root_directory, epoch):
+        model_path = os.path.join(snapshot_root_directory,
+                                  self.snapshot_filename)
+        try:
+            if os.path.exists(model_path):
+                print("loading {}".format(model_path))
+                chainer.serializers.load_hdf5(model_path, self.parameters)
+        except Exception as error:
+            print(error)
 
-    def serialize_parameter(self, path, filename, params):
+    def serialize(self, snapshot_root_directory, epoch):
         tmp_filename = str(uuid.uuid4())
-        save_hdf5(os.path.join(path, tmp_filename), params)
+        save_hdf5(
+            os.path.join(snapshot_root_directory, tmp_filename),
+            self.parameters)
         os.rename(
-            os.path.join(path, tmp_filename), os.path.join(path, filename))
+            os.path.join(snapshot_root_directory, tmp_filename),
+            os.path.join(snapshot_root_directory, self.snapshot_filename))
 
     def generate_initial_state(self, batch_size, xp):
         hc_size = (self.hyperparams.image_size[0] // 4,
@@ -264,7 +242,7 @@ class Model():
 
     #     xq = self.inference_downsampler(x)
 
-    #     for l in range(self.generation_steps):
+    #     for l in range(self.num_layers):
     #         inference_core = self.get_inference_core(l)
     #         inference_posterior = self.get_inference_posterior(l)
     #         generation_core = self.get_generation_core(l)
@@ -309,8 +287,8 @@ class Model():
             viewpoints = cuda.to_gpu(viewpoints)
 
         # Add noise
-        images += xp.random.uniform(
-            0, 1.0 / 256.0, size=images.shape).astype(xp.float32)
+        # images += xp.random.uniform(
+        #     0, 1.0 / 256.0, size=images.shape).astype(xp.float32)
 
         r = self.representation_network(images, viewpoints)
 
@@ -323,9 +301,9 @@ class Model():
         return r
 
     def map_u_x(self, x):
-        if self.generation_map_u_x is None:
+        if self._map_u_x is None:
             return x
-        return self.generation_map_u_x(x)
+        return self._map_u_x(x)
 
     def sample_z_and_x_params_from_posterior(self, x, v, r):
         batch_size = x.shape[0]
@@ -337,29 +315,27 @@ class Model():
 
         z_t_params_array = []
 
-        for t in range(self.generation_steps):
+        for t in range(self.num_layers):
             inference_core = self.get_inference_core(t)
-            inference_posterior = self.get_inference_posterior(t)
             generation_core = self.get_generation_core(t)
-            generation_piror = self.get_generation_prior(t)
-            generation_upsampler = self.get_generation_upsampler(t)
 
             h_next_enc, c_next_enc = inference_core(h_t_gen, h_t_enc, c_t_enc,
                                                     x, v, r, u_t)
 
-            mean_z_q, ln_var_z_q = inference_posterior.compute_parameter(
+            mean_z_q, ln_var_z_q = self.z_posterior_distribution.compute_parameter(
                 h_t_enc)
             z_t = cf.gaussian(mean_z_q, ln_var_z_q)
 
-            mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
+            mean_z_p, ln_var_z_p = self.z_prior_distribution.compute_parameter(
+                h_t_gen)
 
-            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
-                                                     r, u_t)
+            h_next_gen, c_next_gen, u_next = generation_core(
+                h_t_gen, c_t_gen, z_t, v, r, u_t)
 
             z_t_params_array.append((mean_z_q, ln_var_z_q, mean_z_p,
                                      ln_var_z_p))
 
-            u_t = u_t + generation_upsampler(h_next_gen)
+            u_t = u_next
             h_t_gen = h_next_gen
             c_t_gen = c_next_gen
             h_t_enc = h_next_enc
@@ -376,18 +352,17 @@ class Model():
             batch_size, xp)
         v = cf.reshape(v, v.shape[:2] + (1, 1))
 
-        for t in range(self.generation_steps):
+        for t in range(self.num_layers):
             generation_core = self.get_generation_core(t)
-            generation_piror = self.get_generation_prior(t)
-            generation_upsampler = self.get_generation_upsampler(t)
 
-            mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
+            mean_z_p, ln_var_z_p = self.z_prior_distribution.compute_parameter(
+                h_t_gen)
             z_t = cf.gaussian(mean_z_p, ln_var_z_p)
 
-            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
-                                                     r, u_t)
+            h_next_gen, c_next_gen, u_next = generation_core(
+                h_t_gen, c_t_gen, z_t, v, r, u_t)
 
-            u_t = u_t + generation_upsampler(h_next_gen)
+            u_t = u_next
             h_t_gen = h_next_gen
             c_t_gen = c_next_gen
 
@@ -403,18 +378,16 @@ class Model():
 
         v = cf.reshape(v, v.shape[:2] + (1, 1))
 
-        for t in range(self.generation_steps):
+        for t in range(self.num_layers):
             generation_core = self.get_generation_core(t)
-            generation_piror = self.get_generation_prior(t)
-            generation_upsampler = self.get_generation_upsampler(t)
 
-            mean_z_p, _ = generation_piror.compute_parameter(h_t_gen)
+            mean_z_p, _ = self.z_prior_distribution.compute_parameter(h_t_gen)
             z_t = xp.zeros_like(mean_z_p.data)
 
-            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
-                                                     r, u_t)
+            h_next_gen, c_next_gen, u_next = generation_core(
+                h_t_gen, c_t_gen, z_t, v, r, u_t)
 
-            u_t = u_t + generation_upsampler(h_next_gen)
+            u_t = u_next
             h_t_gen = h_next_gen
             c_t_gen = c_next_gen
 
@@ -430,18 +403,17 @@ class Model():
 
         u_t_array = []
 
-        for t in range(self.generation_steps):
+        for t in range(self.num_layers):
             generation_core = self.get_generation_core(t)
-            generation_piror = self.get_generation_prior(t)
-            generation_upsampler = self.get_generation_upsampler(t)
 
-            mean_z_p, ln_var_z_p = generation_piror.compute_parameter(h_t_gen)
+            mean_z_p, ln_var_z_p = self.z_prior_distribution.compute_parameter(
+                h_t_gen)
             z_t = cf.gaussian(mean_z_p, ln_var_z_p)
 
-            h_next_gen, c_next_gen = generation_core(h_t_gen, c_t_gen, z_t, v,
-                                                     r, u_t)
+            h_next_gen, c_next_gen, u_next = generation_core(
+                h_t_gen, c_t_gen, z_t, v, r, u_t)
 
-            u_t = u_t + generation_upsampler(h_next_gen)
+            u_t = u_next
             h_t_gen = h_next_gen
             c_t_gen = c_next_gen
 
@@ -461,7 +433,7 @@ class Model():
         cl_g = c0_g
         ul_e = u0
 
-        for l in range(self.generation_steps):
+        for l in range(self.num_layers):
             inference_core = self.get_inference_core(l)
             inference_posterior = self.get_inference_posterior(l)
             generation_core = self.get_generation_core(l)

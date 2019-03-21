@@ -3,13 +3,11 @@ import cupy as cp
 from chainer.backends import cuda
 
 
-def preprocess_images(images, add_noise=True):
+def preprocess_images(images, add_noise=False):
     xp = cuda.get_array_module(images)
-    images = images / 255 - 0.5
     if add_noise:
-        images += xp.random.uniform(
-            -1.0 / 255 / 2, 1.0 / 255 / 2,
-            size=images.shape).astype(np.float32)
+        images += xp.random.uniform(0, 1, size=images.shape).astype(xp.float32)
+    images = images / 256 - 0.5
     return images
 
 
