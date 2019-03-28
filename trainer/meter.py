@@ -1,6 +1,7 @@
 import time
 import json
 import os
+from gqn.json import JsonSerializable
 
 
 class AverageMeter(object):
@@ -20,7 +21,7 @@ class AverageMeter(object):
         self.average = self.sum / self.count
 
 
-class Meter(object):
+class Meter(JsonSerializable):
     def __init__(self):
         self.ELBO = AverageMeter()
         self.bits_per_pixel = AverageMeter()
@@ -31,6 +32,7 @@ class Meter(object):
         self.epoch_start_time = time.time()
         self.num_updates = 0
         self.epoch = 0
+        self.snapshot_filename = "meter.json"
 
     @property
     def elapsed_time(self):
@@ -65,23 +67,42 @@ class Meter(object):
             self.mean_squared_error.average,
         )
 
-    def load(self, path):
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                print("loading", path)
-                obj = json.load(f)
-                for (key, value) in obj.items():
-                    if isinstance(value, list):
-                        value = tuple(value)
-                    setattr(self, key, value)
-
-    def save(self, path):
+    def save(self, root_directory):
+        path = os.path.join(root_directory, self.snapshot_filename)
         with open(path, "w") as f:
-            json.dump(
-                {
-                    "num_updates": self.num_updates,
-                    "epoch": self.epoch,
-                },
-                f,
-                indent=4,
-                sort_keys=True)
+            json.dump({
+                "num_updates": self.num_updates,
+                "epoch": self.epoch,
+            },
+                      f,
+                      indent=4,
+                      sort_keys=True)
+
+    def allreduce(self, communicator):
+        meter = Meter()
+
+        sum_ELBO = communicator.allreduce_obj(self.ELBO.value)
+        meter.ELBO.average = sum_ELBO / communicator.size
+
+        sum_bits_per_pixel = communicator.allreduce_obj(
+            self.bits_per_pixel.value)
+        meter.bits_per_pixel.average = sum_bits_per_pixel / communicator.size
+
+        sum_mean_squared_error = communicator.allreduce_obj(
+            self.mean_squared_error.value)
+        meter.mean_squared_error.average = sum_mean_squared_error / communicator.size
+
+        sum_kl_divergence = communicator.allreduce_obj(
+            self.kl_divergence.value)
+        meter.kl_divergence.average = sum_kl_divergence / communicator.size
+
+        sum_negative_log_likelihood = communicator.allreduce_obj(
+            self.negative_log_likelihood.value)
+        meter.negative_log_likelihood.average = sum_negative_log_likelihood / communicator.size
+
+        meter.start_time = self.start_time
+        meter.epoch_start_time = self.epoch_start_time
+        meter.num_updates = self.num_updates
+        meter.epoch = self.epoch
+
+        return meter

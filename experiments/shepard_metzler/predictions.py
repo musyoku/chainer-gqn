@@ -1,33 +1,29 @@
 import argparse
 import math
-import time
-import sys
 import os
 import random
+import sys
+import time
 
-import matplotlib.pyplot as plt
 import chainer
 import chainer.functions as cf
-import cupy
+import cupy as cp
+import matplotlib.pyplot as plt
 import numpy as np
 from chainer.backends import cuda
 
 sys.path.append(".")
 import gqn
-from gqn.preprocessing import preprocess_images, make_uint8
+from gqn.preprocessing import make_uint8, preprocess_images
 from hyperparams import HyperParameters
+from functions import compute_yaw_and_pitch
 from model import Model
-
-
-def to_gpu(array):
-    if isinstance(array, np.ndarray):
-        return cuda.to_gpu(array)
-    return array
+from trainer.meter import Meter
 
 
 def main():
     try:
-        os.mkdir(args.figure_directory)
+        os.makedirs(args.figure_directory)
     except:
         pass
 
@@ -35,16 +31,26 @@ def main():
     using_gpu = args.gpu_device >= 0
     if using_gpu:
         cuda.get_device(args.gpu_device).use()
-        xp = cupy
+        xp = cp
 
-    dataset = gqn.data.Dataset(args.dataset_path)
+    dataset = gqn.data.Dataset(args.dataset_directory)
 
-    hyperparams = HyperParameters(snapshot_directory=args.snapshot_path)
-    model = Model(hyperparams, snapshot_directory=args.snapshot_path)
+    meter = Meter()
+    assert meter.load(args.snapshot_directory)
+
+    hyperparams = HyperParameters()
+    assert hyperparams.load(args.snapshot_directory)
+
+    model = Model(hyperparams)
+    assert model.load(args.snapshot_directory, meter.epoch)
+
     if using_gpu:
         model.to_gpu()
 
-    fig = plt.figure(figsize=(12, 16))
+    #==============================================================================
+    # Visualization
+    #==============================================================================
+    plt.figure(figsize=(12, 16))
 
     axis_observation_1 = plt.subplot2grid((4, 3), (0, 0))
     axis_observation_2 = plt.subplot2grid((4, 3), (0, 1))
@@ -66,14 +72,18 @@ def main():
     axis_predictions.set_xlabel("Yaw", fontsize=22)
     axis_predictions.set_ylabel("Pitch", fontsize=22)
 
+    #==============================================================================
+    # Generating images
+    #==============================================================================
     num_views_per_scene = 3
     num_yaw_pitch_steps = 10
     image_width, image_height = hyperparams.image_size
-    image_shape = (3, ) + hyperparams.image_size
     prediction_images = make_uint8(
         np.full((num_yaw_pitch_steps * image_width,
                  num_yaw_pitch_steps * image_height, 3), 0))
     file_number = 1
+    random.seed(0)
+    np.random.seed(0)
 
     with chainer.no_backprop_mode():
         for subset in dataset:
@@ -108,22 +118,33 @@ def main():
                 axis_observation_3.imshow(
                     make_uint8(observed_image_array[batch_index, 2]))
 
-                x_angle_rad = math.pi / 2
+                y_angle_rad = math.pi / 2
+
                 for pitch_loop in range(num_yaw_pitch_steps):
-                    y_angle_rad = math.pi
+                    camera_y = math.sin(y_angle_rad)
+                    x_angle_rad = math.pi
+
                     for yaw_loop in range(num_yaw_pitch_steps):
-                        eye_norm = 3
-                        eye_y = eye_norm * math.sin(x_angle_rad)
-                        radius = math.cos(x_angle_rad)
-                        eye = (radius * math.sin(y_angle_rad), eye_y,
-                               radius * math.cos(y_angle_rad))
-                        center = (0, 0, 0)
-                        yaw = gqn.math.yaw(eye, center)
-                        pitch = gqn.math.pitch(eye, center)
+                        camera_direction = np.array([
+                            math.sin(x_angle_rad), camera_y,
+                            math.cos(x_angle_rad)
+                        ])
+                        camera_direction = args.camera_distance * camera_direction / np.linalg.norm(
+                            camera_direction)
+                        yaw, pitch = compute_yaw_and_pitch(camera_direction)
+
                         query_viewpoints = xp.array(
-                            (eye[0], eye[1], eye[2], math.cos(yaw),
-                             math.sin(yaw), math.cos(pitch), math.sin(pitch)),
-                            dtype=np.float32)
+                            (
+                                camera_direction[0],
+                                camera_direction[1],
+                                camera_direction[2],
+                                math.cos(yaw),
+                                math.sin(yaw),
+                                math.cos(pitch),
+                                math.sin(pitch),
+                            ),
+                            dtype=np.float32,
+                        )
                         query_viewpoints = xp.broadcast_to(
                             query_viewpoints, (1, ) + query_viewpoints.shape)
 
@@ -138,8 +159,8 @@ def main():
                                           xi_end] = make_uint8(
                                               generated_images)
 
-                        y_angle_rad -= 2 * math.pi / num_yaw_pitch_steps
-                    x_angle_rad -= math.pi / num_yaw_pitch_steps
+                        x_angle_rad -= 2 * math.pi / num_yaw_pitch_steps
+                    y_angle_rad -= math.pi / num_yaw_pitch_steps
 
                 axis_predictions.imshow(prediction_images)
 
@@ -150,11 +171,10 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-path", "-dataset", type=str, required=True)
-    parser.add_argument(
-        "--snapshot-path", "-snapshot", type=str, required=True)
-    parser.add_argument("--gpu-device", "-gpu", type=int, default=0)
-    parser.add_argument(
-        "--figure-directory", "-fig", type=str, default="figures")
+    parser.add_argument("--dataset-directory", type=str, required=True)
+    parser.add_argument("--snapshot-directory", type=str, required=True)
+    parser.add_argument("--gpu-device", type=int, default=0)
+    parser.add_argument("--figure-directory", type=str, required=True)
+    parser.add_argument("--camera-distance", type=float, required=True)
     args = parser.parse_args()
     main()

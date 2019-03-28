@@ -9,6 +9,20 @@
 - Python 3
 - Chainer
     - `pip3 install chainer`
+- CuPy
+    - `pip3 install cupy-cuda100` for CUDA 10.0
+    - `pip3 install cupy-cuda91` for CUDA 9.1
+
+Also you need the followings for visualization:
+
+- ffmpeg
+    - `sudo apt install ffmpeg`
+- imagemagick
+    - `sudo apt install imagemagick`
+
+**Current training progress**
+
+![figure](https://thumbs.gfycat.com/PlaintiveFamiliarGerbil.webp)
 
 # Network Architecture
 

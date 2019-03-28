@@ -156,10 +156,12 @@ class Model():
             if os.path.exists(model_path):
                 print("loading {}".format(model_path))
                 chainer.serializers.load_hdf5(model_path, self.parameters)
+            return True
         except Exception as error:
             print(error)
+        return False
 
-    def serialize(self, snapshot_root_directory, epoch):
+    def save(self, snapshot_root_directory, epoch):
         tmp_filename = str(uuid.uuid4())
         save_hdf5(
             os.path.join(snapshot_root_directory, tmp_filename),

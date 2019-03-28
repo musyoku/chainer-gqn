@@ -2,10 +2,11 @@ import json
 import os
 
 from tabulate import tabulate
+from gqn.json import JsonSerializable
 
 
-class HyperParameters():
-    def __init__(self, snapshot_directory=None):
+class HyperParameters(JsonSerializable):
+    def __init__(self):
         self.image_size = (64, 64)
         self.h_channels = 64
         self.z_channels = 3
@@ -19,31 +20,12 @@ class HyperParameters():
         self.pixel_sigma_annealing_steps = 200000
         self.learning_rate_annealing_steps = 1600000
         self.representation_architecture = "tower"
-
-        if snapshot_directory is not None:
-            self.load(snapshot_directory)
-
-    @property
-    def filename(self):
-        return "hyperparams.json"
-
-    def load(self, snapshot_directory):
-        json_path = os.path.join(snapshot_directory, self.filename)
-        if os.path.exists(json_path) and os.path.isfile(json_path):
-            with open(json_path, "r") as f:
-                print("loading", json_path)
-                obj = json.load(f)
-                for (key, value) in obj.items():
-                    if isinstance(value, list):
-                        value = tuple(value)
-                    setattr(self, key, value)
-
-    def save(self, snapshot_directory):
-        with open(os.path.join(snapshot_directory, self.filename), "w") as f:
-            json.dump(self.__dict__, f, indent=4, sort_keys=True)
+        self.snapshot_filename = "hyperparams.json"
 
     def __str__(self):
         rows = []
         for key, value in self.__dict__.items():
+            if key == "snapshot_filename":
+                continue
             rows.append([key, value])
         return tabulate(rows, headers=["Hyperparameters", ""])

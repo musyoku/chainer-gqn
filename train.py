@@ -6,7 +6,7 @@ import sys
 
 import chainer
 import chainer.functions as cf
-import cupy
+import cupy as cp
 import matplotlib.pyplot as plt
 import numpy as np
 from chainer.backends import cuda
@@ -25,7 +25,7 @@ from trainer.scheduler import PixelVarianceScheduler
 
 def _mkdir(directory):
     try:
-        os.mkdir(directory)
+        os.makedirs(directory)
     except:
         pass
 
@@ -35,8 +35,7 @@ def main():
     _mkdir(args.log_directory)
 
     meter_train = Meter()
-    meter_path = os.path.join(args.snapshot_directory, "meter.json")
-    meter_train.load(meter_path)
+    meter_train.load(args.snapshot_directory)
 
     #==============================================================================
     # Selecting the GPU
@@ -46,7 +45,7 @@ def main():
     using_gpu = gpu_device >= 0
     if using_gpu:
         cuda.get_device(gpu_device).use()
-        xp = cupy
+        xp = cp
 
     #==============================================================================
     # Dataset
@@ -91,9 +90,7 @@ def main():
         sigma_start=args.initial_pixel_sigma,
         sigma_end=args.final_pixel_sigma,
         final_num_updates=args.pixel_sigma_annealing_steps)
-    variance_scheduler_path = os.path.join(args.snapshot_directory,
-                                           variance_scheduler.filename)
-    variance_scheduler.load(variance_scheduler_path)
+    variance_scheduler.load(args.snapshot_directory)
     print(variance_scheduler, "\n")
 
     pixel_log_sigma = xp.full(
@@ -104,10 +101,8 @@ def main():
     #==============================================================================
     # Logging
     #==============================================================================
-    csv_path = os.path.join(args.log_directory, "loss.csv")
-    df = DataFrame()
-    if os.path.exists(csv_path):
-        df.from_csv(csv_path)
+    csv = DataFrame()
+    csv.load(args.log_directory)
 
     #==============================================================================
     # Optimizer
@@ -217,6 +212,9 @@ def main():
     # Training iterations
     #==============================================================================
     dataset_size = len(dataset_train)
+    np.random.seed(0)
+    cp.random.seed(0)
+
     for epoch in range(meter_train.epoch, args.epochs):
         print("Epoch {}/{}:".format(
             epoch + 1,
@@ -309,15 +307,15 @@ def main():
         meter_test = None
         if dataset_test is not None:
             meter_test = Meter()
-            batch_size = args.batch_size * 6
-            _pixel_ln_var = xp.full(
-                (batch_size, 3) + hyperparams.image_size,
+            batch_size_test = args.batch_size * 6
+            pixel_log_sigma_test = xp.full(
+                (batch_size_test, 3) + hyperparams.image_size,
                 math.log(variance_scheduler.standard_deviation),
                 dtype="float32")
 
             with chainer.no_backprop_mode():
                 for subset in dataset_test:
-                    iterator = Iterator(subset, batch_size=batch_size)
+                    iterator = Iterator(subset, batch_size=batch_size_test)
                     for data_indices in iterator:
                         images, viewpoints = subset[data_indices]
 
@@ -332,7 +330,7 @@ def main():
                         (ELBO, bits_per_pixel, negative_log_likelihood,
                          kl_divergence) = estimate_ELBO(
                              query_images, z_t_param_array, pixel_mean,
-                             _pixel_ln_var)
+                             pixel_log_sigma_test)
                         mean_squared_error = cf.mean_squared_error(
                             query_images, pixel_mean)
 
@@ -345,7 +343,7 @@ def main():
                             kl_divergence=float(kl_divergence.data),
                             mean_squared_error=float(mean_squared_error.data))
 
-            print("    Validation:")
+            print("    Test:")
             print("        {} - done in {:.3f} min".format(
                 meter_test,
                 meter_test.elapsed_time,
@@ -366,11 +364,15 @@ def main():
         if args.visualize:
             plt.pause(1e-10)
 
-        model.serialize(args.snapshot_directory, meter_train.epoch)
-        df.append(epoch, meter_train, meter_test)
-        df.to_csv(csv_path)
-        variance_scheduler.save(variance_scheduler_path)
-        meter_train.save(meter_path)
+        csv.append(epoch, meter_train, meter_test)
+
+        #------------------------------------------------------------------------------
+        # Snapshot
+        #------------------------------------------------------------------------------
+        model.save(args.snapshot_directory, meter_train.epoch)
+        variance_scheduler.save(args.snapshot_directory)
+        meter_train.save(args.snapshot_directory)
+        csv.save(args.log_directory)
 
         print("Epoch {} done in {:.3f} min".format(
             epoch + 1,

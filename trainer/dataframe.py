@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from .meter import Meter
 
@@ -15,6 +16,7 @@ class DataFrame():
             "test:KLD",
             "elapsed_time(min)",
         ])
+        self.snapshot_filename = "loss.csv"
 
     def append(self, epoch, meter_train: Meter, meter_test: Meter):
         data = [epoch]
@@ -43,9 +45,13 @@ class DataFrame():
         series = pd.Series(data, index=self.df.columns)
         self.df = self.df.append(series, ignore_index=True)
 
-    def to_csv(self, path):
-        self.df.to_csv(path, index=False)
+    def save(self, root_directory):
+        csv_path = os.path.join(root_directory, self.snapshot_filename)
+        self.df.to_csv(csv_path, index=False)
 
-    def from_csv(self, path):
-        print("loading", path)
-        self.df = pd.read_csv(path)
+    def load(self, root_directory):
+        csv_path = os.path.join(root_directory, self.snapshot_filename)
+        if os.path.exists(csv_path):
+            self.df = pd.read_csv(csv_path)
+            return True
+        return False

@@ -2,7 +2,7 @@ import cupy
 import numpy
 from chainer import cuda
 
-from . import data, nn, preprocessing
+from . import data, nn, preprocessing, json
 
 
 def to_device(x, device_id):

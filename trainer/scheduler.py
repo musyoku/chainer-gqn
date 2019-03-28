@@ -3,13 +3,18 @@ import os
 
 from tabulate import tabulate
 
+from gqn.json import JsonSerializable
 
-class PixelVarianceScheduler:
-    def __init__(self, sigma_start, sigma_end, final_num_updates=200000):
+
+class PixelVarianceScheduler(JsonSerializable):
+    def __init__(self,
+                 sigma_start=2.0,
+                 sigma_end=0.7,
+                 final_num_updates=200000):
         self.sigma_start = sigma_start
         self.sigma_end = sigma_end
         self.final_num_updates = final_num_updates
-        self.filename = "scheduler.json"
+        self.snapshot_filename = "scheduler.json"
         self.update(0)
 
     def update(self, training_step):
@@ -21,19 +26,7 @@ class PixelVarianceScheduler:
     def __str__(self):
         rows = []
         for key, value in self.__dict__.items():
+            if key == "snapshot_filename":
+                continue
             rows.append([key, value])
         return tabulate(rows, headers=["Pixel-Variance Scheduler", ""])
-
-    def load(self, path):
-        if os.path.exists(path) and os.path.isfile(path):
-            with open(path, "r") as f:
-                print("loading", path)
-                obj = json.load(f)
-                for (key, value) in obj.items():
-                    if isinstance(value, list):
-                        value = tuple(value)
-                    setattr(self, key, value)
-
-    def save(self, path):
-        with open(path, "w") as f:
-            json.dump(self.__dict__, f, indent=4, sort_keys=True)
