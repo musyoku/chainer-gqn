@@ -100,23 +100,27 @@ def main():
 
                 batch_index = 0
 
+                #------------------------------------------------------------------------------
+                # Observations
+                #------------------------------------------------------------------------------
                 total_views = images.shape[1]
-                observation_view_indices = list(range(total_views))
-                random.shuffle(observation_view_indices)
-                observation_view_indices = observation_view_indices[:
-                                                                    num_views_per_scene]
+                random_observation_view_indices = list(range(total_views))
+                random.shuffle(random_observation_view_indices)
+                random_observation_view_indices = random_observation_view_indices[:
+                                                                                  num_views_per_scene]
 
-                observed_image_array = images[:, observation_view_indices]
+                observed_images = images[:, random_observation_view_indices]
+                observed_viewpoints = viewpoints[:,
+                                                 random_observation_view_indices]
                 representation = model.compute_observation_representation(
-                    observed_image_array,
-                    viewpoints[:, observation_view_indices])
+                    observed_images, observed_viewpoints)
 
                 axis_observation_1.imshow(
-                    make_uint8(observed_image_array[batch_index, 0]))
+                    make_uint8(observed_images[batch_index, 0]))
                 axis_observation_2.imshow(
-                    make_uint8(observed_image_array[batch_index, 1]))
+                    make_uint8(observed_images[batch_index, 1]))
                 axis_observation_3.imshow(
-                    make_uint8(observed_image_array[batch_index, 2]))
+                    make_uint8(observed_images[batch_index, 2]))
 
                 y_angle_rad = math.pi / 2
 

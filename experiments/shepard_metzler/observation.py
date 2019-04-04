@@ -152,13 +152,6 @@ def main():
             for data_indices in iterator:
                 animation_frame_array = []
 
-                observed_image_array = xp.full(
-                    (total_observations_per_scene, ) + image_shape,
-                    black_color,
-                    dtype=np.float32)
-                observed_viewpoint_array = xp.zeros(
-                    (total_observations_per_scene, 7), dtype=np.float32)
-
                 # shape: (batch, views, height, width, channels)
                 images, viewpoints = subset[data_indices]
 
@@ -168,25 +161,33 @@ def main():
 
                 batch_index = 0
 
+                total_views = images.shape[1]
+                random_observation_view_indices = list(range(total_views))
+                random.shuffle(random_observation_view_indices)
+                random_observation_view_indices = random_observation_view_indices[:
+                                                                                  total_observations_per_scene]
+
+                #------------------------------------------------------------------------------
+                # Observations
+                #------------------------------------------------------------------------------
+                observed_images = images[batch_index,
+                                         random_observation_view_indices]
+                observed_viewpoints = viewpoints[
+                    batch_index, random_observation_view_indices]
+
+                observed_images = to_device(observed_images)
+                observed_viewpoints = to_device(observed_viewpoints)
+
                 #------------------------------------------------------------------------------
                 # Generate images with a single observation
                 #------------------------------------------------------------------------------
-                observation_index = 0
-
                 # Scene encoder
-                observed_image = images[batch_index, observation_index]
-                observed_viewpoint = viewpoints[batch_index, observation_index]
-
-                observed_image_array[observation_index] = to_device(
-                    observed_image)
-                observed_viewpoint_array[observation_index] = to_device(
-                    observed_viewpoint)
-
                 representation = model.compute_observation_representation(
-                    observed_image_array[None, :observation_index + 1],
-                    observed_viewpoint_array[None, :observation_index + 1])
+                    observed_images[None, :1], observed_viewpoints[None, :1])
 
                 # Update figure
+                observation_index = random_observation_view_indices[0]
+                observed_image = images[batch_index, observation_index]
                 axis_observations_image = fill_observations_axis(
                     [observed_image])
 
@@ -217,14 +218,16 @@ def main():
                 #------------------------------------------------------------------------------
                 # Add observations
                 #------------------------------------------------------------------------------
-                for n in range(total_observations_per_scene):
+                for n in range(1, total_observations_per_scene):
+                    observation_indices = random_observation_view_indices[:n +
+                                                                          1]
                     axis_observations_image = fill_observations_axis(
-                        images[batch_index, :n + 1])
+                        images[batch_index, observation_indices])
 
                     # Scene encoder
                     representation = model.compute_observation_representation(
-                        observed_image_array[None, :n + 1],
-                        observed_viewpoint_array[None, :n + 1])
+                        observed_images[None, :n + 1],
+                        observed_viewpoints[None, :n + 1])
 
                     for t in range(fps // 2):
                         artist_array = [
@@ -254,10 +257,9 @@ def main():
                 #------------------------------------------------------------------------------
                 # Scene encoder
                 representation = model.compute_observation_representation(
-                    observed_image_array[None, :total_observations_per_scene +
-                                         1],
-                    observed_viewpoint_array[None, :
-                                             total_observations_per_scene + 1])
+                    observed_images[None, :total_observations_per_scene + 1],
+                    observed_viewpoints[None, :total_observations_per_scene +
+                                        1])
                 # Rotate camera
                 for t in range(0, fps * 6):
                     artist_array = [

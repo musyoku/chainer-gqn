@@ -201,7 +201,7 @@ def main():
     np.random.seed(0)
     cp.random.seed(0)
 
-    for epoch in range(args.epochs):
+    for epoch in range(meter_train.epoch, args.epochs):
         _print("Epoch {}/{}:".format(
             epoch + 1,
             args.epochs,

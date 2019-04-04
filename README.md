@@ -22,7 +22,7 @@ Also you need the followings for visualization:
 
 **Current training progress**
 
-![figure](https://thumbs.gfycat.com/PlaintiveFamiliarGerbil.webp)
+![figure](https://thumbs.gfycat.com/AgileSpiffyEyelashpitviper.webp)
 
 # Network Architecture
 
