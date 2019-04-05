@@ -295,12 +295,12 @@ def main():
                     repeat_delay=0)
 
                 # anim.save(
-                #     "{}/shepard_matzler_observations_{}.gif".format(
+                #     "{}/shepard_metzler_observations_{}.gif".format(
                 #         args.figure_directory, file_number),
                 #     writer="imagemagick",
                 #     fps=fps)
                 anim.save(
-                    "{}/shepard_matzler_observations_{}.mp4".format(
+                    "{}/shepard_metzler_observations_{}.mp4".format(
                         args.figure_directory, file_number),
                     writer="ffmpeg",
                     fps=fps)

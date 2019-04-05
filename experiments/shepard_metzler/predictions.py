@@ -168,7 +168,7 @@ def main():
 
                 axis_predictions.imshow(prediction_images)
 
-                plt.savefig("{}/shepard_matzler_predictions_{}.png".format(
+                plt.savefig("{}/shepard_metzler_predictions_{}.png".format(
                     args.figure_directory, file_number))
                 file_number += 1
 
