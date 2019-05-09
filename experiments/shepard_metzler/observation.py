@@ -99,13 +99,14 @@ def main():
             vertical_angle_rad = y_rad_top
         return horizontal_angle_rad, vertical_angle_rad
 
-    def rotate_query_viewpoint(horizontal_angle_rad, vertical_angle_rad):
+    def rotate_query_viewpoint(horizontal_angle_rad, vertical_angle_rad,
+                               camera_distance):
         camera_direction = np.array([
             math.sin(horizontal_angle_rad),  # x
             math.sin(vertical_angle_rad),  # y
             math.cos(horizontal_angle_rad),  # z
         ])
-        camera_direction = args.camera_distance * camera_direction / np.linalg.norm(
+        camera_direction = camera_distance * camera_direction / np.linalg.norm(
             camera_direction)
         yaw, pitch = compute_yaw_and_pitch(camera_direction)
         query_viewpoints = xp.array(
@@ -123,6 +124,38 @@ def main():
         query_viewpoints = xp.broadcast_to(query_viewpoints,
                                            (1, ) + query_viewpoints.shape)
         return query_viewpoints
+
+    def render(representation,
+               camera_distance,
+               start_t,
+               end_t,
+               animation_frame_array,
+               rotate_camera=True):
+        for t in range(start_t, end_t):
+            artist_array = [
+                axis_observations.imshow(
+                    make_uint8(axis_observations_image),
+                    interpolation="none",
+                    animated=True)
+            ]
+
+            horizontal_angle_rad, vertical_angle_rad = compute_camera_angle_at_frame(
+                t)
+            if rotate_camera == False:
+                horizontal_angle_rad, vertical_angle_rad = compute_camera_angle_at_frame(
+                    0)
+            query_viewpoints = rotate_query_viewpoint(
+                horizontal_angle_rad, vertical_angle_rad, camera_distance)
+            generated_images = model.generate_image(query_viewpoints,
+                                                    representation)[0]
+
+            artist_array.append(
+                axis_generation.imshow(
+                    make_uint8(generated_images),
+                    interpolation="none",
+                    animated=True))
+
+            animation_frame_array.append(artist_array)
 
     #==============================================================================
     # Visualization
@@ -154,6 +187,8 @@ def main():
 
                 # shape: (batch, views, height, width, channels)
                 images, viewpoints = subset[data_indices]
+                camera_distance = np.mean(
+                    np.linalg.norm(viewpoints[:, :, :3], axis=2))
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
@@ -191,29 +226,9 @@ def main():
                 axis_observations_image = fill_observations_axis(
                     [observed_image])
 
-                # Rotate camera
-                for t in range(fps, fps * 6):
-                    artist_array = [
-                        axis_observations.imshow(
-                            make_uint8(axis_observations_image),
-                            interpolation="none",
-                            animated=True)
-                    ]
-
-                    horizontal_angle_rad, vertical_angle_rad = compute_camera_angle_at_frame(
-                        t)
-                    query_viewpoints = rotate_query_viewpoint(
-                        horizontal_angle_rad, vertical_angle_rad)
-                    generated_images = model.generate_image(
-                        query_viewpoints, representation)[0]
-
-                    artist_array.append(
-                        axis_generation.imshow(
-                            make_uint8(generated_images),
-                            interpolation="none",
-                            animated=True))
-
-                    animation_frame_array.append(artist_array)
+                # Neural rendering
+                render(representation, camera_distance, fps, fps * 6,
+                       animation_frame_array)
 
                 #------------------------------------------------------------------------------
                 # Add observations
@@ -229,28 +244,14 @@ def main():
                         observed_images[None, :n + 1],
                         observed_viewpoints[None, :n + 1])
 
-                    for t in range(fps // 2):
-                        artist_array = [
-                            axis_observations.imshow(
-                                make_uint8(axis_observations_image),
-                                interpolation="none",
-                                animated=True)
-                        ]
-
-                        horizontal_angle_rad, vertical_angle_rad = compute_camera_angle_at_frame(
-                            0)
-                        query_viewpoints = rotate_query_viewpoint(
-                            horizontal_angle_rad, vertical_angle_rad)
-                        generated_images = model.generate_image(
-                            query_viewpoints, representation)[0]
-
-                        artist_array.append(
-                            axis_generation.imshow(
-                                make_uint8(generated_images),
-                                interpolation="none",
-                                animated=True))
-
-                        animation_frame_array.append(artist_array)
+                    # Neural rendering
+                    render(
+                        representation,
+                        camera_distance,
+                        0,
+                        fps // 2,
+                        animation_frame_array,
+                        rotate_camera=False)
 
                 #------------------------------------------------------------------------------
                 # Generate images with all observations
@@ -260,29 +261,10 @@ def main():
                     observed_images[None, :total_observations_per_scene + 1],
                     observed_viewpoints[None, :total_observations_per_scene +
                                         1])
-                # Rotate camera
-                for t in range(0, fps * 6):
-                    artist_array = [
-                        axis_observations.imshow(
-                            make_uint8(axis_observations_image),
-                            interpolation="none",
-                            animated=True)
-                    ]
 
-                    horizontal_angle_rad, vertical_angle_rad = compute_camera_angle_at_frame(
-                        t)
-                    query_viewpoints = rotate_query_viewpoint(
-                        horizontal_angle_rad, vertical_angle_rad)
-                    generated_images = model.generate_image(
-                        query_viewpoints, representation)[0]
-
-                    artist_array.append(
-                        axis_generation.imshow(
-                            make_uint8(generated_images),
-                            interpolation="none",
-                            animated=True))
-
-                    animation_frame_array.append(artist_array)
+                # Neural rendering
+                render(representation, camera_distance, 0, fps * 6,
+                       animation_frame_array)
 
                 #------------------------------------------------------------------------------
                 # Write to file
@@ -310,10 +292,9 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--dataset-directory", type=str, required=True)
     parser.add_argument("--snapshot-directory", type=str, required=True)
-    parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--figure-directory", type=str, required=True)
-    parser.add_argument("--camera-distance", type=float, required=True)
     args = parser.parse_args()
     main()

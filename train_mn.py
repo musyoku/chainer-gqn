@@ -301,7 +301,7 @@ def main():
                 for subset_loop in range(subset_size_per_gpu):
                     subset_index = subset_indices_test[subset_loop * comm.size
                                                        + comm.rank]
-                    subset = dataset_train.read(subset_index)
+                    subset = dataset_test.read(subset_index)
                     iterator = gqn.data.Iterator(
                         subset, batch_size=batch_size_test)
 
@@ -332,31 +332,34 @@ def main():
                             kl_divergence=float(kl_divergence.data),
                             mean_squared_error=float(mean_squared_error.data))
 
-            meter = meter_test.allreduce(comm)
+            meter_test = meter_test.allreduce(comm)
 
-            _print("    Test:")
-            _print("        {} - done in {:.3f} min".format(
-                meter,
-                meter.elapsed_time,
-            ))
+            if comm.rank == 0:
+                print("    Test:")
+                print("        {} - done in {:.3f} min".format(
+                    meter_test,
+                    meter_test.elapsed_time,
+                ))
 
-            model.save(args.snapshot_directory, meter_train.epoch)
-            variance_scheduler.save(args.snapshot_directory)
-            meter_train.save(args.snapshot_directory)
-            csv.save(args.log_directory)
+                model.save(args.snapshot_directory, epoch)
+                variance_scheduler.save(args.snapshot_directory)
+                meter_train.save(args.snapshot_directory)
+                
+                csv.append(epoch, meter_train, meter_test)
+                csv.save(args.log_directory)
 
-            _print("Epoch {} done in {:.3f} min".format(
-                epoch + 1,
-                meter_train.epoch_elapsed_time,
-            ))
-            _print("    {}".format(meter_train))
-            _print("    lr: {} - sigma: {} - training_steps: {}".format(
-                optimizer.learning_rate,
-                variance_scheduler.standard_deviation,
-                meter_train.num_updates,
-            ))
-            _print("    Time elapsed: {:.3f} min".format(
-                meter_train.elapsed_time))
+                print("Epoch {} done in {:.3f} min".format(
+                    epoch + 1,
+                    meter_train.epoch_elapsed_time,
+                ))
+                print("    {}".format(meter_train))
+                print("    lr: {} - sigma: {} - training_steps: {}".format(
+                    optimizer.learning_rate,
+                    variance_scheduler.standard_deviation,
+                    meter_train.num_updates,
+                ))
+                print("    Time elapsed: {:.3f} min".format(
+                    meter_train.elapsed_time))
 
 
 if __name__ == "__main__":

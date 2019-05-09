@@ -72,6 +72,19 @@ def main():
     print(variance_scheduler, "\n")
 
     #==============================================================================
+    # Visualization
+    #==============================================================================
+    fig = plt.figure(figsize=(6, 3))
+    axes_test = [
+        fig.add_subplot(1, 2, 1),
+        fig.add_subplot(1, 2, 2),
+    ]
+    axes_test[0].set_title("Validation Data")
+    axes_test[0].axis("off")
+    axes_test[1].set_title("Reconstruction")
+    axes_test[1].axis("off")
+
+    #==============================================================================
     # Algorithms
     #==============================================================================
     def encode_scene(images, viewpoints):
@@ -81,6 +94,8 @@ def main():
         # Sample number of views
         total_views = images.shape[1]
         num_views = random.choice(range(1, total_views + 1))
+
+        print("num_views", num_views)
 
         # Sample views
         observation_view_indices = list(range(total_views))
@@ -141,6 +156,8 @@ def main():
     #==============================================================================
     # Test the model
     #==============================================================================
+    random.seed(0)
+    np.random.seed(0)
     meter = Meter()
     pixel_log_sigma = xp.full(
         (args.batch_size, 3) + hyperparams.image_size,
@@ -153,9 +170,13 @@ def main():
             for data_indices in iterator:
                 images, viewpoints = subset[data_indices]
 
+                norm = np.linalg.norm(viewpoints, axis=2)
+                print(np.linalg.norm(viewpoints, axis=2))
+
                 # Scene encoder
                 representation, query_images, query_viewpoints = encode_scene(
                     images, viewpoints)
+
 
                 # Compute empirical ELBO
                 (z_t_param_array,
@@ -175,6 +196,15 @@ def main():
                         negative_log_likelihood.data),
                     kl_divergence=float(kl_divergence.data),
                     mean_squared_error=float(mean_squared_error.data))
+
+                axes_test[0].imshow(
+                    make_uint8(query_images[0]), interpolation="none")
+                axes_test[1].imshow(
+                    make_uint8(pixel_mean.data[0]), interpolation="none")
+                plt.pause(10)
+
+            print("        {}".format(meter))
+
 
             if subset_index % 100 == 0:
                 print("    Subset {}/{}:".format(

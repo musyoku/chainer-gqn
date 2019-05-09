@@ -95,12 +95,10 @@ class PoolNetwork(TowerNetwork):
                  r_channels=256,
                  r_size=(16, 16),
                  v_size=(16, 16),
-                 use_cuda_kernel=False,
                  weight_initializer=None):
         super().__init__(
             r_channels=r_channels,
             v_size=v_size,
-            use_cuda_kernel=use_cuda_kernel,
             weight_initializer=weight_initializer)
         self.r_size = r_size
 

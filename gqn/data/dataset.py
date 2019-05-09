@@ -29,7 +29,7 @@ class Dataset():
         return subset
 
     def read(self, subset_index):
-        filename = self.subset_filenames[self.current_subset_index]
+        filename = self.subset_filenames[subset_index]
         images_npy_path = os.path.join(self.directory, "images", filename)
         viewpoints_npy_path = os.path.join(self.directory, "viewpoints", filename)
         subset = Subset(images_npy_path, viewpoints_npy_path)

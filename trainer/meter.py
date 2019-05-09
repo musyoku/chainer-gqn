@@ -81,23 +81,23 @@ class Meter(JsonSerializable):
     def allreduce(self, communicator):
         meter = Meter()
 
-        sum_ELBO = communicator.allreduce_obj(self.ELBO.value)
+        sum_ELBO = communicator.allreduce_obj(self.ELBO.average)
         meter.ELBO.average = sum_ELBO / communicator.size
 
         sum_bits_per_pixel = communicator.allreduce_obj(
-            self.bits_per_pixel.value)
+            self.bits_per_pixel.average)
         meter.bits_per_pixel.average = sum_bits_per_pixel / communicator.size
 
         sum_mean_squared_error = communicator.allreduce_obj(
-            self.mean_squared_error.value)
+            self.mean_squared_error.average)
         meter.mean_squared_error.average = sum_mean_squared_error / communicator.size
 
         sum_kl_divergence = communicator.allreduce_obj(
-            self.kl_divergence.value)
+            self.kl_divergence.average)
         meter.kl_divergence.average = sum_kl_divergence / communicator.size
 
         sum_negative_log_likelihood = communicator.allreduce_obj(
-            self.negative_log_likelihood.value)
+            self.negative_log_likelihood.average)
         meter.negative_log_likelihood.average = sum_negative_log_likelihood / communicator.size
 
         meter.start_time = self.start_time

@@ -83,18 +83,21 @@ def main():
     def compute_camera_angle_at_frame(t):
         return t * 2 * math.pi / (fps * 2)
 
-    def rotate_query_viewpoint(horizontal_angle_rad):
-        camera_direction = np.array([
-            args.camera_distance * math.sin(horizontal_angle_rad),  # x
-            args.camera_position_y,
-            args.camera_distance * math.cos(horizontal_angle_rad),  # z
+    def rotate_query_viewpoint(horizontal_angle_rad, camera_distance,
+                               camera_position_y):
+        camera_position = np.array([
+            camera_distance * math.sin(horizontal_angle_rad),  # x
+            camera_position_y,
+            camera_distance * math.cos(horizontal_angle_rad),  # z
         ])
+        center = np.array((0, camera_position_y, 0))
+        camera_direction = camera_position - center
         yaw, pitch = compute_yaw_and_pitch(camera_direction)
         query_viewpoints = xp.array(
             (
-                camera_direction[0],
-                camera_direction[1],
-                camera_direction[2],
+                camera_position[0],
+                camera_position[1],
+                camera_position[2],
                 math.cos(yaw),
                 math.sin(yaw),
                 math.cos(pitch),
@@ -105,6 +108,37 @@ def main():
         query_viewpoints = xp.broadcast_to(query_viewpoints,
                                            (1, ) + query_viewpoints.shape)
         return query_viewpoints
+
+    def render(representation,
+               camera_distance,
+               camera_position_y,
+               total_frames,
+               animation_frame_array,
+               rotate_camera=True):
+        for t in range(0, total_frames):
+            artist_array = [
+                axis_observations.imshow(
+                    make_uint8(axis_observations_image),
+                    interpolation="none",
+                    animated=True)
+            ]
+
+            horizontal_angle_rad = compute_camera_angle_at_frame(t)
+            if rotate_camera == False:
+                horizontal_angle_rad = compute_camera_angle_at_frame(0)
+
+            query_viewpoints = rotate_query_viewpoint(
+                horizontal_angle_rad, camera_distance, camera_position_y)
+            generated_images = model.generate_image(query_viewpoints,
+                                                    representation)[0]
+
+            artist_array.append(
+                axis_generation.imshow(
+                    make_uint8(generated_images),
+                    interpolation="none",
+                    animated=True))
+
+            animation_frame_array.append(artist_array)
 
     #==============================================================================
     # Visualization
@@ -136,6 +170,9 @@ def main():
 
                 # shape: (batch, views, height, width, channels)
                 images, viewpoints = subset[data_indices]
+                camera_distance = np.mean(
+                    np.linalg.norm(viewpoints[:, :, :3], axis=2))
+                camera_position_y = np.mean(viewpoints[:, :, 1])
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
@@ -173,28 +210,9 @@ def main():
                 axis_observations_image = fill_observations_axis(
                     [observed_image])
 
-                # Rotate camera
-                for t in range(0, fps * 2):
-                    artist_array = [
-                        axis_observations.imshow(
-                            make_uint8(axis_observations_image),
-                            interpolation="none",
-                            animated=True)
-                    ]
-
-                    horizontal_angle_rad = compute_camera_angle_at_frame(t)
-                    query_viewpoints = rotate_query_viewpoint(
-                        horizontal_angle_rad)
-                    generated_images = model.generate_image(
-                        query_viewpoints, representation)[0]
-
-                    artist_array.append(
-                        axis_generation.imshow(
-                            make_uint8(generated_images),
-                            interpolation="none",
-                            animated=True))
-
-                    animation_frame_array.append(artist_array)
+                # Neural rendering
+                render(representation, camera_distance, camera_position_y,
+                       fps * 2, animation_frame_array)
 
                 #------------------------------------------------------------------------------
                 # Add observations
@@ -209,28 +227,14 @@ def main():
                     representation = model.compute_observation_representation(
                         observed_images[None, :n + 1],
                         observed_viewpoints[None, :n + 1])
-
-                    for t in range(fps // 2):
-                        artist_array = [
-                            axis_observations.imshow(
-                                make_uint8(axis_observations_image),
-                                interpolation="none",
-                                animated=True)
-                        ]
-
-                        horizontal_angle_rad = compute_camera_angle_at_frame(0)
-                        query_viewpoints = rotate_query_viewpoint(
-                            horizontal_angle_rad)
-                        generated_images = model.generate_image(
-                            query_viewpoints, representation)[0]
-
-                        artist_array.append(
-                            axis_generation.imshow(
-                                make_uint8(generated_images),
-                                interpolation="none",
-                                animated=True))
-
-                        animation_frame_array.append(artist_array)
+                    # Neural rendering
+                    render(
+                        representation,
+                        camera_distance,
+                        camera_position_y,
+                        fps // 2,
+                        animation_frame_array,
+                        rotate_camera=False)
 
                 #------------------------------------------------------------------------------
                 # Generate images with all observations
@@ -241,28 +245,9 @@ def main():
                     observed_viewpoints[None, :total_observations_per_scene +
                                         1])
 
-                # Rotate camera
-                for t in range(0, fps * 2):
-                    artist_array = [
-                        axis_observations.imshow(
-                            make_uint8(axis_observations_image),
-                            interpolation="none",
-                            animated=True)
-                    ]
-
-                    horizontal_angle_rad = compute_camera_angle_at_frame(t)
-                    query_viewpoints = rotate_query_viewpoint(
-                        horizontal_angle_rad)
-                    generated_images = model.generate_image(
-                        query_viewpoints, representation)[0]
-
-                    artist_array.append(
-                        axis_generation.imshow(
-                            make_uint8(generated_images),
-                            interpolation="none",
-                            animated=True))
-
-                    animation_frame_array.append(artist_array)
+                # Neural rendering
+                render(representation, camera_distance, camera_position_y,
+                       fps * 4, animation_frame_array)
 
                 #------------------------------------------------------------------------------
                 # Write to file
@@ -294,7 +279,5 @@ if __name__ == "__main__":
     parser.add_argument("--snapshot-directory", type=str, required=True)
     parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--figure-directory", type=str, required=True)
-    parser.add_argument("--camera-distance", type=float, required=True)
-    parser.add_argument("--camera-position-y", type=float, required=True)
     args = parser.parse_args()
     main()

@@ -93,6 +93,8 @@ def main():
                 # shape: (batch, views, height, width, channels)
                 # range: [-1, 1]
                 images, viewpoints = subset[data_indices]
+                camera_distance = np.mean(
+                    np.linalg.norm(viewpoints[:, :, :3], axis=2))
 
                 # (batch, views, height, width, channels) -> (batch, views, channels, height, width)
                 images = images.transpose((0, 1, 4, 2, 3)).astype(np.float32)
@@ -133,7 +135,7 @@ def main():
                             math.sin(x_angle_rad), camera_y,
                             math.cos(x_angle_rad)
                         ])
-                        camera_direction = args.camera_distance * camera_direction / np.linalg.norm(
+                        camera_direction = camera_distance * camera_direction / np.linalg.norm(
                             camera_direction)
                         yaw, pitch = compute_yaw_and_pitch(camera_direction)
 
@@ -175,10 +177,9 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--dataset-directory", type=str, required=True)
     parser.add_argument("--snapshot-directory", type=str, required=True)
-    parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--figure-directory", type=str, required=True)
-    parser.add_argument("--camera-distance", type=float, required=True)
     args = parser.parse_args()
     main()

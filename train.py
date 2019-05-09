@@ -369,7 +369,7 @@ def main():
         #------------------------------------------------------------------------------
         # Snapshot
         #------------------------------------------------------------------------------
-        model.save(args.snapshot_directory, meter_train.epoch)
+        model.save(args.snapshot_directory, epoch)
         variance_scheduler.save(args.snapshot_directory)
         meter_train.save(args.snapshot_directory)
         csv.save(args.log_directory)
