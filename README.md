@@ -41,7 +41,7 @@ Datasets used to train GQN in the paper are available to download.
 
 https://github.com/deepmind/gqn-datasets
 
-You need to convert `.tfrecord` files to NumPy `.npy` format before starting training.
+You need to convert `.tfrecord` files to HDF5 `.h5` format before starting training.
 
 https://github.com/musyoku/gqn-datasets-translator
 
