@@ -344,7 +344,7 @@ def main():
                 model.save(args.snapshot_directory, epoch)
                 variance_scheduler.save(args.snapshot_directory)
                 meter_train.save(args.snapshot_directory)
-                
+
                 csv.append(epoch, meter_train, meter_test)
                 csv.save(args.log_directory)
 

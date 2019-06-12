@@ -7,6 +7,7 @@
 # Requirements
 
 - Python 3
+- h5py
 - Chainer
     - `pip3 install chainer`
 - CuPy
